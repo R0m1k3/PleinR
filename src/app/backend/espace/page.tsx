@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { categories, members, promotions } from "@/db/schema";
@@ -49,6 +49,12 @@ export default async function EspacePage() {
       .orderBy(desc(promotions.createdAt));
   }
 
+  const catRows = await db
+    .select({ label: categories.label })
+    .from(categories)
+    .orderBy(asc(categories.sort));
+  const categoryLabels = catRows.map((c) => c.label);
+
   function fmtDate(d: Date) {
     return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
   }
@@ -74,7 +80,7 @@ export default async function EspacePage() {
         </div>
       </div>
 
-      <MemberSpaceForm memberName={memberName} />
+      <MemberSpaceForm memberName={memberName} categories={categoryLabels} />
 
       <div style={{ marginTop: 28 }}>
         <div style={{ fontSize: 12.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 700, marginBottom: 12 }}>

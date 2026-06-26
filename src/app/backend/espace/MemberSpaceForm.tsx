@@ -4,24 +4,21 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { publishPromo } from "../actions";
 
-const CATEGORIES = [
-  "Boulangerie",
-  "Restauration",
-  "Mode & Beauté",
-  "Artisanat",
-  "Services",
-  "Santé",
-  "Alimentation",
-];
-
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
 
-export function MemberSpaceForm({ memberName }: { memberName: string }) {
+export function MemberSpaceForm({
+  memberName,
+  categories,
+}: {
+  memberName: string;
+  categories: string[];
+}) {
+  const CATEGORIES = categories.length > 0 ? categories : ["Autre"];
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
-  const [cat, setCat] = useState("Boulangerie");
+  const [cat, setCat] = useState(CATEGORIES[0]);
   const [badge, setBadge] = useState("");
   const [imgData, setImgData] = useState("");
   const [submitted, setSubmitted] = useState(false);

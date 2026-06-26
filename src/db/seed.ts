@@ -23,16 +23,93 @@ async function main() {
 
   console.log("Seeding database…");
 
-  // ---- Categories (métiers) ----
-  const categoryData = [
-    { slug: "restauration", label: "Restauration", accent: "#E0A63C", tint: "#f6efdc", sort: 1 },
-    { slug: "mode-beaute", label: "Mode & Beauté", accent: "#6FB0C6", tint: "#e7f0f3", sort: 2 },
-    { slug: "artisanat", label: "Artisanat", accent: "#9a6638", tint: "#f4ebda", sort: 3 },
-    { slug: "services", label: "Services", accent: "#2C6FB3", tint: "#eaf0f6", sort: 4 },
-    { slug: "sante", label: "Santé", accent: "#E0A63C", tint: "#f6efdc", sort: 5 },
-    { slug: "alimentation", label: "Alimentation", accent: "#6FB0C6", tint: "#e7f0f3", sort: 6 },
-    { slug: "boulangerie", label: "Boulangerie", accent: "#9a6638", tint: "#f4ebda", sort: 7 },
+  // ---- Categories (métiers) — liste complète ----
+  const PALETTE = [
+    { accent: "#E0A63C", tint: "#f6efdc" },
+    { accent: "#6FB0C6", tint: "#e7f0f3" },
+    { accent: "#9a6638", tint: "#f4ebda" },
+    { accent: "#2C6FB3", tint: "#eaf0f6" },
+    { accent: "#5a7a5a", tint: "#eef0ec" },
+    { accent: "#7a6f9c", tint: "#efe9f3" },
+    { accent: "#c98a2e", tint: "#f7efe0" },
+    { accent: "#3f8aa3", tint: "#e6eff2" },
   ];
+  // NB: les slugs existants (alimentation, boulangerie, restauration, mode-beaute,
+  // artisanat, services, sante) sont conservés pour ne pas casser les liens existants.
+  const categoryList: { slug: string; label: string }[] = [
+    // Bouche & alimentation
+    { slug: "alimentation", label: "Alimentation / Épicerie" },
+    { slug: "boulangerie", label: "Boulangerie – Pâtisserie" },
+    { slug: "boucherie-charcuterie", label: "Boucherie – Charcuterie" },
+    { slug: "poissonnerie", label: "Poissonnerie" },
+    { slug: "primeur", label: "Primeur – Fruits & Légumes" },
+    { slug: "fromagerie", label: "Fromagerie – Crèmerie" },
+    { slug: "cave", label: "Cave – Vins & Spiritueux" },
+    { slug: "chocolaterie", label: "Chocolaterie – Confiserie" },
+    { slug: "traiteur", label: "Traiteur" },
+    { slug: "restauration", label: "Restauration" },
+    { slug: "restauration-rapide", label: "Restauration rapide" },
+    { slug: "cafe-bar", label: "Café – Bar – Brasserie" },
+    // Mode, beauté & soin
+    { slug: "mode-beaute", label: "Mode & Beauté" },
+    { slug: "mode-vetements", label: "Mode & Vêtements" },
+    { slug: "chaussures-maroquinerie", label: "Chaussures – Maroquinerie" },
+    { slug: "bijouterie", label: "Bijouterie – Horlogerie" },
+    { slug: "coiffure", label: "Coiffure" },
+    { slug: "esthetique", label: "Esthétique – Institut" },
+    { slug: "parfumerie", label: "Parfumerie" },
+    { slug: "bien-etre", label: "Bien-être – Spa – Massage" },
+    { slug: "optique", label: "Optique" },
+    { slug: "tatouage", label: "Tatouage – Piercing" },
+    // Maison, déco & artisanat / bâtiment
+    { slug: "artisanat", label: "Artisanat" },
+    { slug: "decoration", label: "Décoration – Ameublement" },
+    { slug: "fleuriste", label: "Fleuriste" },
+    { slug: "bricolage-jardinage", label: "Bricolage – Jardinage" },
+    { slug: "batiment", label: "Bâtiment – Rénovation" },
+    { slug: "plomberie", label: "Plomberie – Chauffage" },
+    { slug: "electricite", label: "Électricité" },
+    { slug: "menuiserie", label: "Menuiserie – Ébénisterie" },
+    { slug: "peinture", label: "Peinture – Décoration intérieure" },
+    { slug: "paysagiste", label: "Paysagiste – Espaces verts" },
+    // Auto & mobilité
+    { slug: "automobile", label: "Automobile – Garage" },
+    { slug: "carrosserie", label: "Carrosserie" },
+    { slug: "cycles-motos", label: "Cycles – Motos" },
+    // Santé
+    { slug: "sante", label: "Santé – Pharmacie" },
+    { slug: "medical", label: "Médical – Paramédical" },
+    { slug: "audioprothese", label: "Audioprothèse" },
+    // Services aux particuliers & entreprises
+    { slug: "services", label: "Services" },
+    { slug: "banque-assurance", label: "Banque – Assurance" },
+    { slug: "immobilier", label: "Immobilier" },
+    { slug: "comptabilite", label: "Comptabilité – Gestion" },
+    { slug: "juridique", label: "Juridique – Notaire" },
+    { slug: "communication", label: "Communication – Web – Marketing" },
+    { slug: "informatique", label: "Informatique – Téléphonie" },
+    { slug: "nettoyage", label: "Nettoyage – Entretien" },
+    { slug: "transport", label: "Transport – Logistique" },
+    { slug: "securite", label: "Sécurité" },
+    { slug: "coworking", label: "Coworking – Bureaux" },
+    { slug: "interim-rh", label: "Intérim – Ressources humaines" },
+    // Loisirs, culture & formation
+    { slug: "sport-loisirs", label: "Sport – Loisirs" },
+    { slug: "fitness", label: "Salle de sport – Fitness" },
+    { slug: "culture-arts", label: "Culture – Arts" },
+    { slug: "education-formation", label: "Éducation – Formation" },
+    { slug: "tourisme-hotellerie", label: "Tourisme – Hôtellerie" },
+    { slug: "evenementiel", label: "Événementiel" },
+    { slug: "animalerie", label: "Animalerie – Services animaliers" },
+    // Entreprise & production
+    { slug: "industrie", label: "Industrie – Production" },
+    { slug: "agriculture", label: "Agriculture – Producteur local" },
+  ];
+  const categoryData = categoryList.map((c, i) => ({
+    ...c,
+    ...PALETTE[i % PALETTE.length],
+    sort: i + 1,
+  }));
 
   for (const c of categoryData) {
     await db.insert(categories).values(c).onConflictDoNothing({ target: categories.slug });
