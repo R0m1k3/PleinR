@@ -47,7 +47,21 @@ services:
     volumes:
       # Persists the auto-generated AUTH_SECRET across restarts.
       - appdata:/app/data
+    networks:
+      # "default" lets the app reach Postgres; "proxy" is the external network
+      # shared with the reverse proxy (e.g. Nginx Proxy Manager) so it can reach
+      # the app by name: forward to  pleinr-app:3000
+      - default
+      - proxy
 
 volumes:
   pgdata:
   appdata:
+
+networks:
+  default:
+  proxy:
+    # The reverse proxy's existing network. Must already exist (created by the
+    # NPM/nginx stack). Override the name with PROXY_NETWORK if it differs.
+    external: true
+    name: ${PROXY_NETWORK:-nginx_default}
