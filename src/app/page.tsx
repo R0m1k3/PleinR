@@ -107,7 +107,8 @@ export default async function AccueilPage() {
               action="/annuaire"
               method="get"
               style={{
-                display: "inline-flex",
+                display: "flex",
+                width: "100%",
                 gap: 10,
                 background: "#fff",
                 border: "1px solid #e6dcc6",
@@ -125,7 +126,8 @@ export default async function AccueilPage() {
                   background: "transparent",
                   fontSize: 15,
                   fontFamily: "'Public Sans'",
-                  width: 240,
+                  flex: 1,
+                  minWidth: 0,
                   color: "#3c3322",
                 }}
               />
