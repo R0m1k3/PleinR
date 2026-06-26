@@ -1,0 +1,63 @@
+import { and, count, desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { categories, members, promotions } from "@/db/schema";
+
+export async function getCategoriesWithCounts(limit = 6) {
+  const rows = await db
+    .select({
+      id: categories.id,
+      slug: categories.slug,
+      label: categories.label,
+      accent: categories.accent,
+      tint: categories.tint,
+      sort: categories.sort,
+      memberCount: count(members.id),
+    })
+    .from(categories)
+    .leftJoin(
+      members,
+      and(eq(members.categoryId, categories.id), eq(members.status, "active"))
+    )
+    .groupBy(categories.id)
+    .orderBy(categories.sort)
+    .limit(limit);
+  return rows;
+}
+
+export async function getLivePromotions(limit = 6) {
+  const rows = await db
+    .select({
+      id: promotions.id,
+      title: promotions.title,
+      text: promotions.text,
+      category: promotions.category,
+      badge: promotions.badge,
+      imageUrl: promotions.imageUrl,
+      validUntil: promotions.validUntil,
+      memberName: members.name,
+    })
+    .from(promotions)
+    .leftJoin(members, eq(promotions.memberId, members.id))
+    .where(eq(promotions.status, "live"))
+    .orderBy(desc(promotions.createdAt))
+    .limit(limit);
+  return rows;
+}
+
+export async function getHighlightedMembers(limit = 3) {
+  const rows = await db
+    .select({
+      id: members.id,
+      name: members.name,
+      description: members.description,
+      city: members.city,
+      address: members.address,
+      categoryLabel: categories.label,
+      accent: categories.accent,
+    })
+    .from(members)
+    .leftJoin(categories, eq(members.categoryId, categories.id))
+    .where(and(eq(members.highlighted, true), eq(members.status, "active")))
+    .limit(limit);
+  return rows;
+}
