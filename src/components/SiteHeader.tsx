@@ -14,18 +14,11 @@ export function SiteHeader({ active }: { active?: string }) {
       style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
+        justifyContent: "flex-end",
         padding: "18px 56px",
         gap: 20,
       }}
     >
-      <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/logo.png" alt="Plein R" style={{ height: 44, width: "auto" }} />
-        <span className="font-display" style={{ fontWeight: 800, fontSize: 20, color: "#13324F" }}>
-          Plein R
-        </span>
-      </Link>
       <nav style={{ display: "flex", alignItems: "center", gap: 30, flexWrap: "wrap" }}>
         {NAV.map((n) => {
           const isActive = active === n.key;
