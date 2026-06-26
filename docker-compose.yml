@@ -23,6 +23,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+    networks:
+      - internal
 
   app:
     build: .
@@ -48,10 +50,10 @@ services:
       # Persists the auto-generated AUTH_SECRET across restarts.
       - appdata:/app/data
     networks:
-      # "default" lets the app reach Postgres; "proxy" is the external network
+      # "internal" is shared with Postgres; "proxy" is the external network
       # shared with the reverse proxy (e.g. Nginx Proxy Manager) so it can reach
       # the app by name: forward to  pleinr-app:3000
-      - default
+      - internal
       - proxy
 
 volumes:
@@ -59,7 +61,9 @@ volumes:
   appdata:
 
 networks:
-  default:
+  # Private network for app <-> Postgres communication.
+  internal:
+    driver: bridge
   proxy:
     # The reverse proxy's existing network. Must already exist (created by the
     # NPM/nginx stack). Override the name with PROXY_NETWORK if it differs.
