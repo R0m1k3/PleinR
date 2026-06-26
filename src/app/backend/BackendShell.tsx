@@ -15,6 +15,7 @@ const TITLES: Record<string, [string, string]> = {
     "Validez les offres soumises par les adhérents",
   ],
   "/backend/administrateurs": ["Administrateurs", "Gérer les accès à l'administration"],
+  "/backend/categories": ["Catégories", "Gérer les métiers de l'annuaire"],
   "/backend/espace": ["Mon espace adhérent", "Publiez et suivez vos promotions"],
 };
 
@@ -114,6 +115,11 @@ export function BackendShell({
                   >
                     {pendingCount}
                   </span>
+                </NavLink>
+              )}
+              {can(user.role, "manageCategories") && (
+                <NavLink href="/backend/categories" active={pathname === "/backend/categories"}>
+                  {dotDiamond}Catégories
                 </NavLink>
               )}
               {can(user.role, "manageAdmins") && (

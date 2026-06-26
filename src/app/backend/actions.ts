@@ -1,18 +1,40 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { auth, signOut } from "@/auth";
 import { db } from "@/db";
 import {
   activityLog,
+  categories,
   members,
   promotions,
   users,
 } from "@/db/schema";
 import { can, LABEL_TO_ROLE } from "@/lib/rbac";
 import type { AppRole } from "@/types/next-auth";
+
+const CATEGORY_PALETTE = [
+  { accent: "#E0A63C", tint: "#f6efdc" },
+  { accent: "#6FB0C6", tint: "#e7f0f3" },
+  { accent: "#9a6638", tint: "#f4ebda" },
+  { accent: "#2C6FB3", tint: "#eaf0f6" },
+  { accent: "#5a7a5a", tint: "#eef0ec" },
+  { accent: "#7a6f9c", tint: "#efe9f3" },
+  { accent: "#c98a2e", tint: "#f7efe0" },
+  { accent: "#3f8aa3", tint: "#e6eff2" },
+];
+
+function slugify(input: string): string {
+  return input
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 70);
+}
 
 async function logActivity(message: string, dot = "#2C6FB3") {
   await db.insert(activityLog).values({ message, dot });
@@ -181,6 +203,65 @@ export async function removeAdmin(formData: FormData) {
   if (!id) return;
   await db.delete(users).where(eq(users.id, id));
   revalidatePath("/backend/administrateurs");
+}
+
+// ---- Categories ----
+export async function addCategory(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageCategories")) throw new Error("Accès refusé");
+
+  const label = String(formData.get("label") ?? "").trim();
+  if (!label) return;
+
+  let base = slugify(label) || "categorie";
+  let slug = base;
+  let n = 2;
+  while ((await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, slug))).length > 0) {
+    slug = `${base}-${n++}`;
+  }
+
+  const existing = await db.select({ id: categories.id }).from(categories);
+  const palette = CATEGORY_PALETTE[existing.length % CATEGORY_PALETTE.length];
+  const [{ max } = { max: 0 }] = await db
+    .select({ max: sql<number>`coalesce(max(${categories.sort}), 0)` })
+    .from(categories);
+
+  await db.insert(categories).values({
+    slug,
+    label,
+    accent: palette.accent,
+    tint: palette.tint,
+    sort: Number(max) + 1,
+  });
+
+  revalidatePath("/backend/categories");
+  revalidatePath("/annuaire");
+}
+
+export async function renameCategory(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageCategories")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  const label = String(formData.get("label") ?? "").trim();
+  if (!id || !label) return;
+  await db.update(categories).set({ label }).where(eq(categories.id, id));
+  revalidatePath("/backend/categories");
+  revalidatePath("/annuaire");
+}
+
+export async function deleteCategory(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageCategories")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  // Detach members from this category, then delete it (avoids FK violation).
+  await db.transaction(async (tx) => {
+    await tx.update(members).set({ categoryId: null }).where(eq(members.categoryId, id));
+    await tx.delete(categories).where(eq(categories.id, id));
+  });
+  revalidatePath("/backend/categories");
+  revalidatePath("/backend/adherents");
+  revalidatePath("/annuaire");
 }
 
 // ---- Sign out ----
