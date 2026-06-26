@@ -33,9 +33,14 @@ docker compose up --build
 Au démarrage, le conteneur applique les migrations puis (si `SEED_ON_START=true`)
 charge des données de démonstration. Ensuite :
 
-- Site public : http://localhost:3000
-- Espace adhérent / admin : http://localhost:3000/backend
+- Site public : http://localhost:8413
+- Espace adhérent / admin : http://localhost:8413/backend
 - Connexion admin par défaut : `admin@plein-r.fr` / `changeme123`
+
+> **Ports (volontairement peu courants pour éviter les conflits)** : l'app est
+> publiée sur l'hôte en **8413** (→ 3000 dans le conteneur) et Postgres en
+> **54329** (→ 5432). Modifiez la partie gauche des `ports:` dans
+> `docker-compose.yml` si besoin. En dev local (`npm run dev`), l'app reste sur 3000.
 
 > **Postgres déjà existant ?** Supprimez le service `postgres` de `docker-compose.yml`
 > et pointez `DATABASE_URL` vers votre instance.
