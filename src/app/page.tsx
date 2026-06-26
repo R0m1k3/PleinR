@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Sparkle } from "@/components/Sparkle";
+import { Reveal } from "@/components/Reveal";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getHighlightedMembers, getLivePromotions } from "@/lib/queries";
@@ -60,7 +61,7 @@ export default async function AccueilPage() {
             />
           </div>
 
-          <div>
+          <Reveal className="reveal">
             <div
               style={{
                 display: "inline-flex",
@@ -148,7 +149,7 @@ export default async function AccueilPage() {
                 Rechercher
               </button>
             </form>
-          </div>
+          </Reveal>
         </section>
 
         {/* promotions */}
@@ -213,7 +214,7 @@ export default async function AccueilPage() {
             </a>
           </div>
 
-          <div className="grid grid-3" style={{ marginTop: 26 }}>
+          <Reveal className="grid grid-3 reveal-stagger" style={{ marginTop: 26 }}>
             {promos.map((p) => (
               <article
                 key={p.id}
@@ -307,7 +308,7 @@ export default async function AccueilPage() {
                 </div>
               </article>
             ))}
-          </div>
+          </Reveal>
 
           {/* member CTA */}
           <div
@@ -377,7 +378,7 @@ export default async function AccueilPage() {
               Tout l&apos;annuaire →
             </a>
           </div>
-          <div className="grid grid-3" style={{ gap: 18 }}>
+          <Reveal className="grid grid-3 reveal-stagger" style={{ gap: 18 }}>
             {highlighted.map((m, i) => (
               <Link
                 key={m.id}
@@ -430,7 +431,7 @@ export default async function AccueilPage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </Reveal>
         </section>
 
         {/* warm CTA */}
@@ -447,29 +448,31 @@ export default async function AccueilPage() {
         >
           <Sparkle color="#E0A63C" size={18} style={{ top: 24, left: 60 }} duration={3.4} />
           <Sparkle color="#6FB0C6" size={22} style={{ bottom: 26, right: 80 }} duration={2.8} delay={0.7} />
-          <h2 className="font-display" style={{ fontWeight: 800, fontSize: 30, margin: "0 0 10px", color: "#fff" }}>
-            Faites partie de l&apos;aventure Plein R
-          </h2>
-          <p style={{ margin: "0 auto 22px", fontSize: 15.5, color: "#f4e6d3", maxWidth: 480 }}>
-            Rejoignez plus de 120 commerçants et entreprises qui font réseau, se rencontrent et réussissent
-            ensemble.
-          </p>
-          <a
-            href="#"
-            className="font-display lift-cta"
-            style={{
-              textDecoration: "none",
-              background: "#fff",
-              color: "#9a6638",
-              fontWeight: 700,
-              fontSize: 16,
-              padding: "15px 30px",
-              borderRadius: 12,
-              display: "inline-block",
-            }}
-          >
-            Devenir adhérent
-          </a>
+          <Reveal className="reveal">
+            <h2 className="font-display" style={{ fontWeight: 800, fontSize: 30, margin: "0 0 10px", color: "#fff" }}>
+              Faites partie de l&apos;aventure Plein R
+            </h2>
+            <p style={{ margin: "0 auto 22px", fontSize: 15.5, color: "#f4e6d3", maxWidth: 480 }}>
+              Rejoignez plus de 120 commerçants et entreprises qui font réseau, se rencontrent et réussissent
+              ensemble.
+            </p>
+            <a
+              href="#"
+              className="font-display lift-cta"
+              style={{
+                textDecoration: "none",
+                background: "#fff",
+                color: "#9a6638",
+                fontWeight: 700,
+                fontSize: 16,
+                padding: "15px 30px",
+                borderRadius: 12,
+                display: "inline-block",
+              }}
+            >
+              Devenir adhérent
+            </a>
+          </Reveal>
         </section>
       </div>
 

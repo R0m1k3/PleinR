@@ -26,6 +26,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <link rel="icon" href="/assets/logo.png" type="image/png" />
+        {/* Fallback: if JS is disabled, never keep revealed content hidden. */}
+        <noscript>
+          <style>{`.reveal,.reveal-stagger>*{opacity:1!important}`}</style>
+        </noscript>
       </head>
       <body>{children}</body>
     </html>
