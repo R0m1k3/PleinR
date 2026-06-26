@@ -35,7 +35,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
 
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh && chown -R nextjs:nodejs /app
+RUN mkdir -p /app/data \
+  && chmod +x /app/docker-entrypoint.sh \
+  && chown -R nextjs:nodejs /app
 
 USER nextjs
 EXPOSE 3000

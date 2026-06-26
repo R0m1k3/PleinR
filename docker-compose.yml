@@ -33,7 +33,9 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-pleinr}:${POSTGRES_PASSWORD:-pleinr}@postgres:5432/${POSTGRES_DB:-pleinr}
-      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in your .env}
+      # Optional: if left empty, the container generates and persists one
+      # automatically (see docker-entrypoint.sh + the app-data volume).
+      AUTH_SECRET: ${AUTH_SECRET:-}
       AUTH_URL: ${AUTH_URL:-http://localhost:8413}
       SEED_ON_START: ${SEED_ON_START:-true}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@plein-r.fr}
@@ -42,6 +44,10 @@ services:
     ports:
       # Host port rarely used (container stays on 3000). App reachable at http://HOST:8413
       - "8413:3000"
+    volumes:
+      # Persists the auto-generated AUTH_SECRET across restarts.
+      - appdata:/app/data
 
 volumes:
   pgdata:
+  appdata:

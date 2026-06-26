@@ -24,8 +24,8 @@ L'application tourne dans **un seul conteneur Docker**. Postgres est un **conten
 
 ```bash
 cp .env.example .env
-# éditez .env : au minimum, définissez AUTH_SECRET
-#   openssl rand -base64 32
+# AUTH_SECRET est optionnel : s'il est vide, le conteneur en génère un et le
+# persiste automatiquement. Pour le fixer vous-même : openssl rand -base64 32
 
 docker compose up --build
 ```
