@@ -25,7 +25,7 @@ export default function LoginPage() {
       <div style={{ width: "100%", maxWidth: 420 }}>
         <div style={{ textAlign: "center", marginBottom: 22 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/logo.svg" alt="Plein R" style={{ height: 92, width: "auto" }} />
+          <img src="/assets/logo.png" alt="Plein R" style={{ height: 92, width: "auto" }} />
         </div>
 
         <div

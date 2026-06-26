@@ -76,7 +76,7 @@ export function BackendShell({
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "6px 8px 22px" }}>
           <span style={{ display: "inline-flex", background: "#F6F2E8", borderRadius: 11, padding: 6 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/logo.svg" alt="Plein R" style={{ height: 34, width: "auto", display: "block" }} />
+            <img src="/assets/logo.png" alt="Plein R" style={{ height: 34, width: "auto", display: "block" }} />
           </span>
           <div>
             <div className="font-display" style={{ fontWeight: 800, fontSize: 17, color: "#fff", lineHeight: 1 }}>

@@ -47,7 +47,7 @@ export default async function AccueilPage() {
       >
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/logo.svg" alt="Plein R" style={{ height: 44, width: "auto" }} />
+          <img src="/assets/logo.png" alt="Plein R" style={{ height: 44, width: "auto" }} />
           <span className="font-display" style={{ fontWeight: 800, fontSize: 20, color: "#13324F" }}>
             Plein R
           </span>
@@ -96,7 +96,7 @@ export default async function AccueilPage() {
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/assets/logo.svg"
+              src="/assets/logo.png"
               alt="Plein R — Association des commerçants et entreprises du Bassin de Pompey"
               className="floatlogo"
               style={{
@@ -571,7 +571,7 @@ export default async function AccueilPage() {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/logo.svg" alt="Plein R" style={{ height: 36, width: "auto" }} />
+            <img src="/assets/logo.png" alt="Plein R" style={{ height: 36, width: "auto" }} />
             <span className="font-display" style={{ fontWeight: 800, fontSize: 16, color: "#13324F" }}>
               Plein R
             </span>

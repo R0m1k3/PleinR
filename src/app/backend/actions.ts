@@ -129,7 +129,13 @@ export async function deleteMember(formData: FormData) {
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
   const id = Number(formData.get("id"));
   if (!id) return;
-  await db.delete(members).where(eq(members.id, id));
+  // Remove dependent rows first to satisfy foreign-key constraints:
+  // delete the member's promotions and detach any linked user account.
+  await db.transaction(async (tx) => {
+    await tx.delete(promotions).where(eq(promotions.memberId, id));
+    await tx.update(users).set({ memberId: null }).where(eq(users.memberId, id));
+    await tx.delete(members).where(eq(members.id, id));
+  });
   revalidatePath("/backend/adherents");
   revalidatePath("/");
 }
