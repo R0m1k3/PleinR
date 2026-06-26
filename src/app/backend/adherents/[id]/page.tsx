@@ -86,6 +86,22 @@ export default async function EditMemberPage({
             <input name="address" defaultValue={member.address ?? ""} className="field" />
           </div>
           <div>
+            <label className="field-label">Code postal</label>
+            <input name="postalCode" defaultValue={member.postalCode ?? ""} className="field" />
+          </div>
+          <div>
+            <label className="field-label">Téléphone</label>
+            <input name="phone" defaultValue={member.phone ?? ""} className="field" placeholder="03 83 ..." />
+          </div>
+          <div>
+            <label className="field-label">Site web</label>
+            <input name="website" defaultValue={member.website ?? ""} className="field" placeholder="https://..." />
+          </div>
+          <div>
+            <label className="field-label">Adhérent depuis (année)</label>
+            <input name="memberSince" type="number" defaultValue={member.memberSince ?? ""} className="field" placeholder="2021" />
+          </div>
+          <div>
             <label className="field-label">Statut</label>
             <select name="status" className="field" defaultValue={member.status}>
               <option value="pending">En attente</option>
@@ -95,8 +111,18 @@ export default async function EditMemberPage({
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <label className="field-label">Description</label>
-          <textarea name="description" rows={3} defaultValue={member.description ?? ""} className="field" style={{ resize: "vertical" }} />
+          <label className="field-label">Description (une ligne vide sépare les paragraphes)</label>
+          <textarea name="description" rows={4} defaultValue={member.description ?? ""} className="field" style={{ resize: "vertical" }} />
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <label className="field-label">Tags / spécialités (séparés par des virgules)</label>
+          <input name="tags" defaultValue={member.tags ?? ""} className="field" placeholder="Levain naturel, Produits locaux, Fait maison" />
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <label className="field-label">Horaires (une ligne par jour : « Jour|plage », ex : Mardi – Vendredi|7h – 19h30)</label>
+          <textarea name="hours" rows={4} defaultValue={member.hours ?? ""} className="field" style={{ resize: "vertical" }} placeholder={"Mardi – Vendredi|7h – 19h30\nSamedi|7h – 19h\nDimanche|7h – 13h\nLundi|Fermé"} />
         </div>
 
         <label style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 16, fontSize: 14, color: "#3c3322", cursor: "pointer" }}>

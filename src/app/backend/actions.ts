@@ -115,6 +115,12 @@ export async function updateMember(formData: FormData) {
       city: String(formData.get("city") ?? "").trim() || null,
       address: String(formData.get("address") ?? "").trim() || null,
       description: String(formData.get("description") ?? "").trim() || null,
+      postalCode: String(formData.get("postalCode") ?? "").trim() || null,
+      phone: String(formData.get("phone") ?? "").trim() || null,
+      website: String(formData.get("website") ?? "").trim() || null,
+      memberSince: formData.get("memberSince") ? Number(formData.get("memberSince")) : null,
+      tags: String(formData.get("tags") ?? "").trim() || null,
+      hours: String(formData.get("hours") ?? "").trim() || null,
       status: String(formData.get("status") ?? "pending") as "active" | "pending",
       highlighted: formData.get("highlighted") === "on",
     })

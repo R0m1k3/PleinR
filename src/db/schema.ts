@@ -48,6 +48,13 @@ export const members = pgTable("members", {
   status: memberStatusEnum("status").notNull().default("pending"),
   highlighted: boolean("highlighted").notNull().default(false),
   logoUrl: text("logo_url"),
+  coverUrl: text("cover_url"),
+  phone: varchar("phone", { length: 40 }),
+  website: varchar("website", { length: 200 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  memberSince: integer("member_since"),
+  hours: text("hours"),
+  tags: text("tags"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
