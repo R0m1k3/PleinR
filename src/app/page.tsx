@@ -470,10 +470,11 @@ export default async function AccueilPage() {
           </div>
           <div className="grid grid-3" style={{ gap: 18 }}>
             {highlighted.map((m, i) => (
-              <div
+              <Link
                 key={m.id}
+                href={`/adherents/${m.id}`}
                 className="lift-card"
-                style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 18, overflow: "hidden" }}
+                style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 18, overflow: "hidden", textDecoration: "none", color: "inherit", display: "block" }}
               >
                 <div
                   style={{
@@ -518,7 +519,7 @@ export default async function AccueilPage() {
                     {[m.address, m.city].filter(Boolean).join(" · ")}
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </section>

@@ -44,6 +44,43 @@ export async function getLivePromotions(limit = 6) {
   return rows;
 }
 
+export async function getPublicMember(id: number) {
+  const [m] = await db
+    .select({
+      id: members.id,
+      name: members.name,
+      email: members.email,
+      description: members.description,
+      city: members.city,
+      address: members.address,
+      status: members.status,
+      logoUrl: members.logoUrl,
+      categoryLabel: categories.label,
+      accent: categories.accent,
+      tint: categories.tint,
+    })
+    .from(members)
+    .leftJoin(categories, eq(members.categoryId, categories.id))
+    .where(eq(members.id, id));
+  return m ?? null;
+}
+
+export async function getMemberLivePromotions(memberId: number) {
+  return db
+    .select({
+      id: promotions.id,
+      title: promotions.title,
+      text: promotions.text,
+      category: promotions.category,
+      badge: promotions.badge,
+      imageUrl: promotions.imageUrl,
+      validUntil: promotions.validUntil,
+    })
+    .from(promotions)
+    .where(and(eq(promotions.memberId, memberId), eq(promotions.status, "live")))
+    .orderBy(desc(promotions.createdAt));
+}
+
 export async function getHighlightedMembers(limit = 3) {
   const rows = await db
     .select({
