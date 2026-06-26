@@ -1,0 +1,45 @@
+# Plein R — single application container + external Postgres container.
+#
+# The app (Next.js) runs in ONE container. Postgres runs as a SEPARATE
+# (external) container. For a managed/already-existing Postgres, delete the
+# `postgres` service below and point DATABASE_URL at your instance.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pleinr-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pleinr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pleinr}
+      POSTGRES_DB: ${POSTGRES_DB:-pleinr}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pleinr} -d ${POSTGRES_DB:-pleinr}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    container_name: pleinr-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-pleinr}:${POSTGRES_PASSWORD:-pleinr}@postgres:5432/${POSTGRES_DB:-pleinr}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in your .env}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      SEED_ON_START: ${SEED_ON_START:-true}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@plein-r.fr}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-changeme123}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Administrateur Plein R}
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
