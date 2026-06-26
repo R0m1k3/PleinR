@@ -34,7 +34,10 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-pleinr}:${POSTGRES_PASSWORD:-pleinr}@postgres:5432/${POSTGRES_DB:-pleinr}
+      # Use the UNIQUE container name (not the generic "postgres" alias) to avoid
+      # name collisions with other "postgres" containers on the shared proxy
+      # network. pleinr-postgres only exists on our internal network.
+      DATABASE_URL: postgres://${POSTGRES_USER:-pleinr}:${POSTGRES_PASSWORD:-pleinr}@pleinr-postgres:5432/${POSTGRES_DB:-pleinr}
       # Optional: if left empty, the container generates and persists one
       # automatically (see docker-entrypoint.sh + the app-data volume).
       AUTH_SECRET: ${AUTH_SECRET:-}
