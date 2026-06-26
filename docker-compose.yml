@@ -41,7 +41,12 @@ services:
       # Optional: if left empty, the container generates and persists one
       # automatically (see docker-entrypoint.sh + the app-data volume).
       AUTH_SECRET: ${AUTH_SECRET:-}
-      AUTH_URL: ${AUTH_URL:-http://localhost:8413}
+      # IMPORTANT behind a reverse proxy: set AUTH_URL to your public URL so the
+      # login redirect points to the right host, e.g.
+      #   AUTH_URL=https://pleinr.ffnancy.fr
+      AUTH_URL: ${AUTH_URL:-}
+      # Lets Auth.js trust the X-Forwarded-* headers from the proxy.
+      AUTH_TRUST_HOST: "true"
       SEED_ON_START: ${SEED_ON_START:-true}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@plein-r.fr}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-changeme123}

@@ -16,6 +16,12 @@ if [ -z "$AUTH_SECRET" ]; then
   export AUTH_SECRET
 fi
 
+# If AUTH_URL is empty, unset it so Auth.js derives the public URL from the
+# reverse-proxy headers (trustHost) instead of falling back to a hardcoded host.
+if [ -z "$AUTH_URL" ]; then
+  unset AUTH_URL
+fi
+
 echo "→ Applying database migrations…"
 node dist/migrate.cjs
 
