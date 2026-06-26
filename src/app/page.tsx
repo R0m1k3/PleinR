@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { Sparkle } from "@/components/Sparkle";
-import {
-  getCategoriesWithCounts,
-  getHighlightedMembers,
-  getLivePromotions,
-} from "@/lib/queries";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { getHighlightedMembers, getLivePromotions } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +17,7 @@ function badgeColor(badge: string | null) {
 }
 
 export default async function AccueilPage() {
-  const [cats, promos, highlighted] = await Promise.all([
-    getCategoriesWithCounts(6),
+  const [promos, highlighted] = await Promise.all([
     getLivePromotions(6),
     getHighlightedMembers(3),
   ]);
@@ -34,53 +31,7 @@ export default async function AccueilPage() {
         color: "#33291D",
       }}
     >
-      {/* header */}
-      <header
-        className="container"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "18px 56px",
-          gap: 20,
-        }}
-      >
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/logo.png" alt="Plein R" style={{ height: 44, width: "auto" }} />
-          <span className="font-display" style={{ fontWeight: 800, fontSize: 20, color: "#13324F" }}>
-            Plein R
-          </span>
-        </Link>
-        <nav style={{ display: "flex", alignItems: "center", gap: 30, flexWrap: "wrap" }}>
-          <a href="/annuaire" style={{ textDecoration: "none", color: "#3c3322", fontWeight: 600, fontSize: 15 }}>
-            Annuaire
-          </a>
-          <a href="#promotions" style={{ textDecoration: "none", color: "#6f6450", fontWeight: 500, fontSize: 15 }}>
-            Promotions
-          </a>
-          <a href="#" style={{ textDecoration: "none", color: "#6f6450", fontWeight: 500, fontSize: 15 }}>
-            L&apos;association
-          </a>
-          <a href="#" style={{ textDecoration: "none", color: "#6f6450", fontWeight: 500, fontSize: 15 }}>
-            Adhérer
-          </a>
-          <Link
-            href="/backend"
-            style={{
-              textDecoration: "none",
-              color: "#fff",
-              background: "#9a6638",
-              fontWeight: 600,
-              fontSize: 14.5,
-              padding: "10px 18px",
-              borderRadius: 999,
-            }}
-          >
-            Espace adhérent
-          </Link>
-        </nav>
-      </header>
+      <SiteHeader active="accueil" />
 
       <div className="container">
         {/* hero */}
@@ -195,51 +146,6 @@ export default async function AccueilPage() {
                 Rechercher
               </button>
             </form>
-          </div>
-        </section>
-
-        {/* category tiles */}
-        <section id="annuaire" style={{ padding: "6px 0 8px" }}>
-          <h2
-            className="font-display"
-            style={{ fontWeight: 700, fontSize: 18, textAlign: "center", margin: "0 0 18px", color: "#3c3322" }}
-          >
-            Parcourir par métier
-          </h2>
-          <div className="grid grid-6">
-            {cats.map((c) => (
-              <div
-                key={c.id}
-                className="lift"
-                style={{
-                  background: "#fff",
-                  border: "1px solid #e6dcc6",
-                  borderRadius: 16,
-                  padding: "18px 12px",
-                  textAlign: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-flex",
-                    width: 46,
-                    height: 46,
-                    borderRadius: "50%",
-                    background: c.tint,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 10,
-                  }}
-                >
-                  <span className="sparkle" style={{ width: 18, height: 18, background: c.accent }} />
-                </span>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#3c3322" }}>{c.label}</div>
-                <div style={{ fontSize: 11.5, color: "#a99c82", marginTop: 2 }}>
-                  {c.memberCount} adhérent{c.memberCount > 1 ? "s" : ""}
-                </div>
-              </div>
-            ))}
           </div>
         </section>
 
@@ -565,26 +471,7 @@ export default async function AccueilPage() {
         </section>
       </div>
 
-      {/* footer */}
-      <footer style={{ background: "#EFE9DA", borderTop: "1px solid #e2d6bd", padding: "28px 56px" }}>
-        <div
-          className="container"
-          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/logo.png" alt="Plein R" style={{ height: 36, width: "auto" }} />
-            <span className="font-display" style={{ fontWeight: 800, fontSize: 16, color: "#13324F" }}>
-              Plein R
-            </span>
-          </div>
-          <div style={{ fontSize: 13, color: "#8c8068", textAlign: "right", lineHeight: 1.7 }}>
-            contact@plein-r.fr · Bassin de Pompey
-            <br />
-            Réseau · Rencontre · Réussite
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

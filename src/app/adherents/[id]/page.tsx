@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Sparkle } from "@/components/Sparkle";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 import { getMemberLivePromotions, getPublicMember } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -81,20 +83,7 @@ export default async function FicheAdherentPage({
 
   return (
     <div style={{ background: "#F6F2E8", minHeight: "100vh", fontFamily: "'Public Sans',sans-serif", color: "#33291D" }}>
-      {/* header */}
-      <header className="container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 56px", gap: 20 }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/logo.png" alt="Plein R" style={{ height: 44, width: "auto" }} />
-          <span className="font-display" style={{ fontWeight: 800, fontSize: 20, color: "#13324F" }}>Plein R</span>
-        </Link>
-        <nav style={{ display: "flex", alignItems: "center", gap: 30, flexWrap: "wrap" }}>
-          <Link href="/" style={{ textDecoration: "none", color: "#6f6450", fontWeight: 500, fontSize: 15 }}>Accueil</Link>
-          <Link href="/annuaire" style={{ textDecoration: "none", color: "#3c3322", fontWeight: 600, fontSize: 15 }}>Annuaire</Link>
-          <Link href="/#promotions" style={{ textDecoration: "none", color: "#6f6450", fontWeight: 500, fontSize: 15 }}>Promotions</Link>
-          <Link href="/backend" style={{ textDecoration: "none", color: "#fff", background: "#9a6638", fontWeight: 600, fontSize: 14.5, padding: "10px 18px", borderRadius: 999 }}>Espace adhérent</Link>
-        </nav>
-      </header>
+      <SiteHeader active="annuaire" />
 
       <div className="container" style={{ paddingBottom: 56 }}>
         {/* breadcrumb */}
@@ -305,19 +294,7 @@ export default async function FicheAdherentPage({
         </div>
       </div>
 
-      {/* footer */}
-      <footer style={{ background: "#EFE9DA", borderTop: "1px solid #e2d6bd", padding: "28px 56px" }}>
-        <div className="container" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/assets/logo.png" alt="Plein R" style={{ height: 36, width: "auto" }} />
-            <span className="font-display" style={{ fontWeight: 800, fontSize: 16, color: "#13324F" }}>Plein R</span>
-          </div>
-          <div style={{ fontSize: 13, color: "#8c8068", textAlign: "right", lineHeight: 1.7 }}>
-            contact@plein-r.fr · Bassin de Pompey<br />Réseau · Rencontre · Réussite
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
