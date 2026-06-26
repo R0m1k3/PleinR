@@ -72,7 +72,7 @@ export default async function FicheAdherentPage({
           </span>
         </Link>
         <nav style={{ display: "flex", alignItems: "center", gap: 30, flexWrap: "wrap" }}>
-          <Link href="/#annuaire" style={{ textDecoration: "none", color: "#3c3322", fontWeight: 600, fontSize: 15 }}>
+          <Link href="/annuaire" style={{ textDecoration: "none", color: "#3c3322", fontWeight: 600, fontSize: 15 }}>
             Annuaire
           </Link>
           <Link href="/#promotions" style={{ textDecoration: "none", color: "#6f6450", fontWeight: 500, fontSize: 15 }}>
@@ -97,7 +97,7 @@ export default async function FicheAdherentPage({
 
       <div className="container" style={{ paddingBottom: 50 }}>
         <div style={{ padding: "10px 0 18px" }}>
-          <Link href="/#annuaire" className="link-arrow" style={{ textDecoration: "none", color: "#9a6638", fontWeight: 700, fontSize: 14.5 }}>
+          <Link href="/annuaire" className="link-arrow" style={{ textDecoration: "none", color: "#9a6638", fontWeight: 700, fontSize: 14.5 }}>
             ← Retour à l&apos;annuaire
           </Link>
         </div>

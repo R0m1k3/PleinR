@@ -53,7 +53,7 @@ export default async function AccueilPage() {
           </span>
         </Link>
         <nav style={{ display: "flex", alignItems: "center", gap: 30, flexWrap: "wrap" }}>
-          <a href="#annuaire" style={{ textDecoration: "none", color: "#3c3322", fontWeight: 600, fontSize: 15 }}>
+          <a href="/annuaire" style={{ textDecoration: "none", color: "#3c3322", fontWeight: 600, fontSize: 15 }}>
             Annuaire
           </a>
           <a href="#promotions" style={{ textDecoration: "none", color: "#6f6450", fontWeight: 500, fontSize: 15 }}>
@@ -153,7 +153,8 @@ export default async function AccueilPage() {
               leurs bons plans et faites vivre le commerce de proximité.
             </p>
             <form
-              action="#annuaire"
+              action="/annuaire"
+              method="get"
               style={{
                 display: "inline-flex",
                 gap: 10,
@@ -464,7 +465,7 @@ export default async function AccueilPage() {
             <h2 className="font-display" style={{ fontWeight: 800, fontSize: 26, margin: 0, color: "#26201a" }}>
               À l&apos;honneur ce mois-ci
             </h2>
-            <a href="#annuaire" className="link-arrow" style={{ textDecoration: "none", color: "#9a6638", fontWeight: 700, fontSize: 14.5 }}>
+            <a href="/annuaire" className="link-arrow" style={{ textDecoration: "none", color: "#9a6638", fontWeight: 700, fontSize: 14.5 }}>
               Tout l&apos;annuaire →
             </a>
           </div>

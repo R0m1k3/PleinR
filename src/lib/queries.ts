@@ -1,6 +1,37 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, members, promotions } from "@/db/schema";
+
+export async function getActiveMembersWithCategory() {
+  return db
+    .select({
+      id: members.id,
+      name: members.name,
+      description: members.description,
+      city: members.city,
+      address: members.address,
+      categoryLabel: categories.label,
+      accent: categories.accent,
+    })
+    .from(members)
+    .leftJoin(categories, eq(members.categoryId, categories.id))
+    .where(eq(members.status, "active"))
+    .orderBy(asc(members.name));
+}
+
+export async function getAllCategories() {
+  return db
+    .select({ id: categories.id, label: categories.label, accent: categories.accent })
+    .from(categories)
+    .orderBy(asc(categories.sort));
+}
+
+export async function getLiveBadgesByMember() {
+  return db
+    .select({ memberId: promotions.memberId, badge: promotions.badge })
+    .from(promotions)
+    .where(eq(promotions.status, "live"));
+}
 
 export async function getCategoriesWithCounts(limit = 6) {
   const rows = await db
