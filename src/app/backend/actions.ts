@@ -156,6 +156,49 @@ export async function addMember(formData: FormData) {
   revalidatePath("/");
 }
 
+// Crée des comptes de connexion pour les adhérents existants qui n'en ont pas
+// encore (ceux ajoutés avant l'arrivée des comptes adhérent). Chaque compte
+// reçoit un mot de passe temporaire à changer à la première connexion.
+export async function createMissingMemberAccounts() {
+  const { role } = await requireRole();
+  if (!can(role, "manageMembers")) throw new Error("Accès refusé");
+
+  const allMembers = await db
+    .select({ id: members.id, name: members.name, email: members.email })
+    .from(members);
+  const allUsers = await db
+    .select({ email: users.email, memberId: users.memberId })
+    .from(users);
+
+  const takenEmails = new Set(allUsers.map((u) => u.email.toLowerCase()));
+  const linkedMemberIds = new Set(allUsers.map((u) => u.memberId).filter((x): x is number => x != null));
+
+  let created = 0;
+  for (const m of allMembers) {
+    if (linkedMemberIds.has(m.id)) continue;
+    const email = (m.email ?? "").trim().toLowerCase();
+    if (!email || takenEmails.has(email)) continue; // pas d'e-mail ou déjà pris : on saute
+
+    const tempPassword = generateTempPassword();
+    await db.insert(users).values({
+      name: m.name,
+      email,
+      role: "member",
+      memberId: m.id,
+      passwordHash: await bcrypt.hash(tempPassword, 10),
+      tempPassword,
+      mustChangePassword: true,
+    });
+    takenEmails.add(email);
+    created++;
+  }
+
+  if (created > 0) {
+    await logActivity(`${created} compte(s) adhérent créé(s) pour les fiches existantes`, "#2C6FB3");
+  }
+  revalidatePath("/backend/adherents");
+}
+
 // Réinitialise le mot de passe d'un adhérent : nouveau mot de passe temporaire
 // visible par l'admin jusqu'à la prochaine connexion de l'adhérent.
 export async function resetMemberPassword(formData: FormData) {

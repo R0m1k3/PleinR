@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { asc, eq, ilike } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { categories, members } from "@/db/schema";
+import { categories, members, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
+import { createMissingMemberAccounts } from "../actions";
 import { AddMemberPanel } from "./AddMemberPanel";
 
 export const dynamic = "force-dynamic";
@@ -45,10 +46,47 @@ export default async function AdherentsPage({
     .where(search ? ilike(members.name, `%${search}%`) : undefined)
     .orderBy(asc(members.name));
 
+  // Adhérents sans compte de connexion (créés avant l'arrivée des comptes).
+  const accountRows = await db
+    .select({ email: users.email, memberId: users.memberId })
+    .from(users);
+  const linkedMemberIds = new Set(accountRows.map((u) => u.memberId).filter((x): x is number => x != null));
+  const takenEmails = new Set(accountRows.map((u) => u.email.toLowerCase()));
+  const allForCount = await db.select({ id: members.id, email: members.email }).from(members);
+  const missingAccounts = allForCount.filter((m) => {
+    if (linkedMemberIds.has(m.id)) return false;
+    const e = (m.email ?? "").trim().toLowerCase();
+    return !!e && !takenEmails.has(e);
+  }).length;
+
+  async function handleBackfill() {
+    "use server";
+    await createMissingMemberAccounts();
+    redirect("/backend/adherents");
+  }
+
   const COLS = "1.6fr 1fr 1.2fr 0.9fr 0.8fr";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {missingAccounts > 0 && (
+        <form
+          action={handleBackfill}
+          style={{ background: "#fbeede", border: "1px solid #ecd8b8", borderRadius: 12, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}
+        >
+          <div style={{ fontSize: 13.5, color: "#9a6638" }}>
+            <strong>{missingAccounts}</strong> adhérent(s) avec un e-mail n&apos;ont pas encore de compte de connexion.
+          </div>
+          <button
+            type="submit"
+            className="font-display"
+            style={{ border: "none", background: "#9a6638", color: "#fff", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: 10, cursor: "pointer", whiteSpace: "nowrap" }}
+          >
+            Créer les comptes manquants
+          </button>
+        </form>
+      )}
+
       <AddMemberPanel categories={cats} />
 
       <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, overflow: "hidden" }}>
