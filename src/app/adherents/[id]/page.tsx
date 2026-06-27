@@ -5,6 +5,7 @@ import { Sparkle } from "@/components/Sparkle";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { VitrineImage } from "@/components/VitrineImage";
+import { PromoImage } from "@/components/PromoImage";
 import { getMemberLivePromotions, getPublicMember } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -112,8 +113,9 @@ export default async function FicheAdherentPage({
                 width: 118,
                 height: 118,
                 borderRadius: 22,
-                background: "#fff",
-                border: "4px solid #fff",
+                background: "linear-gradient(160deg, #fffdf8 0%, #f6f2e8 100%)",
+                border: "1px solid #e6dcc6",
+                outline: "4px solid #fff",
                 marginTop: -54,
                 flexShrink: 0,
                 display: "flex",
@@ -265,7 +267,8 @@ export default async function FicheAdherentPage({
               ) : (
                 promos.map((p, idx) => (
                   <article key={p.id} className="lift" style={{ border: "1px solid #ece3d0", borderRadius: 16, overflow: "hidden", marginBottom: idx === promos.length - 1 ? 0 : 14 }}>
-                    <div style={{ position: "relative", height: 120, background: p.imageUrl ? `url(${p.imageUrl})` : STRIPE_WARM, backgroundSize: "cover", backgroundPosition: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ position: "relative", height: 120, background: STRIPE_WARM, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title} />}
                       {!p.imageUrl && (<span style={{ fontSize: 10, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>photo de l&apos;offre</span>)}
                       {p.badge && (
                         <span className="font-display" style={{ position: "absolute", top: 0, right: 0, background: badgeColor(p.badge), color: "#fff", fontWeight: 800, fontSize: 16, padding: "6px 13px", borderRadius: "0 0 0 14px" }}>{p.badge}</span>

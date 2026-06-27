@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { publishPromo } from "../actions";
+import { PromoImage } from "@/components/PromoImage";
 
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
@@ -81,11 +82,10 @@ export function MemberSpaceForm({
         <label style={{ display: "block", cursor: "pointer", marginBottom: 18 }}>
           <div
             style={{
+              position: "relative",
               border: "2px dashed #d8cdb4",
               borderRadius: 14,
-              background: hasImg ? `url(${imgData})` : "#faf7ef",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
+              background: "#faf7ef",
               height: 170,
               display: "flex",
               flexDirection: "column",
@@ -96,6 +96,7 @@ export function MemberSpaceForm({
               overflow: "hidden",
             }}
           >
+            {hasImg && <PromoImage src={imgData} alt="" />}
             {!hasImg && (
               <>
                 <span style={{ width: 38, height: 38, borderRadius: 10, background: "#f0e8d6", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -188,14 +189,14 @@ export function MemberSpaceForm({
             style={{
               position: "relative",
               height: 175,
-              background: hasImg ? `url(${imgData})` : STRIPE_WARM,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
+              background: STRIPE_WARM,
+              overflow: "hidden",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
+            {hasImg && <PromoImage src={imgData} alt={title} />}
             {!hasImg && (
               <span style={{ fontSize: 10.5, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>
                 photo de l&apos;offre

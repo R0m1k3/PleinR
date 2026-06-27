@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { members, promotions } from "@/db/schema";
 import { can } from "@/lib/rbac";
 import { moderatePromo } from "../actions";
+import { PromoImage } from "@/components/PromoImage";
 
 export const dynamic = "force-dynamic";
 
@@ -75,18 +76,14 @@ export default async function PromotionsPage() {
                 style={{
                   position: "relative",
                   height: 150,
-                  background: p.imageUrl
-                    ? `url(${p.imageUrl})`
-                    : isPending
-                      ? STRIPE_COOL
-                      : STRIPE_WARM,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
+                  background: isPending ? STRIPE_COOL : STRIPE_WARM,
+                  overflow: "hidden",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
+                {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title ?? ""} />}
                 {p.category && (
                   <span style={{ position: "absolute", top: 10, left: 10, background: "#9a6638", color: "#fff", borderRadius: 999, padding: "4px 11px", fontSize: 11, fontWeight: 700 }}>
                     {p.category}

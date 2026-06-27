@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { MembershipModalButton } from "@/components/MembershipModalButton";
 import { MembersCarousel } from "@/components/MembersCarousel";
 import { StarField } from "@/components/StarField";
+import { PromoImage } from "@/components/PromoImage";
 import { getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -233,14 +234,14 @@ export default async function AccueilPage() {
                   style={{
                     position: "relative",
                     height: 168,
-                    background: p.imageUrl ? `url(${p.imageUrl})` : STRIPE_WARM,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
+                    background: STRIPE_WARM,
+                    overflow: "hidden",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
+                  {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title ?? ""} />}
                   {!p.imageUrl && (
                     <span style={{ fontSize: 10.5, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>
                       photo de l&apos;offre
