@@ -122,6 +122,32 @@ export async function getMemberLivePromotions(memberId: number) {
     .orderBy(desc(promotions.createdAt));
 }
 
+// Tous les adhérents actifs, tournés équitablement : l'ordre pivote d'un cran
+// par heure pour que chacun passe en tête à tour de rôle au fil du temps.
+export async function getRotatingActiveMembers() {
+  const rows = await db
+    .select({
+      id: members.id,
+      name: members.name,
+      description: members.description,
+      city: members.city,
+      address: members.address,
+      coverUrl: members.coverUrl,
+      logoUrl: members.logoUrl,
+      categoryLabel: categories.label,
+      accent: categories.accent,
+    })
+    .from(members)
+    .leftJoin(categories, eq(members.categoryId, categories.id))
+    .where(eq(members.status, "active"))
+    .orderBy(asc(members.id));
+
+  const n = rows.length;
+  if (n <= 1) return rows;
+  const offset = Math.floor(Date.now() / 3_600_000) % n;
+  return [...rows.slice(offset), ...rows.slice(0, offset)];
+}
+
 export async function getHighlightedMembers(limit = 3) {
   const rows = await db
     .select({

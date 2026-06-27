@@ -250,7 +250,6 @@ export async function updateMember(formData: FormData) {
       tags: String(formData.get("tags") ?? "").trim() || null,
       hours: String(formData.get("hours") ?? "").trim() || null,
       status: String(formData.get("status") ?? "pending") as "active" | "pending",
-      highlighted: formData.get("highlighted") === "on",
     })
     .where(eq(members.id, id));
 

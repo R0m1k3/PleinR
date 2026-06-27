@@ -4,14 +4,13 @@ import { Reveal } from "@/components/Reveal";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MembershipModalButton } from "@/components/MembershipModalButton";
-import { getHighlightedMembers, getLivePromotions } from "@/lib/queries";
+import { MembersCarousel } from "@/components/MembersCarousel";
+import { getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
-const STRIPE_COOL =
-  "repeating-linear-gradient(45deg,#eef0ec,#eef0ec 12px,#e2e8e6 12px,#e2e8e6 24px)";
 
 function badgeColor(badge: string | null) {
   if (!badge) return "#1f8a5b";
@@ -19,9 +18,9 @@ function badgeColor(badge: string | null) {
 }
 
 export default async function AccueilPage() {
-  const [promos, highlighted] = await Promise.all([
+  const [promos, rotatingMembers] = await Promise.all([
     getLivePromotions(6),
-    getHighlightedMembers(3),
+    getRotatingActiveMembers(),
   ]);
 
   return (
@@ -39,7 +38,7 @@ export default async function AccueilPage() {
         {/* hero */}
         <section
           className="grid hero-grid"
-          style={{ position: "relative", padding: "30px 0 50px", overflow: "hidden" }}
+          style={{ position: "relative", padding: "30px 0 50px", overflow: "hidden", alignItems: "center" }}
         >
           <Sparkle color="#E0A63C" size={22} style={{ top: 30, left: 20 }} duration={3.2} />
           <Sparkle color="#6FB0C6" size={15} style={{ bottom: 64, left: 120 }} duration={2.6} delay={0.4} />
@@ -307,70 +306,17 @@ export default async function AccueilPage() {
           </Reveal>
         </section>
 
-        {/* highlighted members */}
+        {/* à l'honneur — carrousel auto */}
         <section style={{ padding: "40px 0 44px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
             <h2 className="font-display" style={{ fontWeight: 800, fontSize: 26, margin: 0, color: "#26201a" }}>
-              À l&apos;honneur ce mois-ci
+              À l&apos;honneur
             </h2>
             <a href="/annuaire" className="link-arrow" style={{ textDecoration: "none", color: "#9a6638", fontWeight: 700, fontSize: 14.5 }}>
               Tout l&apos;annuaire →
             </a>
           </div>
-          <Reveal className="grid grid-3 reveal-stagger" style={{ gap: 18 }}>
-            {highlighted.map((m, i) => (
-              <Link
-                key={m.id}
-                href={`/adherents/${m.id}`}
-                className="lift-card"
-                style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 18, overflow: "hidden", textDecoration: "none", color: "inherit", display: "block" }}
-              >
-                <div
-                  style={{
-                    position: "relative",
-                    height: 150,
-                    background: i % 2 === 1 ? STRIPE_COOL : STRIPE_WARM,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <span style={{ fontSize: 10.5, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>
-                    photo vitrine
-                  </span>
-                  {m.categoryLabel && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: 12,
-                        left: 12,
-                        background: "#9a6638",
-                        color: "#fff",
-                        borderRadius: 999,
-                        padding: "5px 12px",
-                        fontSize: 11,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {m.categoryLabel}
-                    </span>
-                  )}
-                </div>
-                <div style={{ padding: "16px 18px 18px" }}>
-                  <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: "0 0 5px", color: "#26201a" }}>
-                    {m.name}
-                  </h3>
-                  <p style={{ margin: "0 0 12px", fontSize: 13.5, color: "#8c8068", lineHeight: 1.5 }}>
-                    {m.description}
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "#6c6150" }}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: m.accent ?? "#E0A63C" }} />
-                    {[m.address, m.city].filter(Boolean).join(" · ")}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </Reveal>
+          <MembersCarousel members={rotatingMembers} />
         </section>
 
         {/* warm CTA */}

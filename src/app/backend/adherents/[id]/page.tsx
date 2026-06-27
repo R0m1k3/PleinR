@@ -152,11 +152,6 @@ export default async function EditMemberPage({
           <textarea name="hours" rows={4} defaultValue={member.hours ?? ""} className="field" style={{ resize: "vertical" }} placeholder={"Mardi – Vendredi|7h – 19h30\nSamedi|7h – 19h\nDimanche|7h – 13h\nLundi|Fermé"} />
         </div>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 16, fontSize: 14, color: "#3c3322", cursor: "pointer" }}>
-          <input type="checkbox" name="highlighted" defaultChecked={member.highlighted} />
-          Mettre à l&apos;honneur sur la page d&apos;accueil
-        </label>
-
         <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
           <button
             type="submit"
