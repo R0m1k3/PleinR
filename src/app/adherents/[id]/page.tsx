@@ -136,7 +136,7 @@ export default async function FicheAdherentPage({
             </div>
             <div style={{ flex: 1, minWidth: 240, paddingTop: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <h1 className="font-display" style={{ fontWeight: 800, fontSize: 32, letterSpacing: "-0.02em", margin: 0, color: "#26201a" }}>{member.name}</h1>
+                <h1 className="font-display" style={{ fontWeight: 800, fontSize: "clamp(22px, 5vw, 32px)", letterSpacing: "-0.02em", margin: 0, color: "#26201a" }}>{member.name}</h1>
                 {member.categoryLabel && (
                   <span style={{ background: "#9a6638", color: "#fff", borderRadius: 999, padding: "5px 13px", fontSize: 12, fontWeight: 700 }}>{member.categoryLabel}</span>
                 )}

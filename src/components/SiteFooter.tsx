@@ -2,7 +2,7 @@ import { ContactModalButton } from "./ContactModalButton";
 
 export function SiteFooter() {
   return (
-    <footer style={{ background: "#EFE9DA", borderTop: "1px solid #e2d6bd", padding: "28px 56px" }}>
+    <footer style={{ background: "#EFE9DA", borderTop: "1px solid #e2d6bd", padding: "28px clamp(16px, 5vw, 56px)" }}>
       <div
         className="container"
         style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}

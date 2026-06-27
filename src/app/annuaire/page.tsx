@@ -72,7 +72,7 @@ export default async function AnnuairePage({
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E0A63C" }} />
             {members.length} adhérents
           </div>
-          <h1 className="font-display" style={{ fontWeight: 800, fontSize: 40, letterSpacing: "-0.02em", margin: "0 0 8px", color: "#26201a" }}>
+          <h1 className="font-display" style={{ fontWeight: 800, fontSize: "clamp(26px, 6vw, 40px)", letterSpacing: "-0.02em", margin: "0 0 8px", color: "#26201a" }}>
             L&apos;annuaire des commerçants &amp; entreprises
           </h1>
           <p style={{ margin: 0, fontSize: 16.5, color: "#6c6150", maxWidth: 560 }}>

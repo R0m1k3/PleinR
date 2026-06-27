@@ -89,7 +89,8 @@ export default async function AdherentsPage({
 
       <AddMemberPanel categories={cats} />
 
-      <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, overflow: "hidden" }}>
+      <div className="table-scroll">
+      <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, overflow: "hidden", minWidth: 560 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid #f0e8d6", gap: 12, flexWrap: "wrap" }}>
           <form style={{ display: "flex", alignItems: "center", gap: 10, background: "#faf7ef", border: "1px solid #e6dcc6", borderRadius: 10, padding: "8px 14px" }}>
             <span style={{ width: 9, height: 9, border: "2px solid #9a8d72", borderRadius: "50%" }} />
@@ -155,6 +156,7 @@ export default async function AdherentsPage({
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

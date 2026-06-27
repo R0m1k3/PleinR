@@ -83,8 +83,8 @@ export default async function AccueilPage() {
               className="font-display"
               style={{
                 fontWeight: 800,
-                fontSize: 52,
-                lineHeight: 1.03,
+                fontSize: "clamp(30px, 7vw, 52px)",
+                lineHeight: 1.05,
                 letterSpacing: "-0.02em",
                 margin: "0 0 8px",
                 color: "#26201a",
@@ -199,7 +199,7 @@ export default async function AccueilPage() {
               </div>
               <h2
                 className="font-display"
-                style={{ fontWeight: 800, fontSize: 32, letterSpacing: "-0.02em", margin: 0, color: "#26201a" }}
+                style={{ fontWeight: 800, fontSize: "clamp(22px, 5vw, 32px)", letterSpacing: "-0.02em", margin: 0, color: "#26201a" }}
               >
                 Les promotions de nos adhérents
               </h2>
@@ -332,7 +332,7 @@ export default async function AccueilPage() {
           <Sparkle color="#E0A63C" size={18} style={{ top: 24, left: 60 }} duration={3.4} />
           <Sparkle color="#6FB0C6" size={22} style={{ bottom: 26, right: 80 }} duration={2.8} delay={0.7} />
           <Reveal className="reveal">
-            <h2 className="font-display" style={{ fontWeight: 800, fontSize: 30, margin: "0 0 10px", color: "#fff" }}>
+            <h2 className="font-display" style={{ fontWeight: 800, fontSize: "clamp(22px, 5vw, 30px)", margin: "0 0 10px", color: "#fff" }}>
               Faites partie de l&apos;aventure Plein R
             </h2>
             <p style={{ margin: "0 auto 22px", fontSize: 15.5, color: "#f4e6d3", maxWidth: 480 }}>

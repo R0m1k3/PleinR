@@ -15,8 +15,9 @@ export function SiteHeader({ active, logo = false }: { active?: string; logo?: b
         display: "flex",
         alignItems: "center",
         justifyContent: logo ? "space-between" : "flex-end",
-        padding: "18px 56px",
+        padding: "18px clamp(16px, 5vw, 56px)",
         gap: 20,
+        flexWrap: "wrap",
       }}
     >
       {logo && (

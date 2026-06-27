@@ -270,6 +270,24 @@ button {
   .grid-3 {
     grid-template-columns: 1fr;
   }
+  .container {
+    padding: 0 16px;
+  }
+}
+
+/* Évite tout débordement horizontal sur mobile. */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+img {
+  max-width: 100%;
+}
+/* Tables/listes larges du back-office : défilement horizontal contenu. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ---- Backend layout ---- */
