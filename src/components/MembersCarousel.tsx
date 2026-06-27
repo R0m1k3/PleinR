@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { VitrineImage } from "./VitrineImage";
 
 export type CarouselMember = {
   id: number;
@@ -15,16 +16,12 @@ export type CarouselMember = {
   accent: string | null;
 };
 
-const STRIPE_WARM =
-  "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
-
 const VISIBLE = 3;
 const INTERVAL_MS = 20_000;
 const STAGGER_MS = 220; // décalage de disparition/apparition entre cartes
 const FADE_MS = 450;
 
 function Card({ m, visible, index }: { m: CarouselMember; visible: boolean; index: number }) {
-  const image = m.coverUrl || m.logoUrl;
   return (
     <Link
       href={`/adherents/${m.id}`}
@@ -43,27 +40,13 @@ function Card({ m, visible, index }: { m: CarouselMember; visible: boolean; inde
         transitionDelay: `${index * STAGGER_MS}ms`,
       }}
     >
-      <div
-        style={{
-          position: "relative",
-          height: 150,
-          background: image ? `center/cover no-repeat url(${image})` : STRIPE_WARM,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {!image && (
-          <span style={{ fontSize: 10.5, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>
-            photo vitrine
-          </span>
-        )}
+      <VitrineImage coverUrl={m.coverUrl} logoUrl={m.logoUrl} height={150}>
         {m.categoryLabel && (
           <span style={{ position: "absolute", top: 12, left: 12, background: "#9a6638", color: "#fff", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
             {m.categoryLabel}
           </span>
         )}
-      </div>
+      </VitrineImage>
       <div style={{ padding: "16px 18px 18px" }}>
         <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: "0 0 5px", color: "#26201a" }}>
           {m.name}

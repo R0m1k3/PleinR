@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Sparkle } from "@/components/Sparkle";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { VitrineImage } from "@/components/VitrineImage";
 import { getMemberLivePromotions, getPublicMember } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -96,25 +97,15 @@ export default async function FicheAdherentPage({
 
         {/* cover + identity */}
         <section style={{ position: "relative", borderRadius: 22, overflow: "hidden", border: "1px solid #e6dcc6" }}>
-          <div
-            style={{
-              position: "relative",
-              height: 230,
-              background: (member.coverUrl || member.logoUrl)
-                ? `url(${member.coverUrl || member.logoUrl})`
-                : COVER_STRIPE,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+          <VitrineImage
+            coverUrl={member.coverUrl}
+            logoUrl={member.logoUrl}
+            height={230}
+            stripe={COVER_STRIPE}
+            placeholder="photo de couverture"
           >
-            {!(member.coverUrl || member.logoUrl) && (
-              <span style={{ fontSize: 11, letterSpacing: "0.14em", color: "#b3a888", textTransform: "uppercase" }}>photo de couverture</span>
-            )}
             <Sparkle color={accent} size={20} style={{ top: 20, right: 24 }} duration={3.2} />
-          </div>
+          </VitrineImage>
           <div style={{ background: "#fff", padding: "0 30px 26px", display: "flex", alignItems: "flex-end", gap: 22, flexWrap: "wrap" }}>
             <div
               style={{

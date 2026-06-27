@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { VitrineImage } from "@/components/VitrineImage";
 
 export type DirectoryMember = {
   id: number;
@@ -190,7 +191,6 @@ export function AnnuaireClient({
       {list.length > 0 ? (
         <div className="grid grid-3" style={{ gap: 20 }}>
           {list.map((m, i) => {
-            const image = m.coverUrl || m.logoUrl;
             return (
             <Link
               key={m.id}
@@ -198,23 +198,12 @@ export function AnnuaireClient({
               className="lift-card"
               style={{ textDecoration: "none", color: "inherit", background: "#fff", border: "1px solid #e6dcc6", borderRadius: 18, overflow: "hidden", display: "flex", flexDirection: "column" }}
             >
-              <div
-                style={{
-                  position: "relative",
-                  height: 150,
-                  background: image
-                    ? `center/cover no-repeat url(${image})`
-                    : i % 2 === 0 ? STRIPE_WARM : STRIPE_COOL,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+              <VitrineImage
+                coverUrl={m.coverUrl}
+                logoUrl={m.logoUrl}
+                height={150}
+                stripe={i % 2 === 0 ? STRIPE_WARM : STRIPE_COOL}
               >
-                {!image && (
-                  <span style={{ fontSize: 10, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>
-                    photo vitrine
-                  </span>
-                )}
                 {m.categoryLabel && (
                   <span style={{ position: "absolute", top: 12, left: 12, background: m.accent ?? "#9a6638", color: "#fff", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
                     {m.categoryLabel}
@@ -225,7 +214,7 @@ export function AnnuaireClient({
                     {m.promoBadge}
                   </span>
                 )}
-              </div>
+              </VitrineImage>
               <div style={{ padding: "16px 18px 18px", display: "flex", flexDirection: "column", flex: 1 }}>
                 <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: 0, color: "#26201a" }}>
                   {m.name}
