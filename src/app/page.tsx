@@ -217,10 +217,13 @@ export default async function AccueilPage() {
 
           <Reveal className="grid grid-3 reveal-stagger" style={{ marginTop: 26 }}>
             {promos.map((p) => (
-              <article
+              <Link
                 key={p.id}
+                href={p.memberId ? `/adherents/${p.memberId}` : "#"}
                 className="lift-card"
                 style={{
+                  textDecoration: "none",
+                  color: "inherit",
                   background: "#fff",
                   border: "1px solid #ece3d0",
                   borderRadius: 18,
@@ -291,82 +294,17 @@ export default async function AccueilPage() {
                   </p>
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
                       borderTop: "1px solid #f0e8d6",
                       paddingTop: 12,
                     }}
                   >
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#3c3322" }}>{p.memberName}</div>
-                      <div style={{ fontSize: 11.5, color: "#a99c82" }}>{p.validUntil}</div>
-                    </div>
-                    <a href="#" className="link-arrow" style={{ textDecoration: "none", color: "#2C6FB3", fontWeight: 700, fontSize: 13 }}>
-                      Voir l&apos;offre →
-                    </a>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#3c3322" }}>{p.memberName}</div>
+                    <div style={{ fontSize: 11.5, color: "#a99c82" }}>{p.validUntil}</div>
                   </div>
                 </div>
-              </article>
+              </Link>
             ))}
           </Reveal>
-
-          {/* member CTA */}
-          <div
-            style={{
-              marginTop: 28,
-              background: "#f9f4e7",
-              border: "1px dashed #d8cdb4",
-              borderRadius: 16,
-              padding: "20px 24px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 20,
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <span
-                style={{
-                  display: "inline-flex",
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "#fff",
-                  border: "1px solid #e6dcc6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <span className="sparkle" style={{ width: 18, height: 18, background: "#E0A63C" }} />
-              </span>
-              <div>
-                <div className="font-display" style={{ fontWeight: 700, fontSize: 16, color: "#26201a" }}>
-                  Vous êtes adhérent ?
-                </div>
-                <div style={{ fontSize: 13.5, color: "#8c8068" }}>
-                  Publiez votre promotion en quelques clics depuis votre espace.
-                </div>
-              </div>
-            </div>
-            <Link
-              href="/backend/espace"
-              className="font-display"
-              style={{
-                textDecoration: "none",
-                background: "#9a6638",
-                color: "#fff",
-                fontWeight: 700,
-                fontSize: 14.5,
-                padding: "12px 22px",
-                borderRadius: 11,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Publier une promo
-            </Link>
-          </div>
         </section>
 
         {/* highlighted members */}

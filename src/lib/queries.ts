@@ -67,6 +67,7 @@ export async function getLivePromotions(limit = 6) {
       badge: promotions.badge,
       imageUrl: promotions.imageUrl,
       validUntil: promotions.validUntil,
+      memberId: promotions.memberId,
       memberName: members.name,
     })
     .from(promotions)
