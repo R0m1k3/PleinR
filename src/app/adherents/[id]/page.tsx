@@ -112,19 +112,25 @@ export default async function FicheAdherentPage({
                 width: 118,
                 height: 118,
                 borderRadius: 22,
-                background: member.logoUrl ? `url(${member.logoUrl})` : "#F6F2E8",
-                backgroundSize: "cover",
-                backgroundPosition: "center",
+                background: "#fff",
                 border: "4px solid #fff",
                 marginTop: -54,
                 flexShrink: 0,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                overflow: "hidden",
                 boxShadow: "0 14px 30px -16px rgba(40,30,15,0.4)",
               }}
             >
-              {!member.logoUrl && (
+              {member.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={member.logoUrl}
+                  alt={member.name}
+                  style={{ maxWidth: "86%", maxHeight: "86%", objectFit: "contain", display: "block" }}
+                />
+              ) : (
                 <span className="font-display" style={{ fontWeight: 800, fontSize: 34, color: "#9a6638" }}>{initialsOf(member.name)}</span>
               )}
             </div>

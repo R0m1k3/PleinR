@@ -7,11 +7,13 @@ export function ImageField({
   label,
   defaultValue = "",
   height = 130,
+  fit = "cover",
 }: {
   name: string;
   label: string;
   defaultValue?: string;
   height?: number;
+  fit?: "cover" | "contain";
 }) {
   const [value, setValue] = useState(defaultValue);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function ImageField({
           height,
           borderRadius: 12,
           border: "1px dashed #d6c9ad",
-          background: value ? `center/cover no-repeat url(${value})` : "#f6efdc",
+          background: value && fit === "cover" ? `center/cover no-repeat url(${value})` : "#fff",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -56,6 +58,10 @@ export function ImageField({
           marginBottom: 10,
         }}
       >
+        {value && fit === "contain" && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value} alt="" style={{ maxWidth: "86%", maxHeight: "86%", objectFit: "contain", display: "block" }} />
+        )}
         {!value && <span style={{ fontSize: 13, color: "#a99c82" }}>Aucune image</span>}
       </div>
 

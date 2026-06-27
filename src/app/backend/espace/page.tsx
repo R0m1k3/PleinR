@@ -126,7 +126,7 @@ export default async function EspacePage() {
 
           <div className="grid grid-2" style={{ gap: 16, marginTop: 16 }}>
             <ImageField name="coverUrl" label="Image d'entête (bannière)" defaultValue={profile.coverUrl ?? ""} height={130} />
-            <ImageField name="logoUrl" label="Logo" defaultValue={profile.logoUrl ?? ""} height={130} />
+            <ImageField name="logoUrl" label="Logo" defaultValue={profile.logoUrl ?? ""} height={130} fit="contain" />
           </div>
 
           <div style={{ marginTop: 16 }}>
