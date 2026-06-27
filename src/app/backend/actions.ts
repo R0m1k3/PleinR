@@ -141,6 +141,8 @@ export async function updateMember(formData: FormData) {
       phone: String(formData.get("phone") ?? "").trim() || null,
       website: String(formData.get("website") ?? "").trim() || null,
       memberSince: formData.get("memberSince") ? Number(formData.get("memberSince")) : null,
+      coverUrl: String(formData.get("coverUrl") ?? "").trim() || null,
+      logoUrl: String(formData.get("logoUrl") ?? "").trim() || null,
       tags: String(formData.get("tags") ?? "").trim() || null,
       hours: String(formData.get("hours") ?? "").trim() || null,
       status: String(formData.get("status") ?? "pending") as "active" | "pending",
@@ -149,6 +151,7 @@ export async function updateMember(formData: FormData) {
     .where(eq(members.id, id));
 
   revalidatePath("/backend/adherents");
+  revalidatePath(`/adherents/${id}`);
   revalidatePath("/");
 }
 
