@@ -1,7 +1,9 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { categories, members, promotions } from "@/db/schema";
+import { categories, members, promotions, type Member } from "@/db/schema";
+import { ImageField } from "@/components/ImageField";
+import { updateOwnProfile } from "../actions";
 import { MemberSpaceForm } from "./MemberSpaceForm";
 
 export const dynamic = "force-dynamic";
@@ -24,17 +26,18 @@ export default async function EspacePage() {
 
   let memberName = fallbackName;
   let subtitle = "Espace adhérent";
+  let profile: Member | null = null;
   let myPromos: { id: number; title: string; status: string; createdAt: Date; imageUrl: string | null }[] = [];
 
   if (memberId) {
-    const [m] = await db
-      .select({ name: members.name, city: members.city, categoryLabel: categories.label })
-      .from(members)
-      .leftJoin(categories, eq(members.categoryId, categories.id))
-      .where(eq(members.id, memberId));
+    const [m] = await db.select().from(members).where(eq(members.id, memberId));
     if (m) {
+      profile = m;
       memberName = m.name;
-      subtitle = ["Espace adhérent", m.categoryLabel, m.city].filter(Boolean).join(" · ");
+      const [cat] = m.categoryId
+        ? await db.select({ label: categories.label }).from(categories).where(eq(categories.id, m.categoryId))
+        : [];
+      subtitle = ["Espace adhérent", cat?.label, m.city].filter(Boolean).join(" · ");
     }
     myPromos = await db
       .select({
@@ -79,6 +82,69 @@ export default async function EspacePage() {
           <div style={{ fontSize: 13, color: "#9bb6cd" }}>{subtitle}</div>
         </div>
       </div>
+
+      {profile && (
+        <form action={updateOwnProfile} style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 24, marginBottom: 28 }}>
+          <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: "0 0 18px", color: "#26201a" }}>
+            Mon profil
+          </h3>
+
+          <div className="grid grid-2" style={{ gap: 16 }}>
+            <div>
+              <label className="field-label">Nom</label>
+              <input name="name" required defaultValue={profile.name} className="field" />
+            </div>
+            <div>
+              <label className="field-label">Commune</label>
+              <input name="city" defaultValue={profile.city ?? ""} className="field" />
+            </div>
+            <div>
+              <label className="field-label">Adresse</label>
+              <input name="address" defaultValue={profile.address ?? ""} className="field" />
+            </div>
+            <div>
+              <label className="field-label">Code postal</label>
+              <input name="postalCode" defaultValue={profile.postalCode ?? ""} className="field" />
+            </div>
+            <div>
+              <label className="field-label">Téléphone</label>
+              <input name="phone" defaultValue={profile.phone ?? ""} className="field" />
+            </div>
+            <div>
+              <label className="field-label">Site web</label>
+              <input name="website" defaultValue={profile.website ?? ""} className="field" placeholder="https://..." />
+            </div>
+          </div>
+
+          <div className="grid grid-2" style={{ gap: 16, marginTop: 16 }}>
+            <ImageField name="coverUrl" label="Image d'entête (bannière)" defaultValue={profile.coverUrl ?? ""} height={130} />
+            <ImageField name="logoUrl" label="Logo" defaultValue={profile.logoUrl ?? ""} height={130} />
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <label className="field-label">Description (une ligne vide sépare les paragraphes)</label>
+            <textarea name="description" rows={4} defaultValue={profile.description ?? ""} className="field" style={{ resize: "vertical" }} />
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <label className="field-label">Tags / spécialités (séparés par des virgules)</label>
+            <input name="tags" defaultValue={profile.tags ?? ""} className="field" />
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <label className="field-label">Horaires (une ligne par jour : « Jour|plage »)</label>
+            <textarea name="hours" rows={4} defaultValue={profile.hours ?? ""} className="field" style={{ resize: "vertical" }} placeholder={"Mardi – Vendredi|7h – 19h30\nSamedi|7h – 19h"} />
+          </div>
+
+          <button
+            type="submit"
+            className="font-display"
+            style={{ marginTop: 20, border: "none", background: "#13324F", color: "#fff", fontWeight: 700, fontSize: 14.5, padding: "13px 24px", borderRadius: 11, cursor: "pointer" }}
+          >
+            Enregistrer mon profil
+          </button>
+        </form>
+      )}
 
       <MemberSpaceForm memberName={memberName} categories={categoryLabels} />
 

@@ -8,12 +8,14 @@ declare module "next-auth" {
       id: string;
       role: AppRole;
       memberId: number | null;
+      mustChangePassword: boolean;
     } & DefaultSession["user"];
   }
 
   interface User {
     role: AppRole;
     memberId: number | null;
+    mustChangePassword?: boolean;
   }
 }
 
@@ -22,5 +24,6 @@ declare module "next-auth/jwt" {
     uid?: string;
     role?: AppRole;
     memberId?: number | null;
+    mustChangePassword?: boolean;
   }
 }

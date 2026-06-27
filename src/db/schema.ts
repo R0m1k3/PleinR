@@ -73,6 +73,8 @@ export const users = pgTable(
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     role: roleEnum("role").notNull().default("member"),
     memberId: integer("member_id").references(() => members.id),
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
+    tempPassword: varchar("temp_password", { length: 60 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
