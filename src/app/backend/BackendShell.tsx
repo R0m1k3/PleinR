@@ -10,6 +10,7 @@ import { doSignOut } from "./actions";
 const TITLES: Record<string, [string, string]> = {
   "/backend": ["Tableau de bord", "Vue d'ensemble de l'association"],
   "/backend/adherents": ["Adhérents", "Gérer les commerçants et entreprises"],
+  "/backend/demandes": ["Demandes & messages", "Demandes d'adhésion et messages de contact"],
   "/backend/promotions": [
     "Modération des promotions",
     "Validez les offres soumises par les adhérents",
@@ -17,6 +18,7 @@ const TITLES: Record<string, [string, string]> = {
   "/backend/administrateurs": ["Administrateurs", "Gérer les accès à l'administration"],
   "/backend/categories": ["Catégories", "Gérer les métiers de l'annuaire"],
   "/backend/espace": ["Mon espace adhérent", "Publiez et suivez vos promotions"],
+  "/backend/changer-mot-de-passe": ["Mot de passe", "Sécurisez votre compte"],
 };
 
 function initialsOf(name: string) {
@@ -47,10 +49,12 @@ function NavLink({
 export function BackendShell({
   user,
   pendingCount,
+  inboxCount = 0,
   children,
 }: {
   user: { name: string; role: AppRole };
   pendingCount: number;
+  inboxCount?: number;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -97,6 +101,26 @@ export function BackendShell({
               {can(user.role, "manageMembers") && (
                 <NavLink href="/backend/adherents" active={pathname.startsWith("/backend/adherents")}>
                   {dotRound}Adhérents
+                </NavLink>
+              )}
+              {can(user.role, "manageMembers") && (
+                <NavLink href="/backend/demandes" active={pathname === "/backend/demandes"}>
+                  {dot}Demandes &amp; messages
+                  {inboxCount > 0 && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        background: "#E0A63C",
+                        color: "#33291D",
+                        fontSize: 11,
+                        fontWeight: 800,
+                        borderRadius: 999,
+                        padding: "1px 8px",
+                      }}
+                    >
+                      {inboxCount}
+                    </span>
+                  )}
                 </NavLink>
               )}
               {can(user.role, "moderatePromos") && (

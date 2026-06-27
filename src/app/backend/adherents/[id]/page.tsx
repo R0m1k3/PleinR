@@ -3,10 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { categories, members } from "@/db/schema";
+import { categories, members, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
 import { ImageField } from "@/components/ImageField";
-import { deleteMember, updateMember } from "../../actions";
+import { deleteMember, resetMemberPassword, updateMember } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +32,11 @@ export default async function EditMemberPage({
     .from(categories)
     .orderBy(asc(categories.sort));
 
+  const [account] = await db
+    .select({ email: users.email, tempPassword: users.tempPassword, mustChange: users.mustChangePassword })
+    .from(users)
+    .where(eq(users.memberId, memberId));
+
   async function handleDelete() {
     "use server";
     const fd = new FormData();
@@ -44,6 +49,14 @@ export default async function EditMemberPage({
     "use server";
     await updateMember(fd);
     redirect("/backend/adherents");
+  }
+
+  async function handleReset() {
+    "use server";
+    const fd = new FormData();
+    fd.set("memberId", String(memberId));
+    await resetMemberPassword(fd);
+    redirect(`/backend/adherents/${memberId}`);
   }
 
   return (
@@ -146,6 +159,44 @@ export default async function EditMemberPage({
           </button>
         </div>
       </form>
+
+      <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 22, marginTop: 16 }}>
+        <h3 className="font-display" style={{ fontWeight: 700, fontSize: 16, margin: "0 0 12px", color: "#26201a" }}>
+          Compte de connexion
+        </h3>
+        {account ? (
+          <>
+            <div style={{ fontSize: 13.5, color: "#5a5040", marginBottom: 10 }}>
+              Identifiant : <strong>{account.email}</strong>
+            </div>
+            {account.tempPassword ? (
+              <div style={{ background: "#fbeede", border: "1px solid #ecd8b8", borderRadius: 10, padding: "11px 14px", fontSize: 13.5, color: "#9a6638" }}>
+                Mot de passe temporaire :{" "}
+                <strong style={{ fontFamily: "monospace", fontSize: 15 }}>{account.tempPassword}</strong>
+                <div style={{ fontSize: 12, marginTop: 4 }}>
+                  Communiquez-le à l&apos;adhérent. Il disparaît dès sa première connexion (changement obligatoire).
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: "#1f8a5b", fontWeight: 600 }}>
+                ✓ L&apos;adhérent a défini son propre mot de passe.
+              </div>
+            )}
+            <form action={handleReset} style={{ marginTop: 14 }}>
+              <button
+                type="submit"
+                style={{ border: "1px solid #d8cdb4", background: "#fff", color: "#6f6450", fontWeight: 600, fontSize: 13, padding: "9px 15px", borderRadius: 9, cursor: "pointer" }}
+              >
+                Réinitialiser le mot de passe
+              </button>
+            </form>
+          </>
+        ) : (
+          <div style={{ fontSize: 13.5, color: "#a99c82" }}>
+            Aucun compte de connexion lié à cet adhérent.
+          </div>
+        )}
+      </div>
 
       <form action={handleDelete} style={{ marginTop: 16 }}>
         <button

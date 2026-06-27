@@ -8,7 +8,9 @@ import { db } from "@/db";
 import {
   activityLog,
   categories,
+  contactMessages,
   members,
+  membershipRequests,
   promotions,
   users,
 } from "@/db/schema";
@@ -38,6 +40,16 @@ function slugify(input: string): string {
 
 async function logActivity(message: string, dot = "#2C6FB3") {
   await db.insert(activityLog).values({ message, dot });
+}
+
+// Mot de passe temporaire lisible (sans caractères ambigus).
+function generateTempPassword(): string {
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let out = "";
+  for (let i = 0; i < 10; i++) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
 }
 
 async function requireRole(): Promise<{ role: AppRole; memberId: number | null; name: string }> {
@@ -108,17 +120,65 @@ export async function addMember(formData: FormData) {
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return;
-  const email = String(formData.get("email") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email) throw new Error("L'e-mail est requis pour créer le compte de l'adhérent.");
   const categoryId = formData.get("categoryId") ? Number(formData.get("categoryId")) : null;
   const city = String(formData.get("city") ?? "").trim() || null;
   const status = (String(formData.get("status") ?? "pending") as "active" | "pending");
 
-  await db.insert(members).values({ name, email, categoryId, city, status });
+  // Un seul compte par e-mail.
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
+  if (existing.length > 0) {
+    throw new Error("Un compte existe déjà avec cet e-mail.");
+  }
+
+  const [newMember] = await db
+    .insert(members)
+    .values({ name, email, categoryId, city, status })
+    .returning({ id: members.id });
+
+  // Compte de connexion adhérent avec mot de passe temporaire à changer.
+  const tempPassword = generateTempPassword();
+  await db.insert(users).values({
+    name,
+    email,
+    role: "member",
+    memberId: newMember.id,
+    passwordHash: await bcrypt.hash(tempPassword, 10),
+    tempPassword,
+    mustChangePassword: true,
+  });
+
   await logActivity(`Nouvel adhérent ajouté : <strong>${name}</strong>`, "#2C6FB3");
 
   revalidatePath("/backend/adherents");
   revalidatePath("/backend");
   revalidatePath("/");
+}
+
+// Réinitialise le mot de passe d'un adhérent : nouveau mot de passe temporaire
+// visible par l'admin jusqu'à la prochaine connexion de l'adhérent.
+export async function resetMemberPassword(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMembers")) throw new Error("Accès refusé");
+
+  const memberId = Number(formData.get("memberId"));
+  if (!memberId) return;
+
+  const [u] = await db.select().from(users).where(eq(users.memberId, memberId));
+  if (!u) throw new Error("Aucun compte de connexion lié à cet adhérent.");
+
+  const tempPassword = generateTempPassword();
+  await db
+    .update(users)
+    .set({
+      passwordHash: await bcrypt.hash(tempPassword, 10),
+      tempPassword,
+      mustChangePassword: true,
+    })
+    .where(eq(users.id, u.id));
+
+  revalidatePath(`/backend/adherents/${memberId}`);
 }
 
 export async function updateMember(formData: FormData) {
@@ -265,6 +325,93 @@ export async function deleteCategory(formData: FormData) {
   revalidatePath("/backend/categories");
   revalidatePath("/backend/adherents");
   revalidatePath("/annuaire");
+}
+
+// ---- Self password change (forced at first login) ----
+export async function changeOwnPassword(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Non authentifié");
+  const userId = Number(session.user.id);
+
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < 8) throw new Error("Le mot de passe doit faire au moins 8 caractères.");
+  if (password !== confirm) throw new Error("Les deux mots de passe ne correspondent pas.");
+
+  await db
+    .update(users)
+    .set({
+      passwordHash: await bcrypt.hash(password, 10),
+      tempPassword: null,
+      mustChangePassword: false,
+    })
+    .where(eq(users.id, userId));
+
+  // Force une nouvelle session (jeton sans le drapeau « mot de passe à changer »).
+  await signOut({ redirectTo: "/login" });
+}
+
+// ---- Member: edit own profile ----
+export async function updateOwnProfile(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Non authentifié");
+  const memberId = session.user.memberId;
+  if (!memberId) throw new Error("Aucune fiche adhérent liée à votre compte.");
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+
+  await db
+    .update(members)
+    .set({
+      name,
+      description: String(formData.get("description") ?? "").trim() || null,
+      address: String(formData.get("address") ?? "").trim() || null,
+      postalCode: String(formData.get("postalCode") ?? "").trim() || null,
+      city: String(formData.get("city") ?? "").trim() || null,
+      phone: String(formData.get("phone") ?? "").trim() || null,
+      website: String(formData.get("website") ?? "").trim() || null,
+      hours: String(formData.get("hours") ?? "").trim() || null,
+      tags: String(formData.get("tags") ?? "").trim() || null,
+      coverUrl: String(formData.get("coverUrl") ?? "").trim() || null,
+      logoUrl: String(formData.get("logoUrl") ?? "").trim() || null,
+    })
+    // Sécurité : on ne touche que SA propre fiche, jamais statut/catégorie/mise à l'honneur.
+    .where(eq(members.id, memberId));
+
+  revalidatePath("/backend/espace");
+  revalidatePath(`/adherents/${memberId}`);
+  revalidatePath("/annuaire");
+  revalidatePath("/");
+}
+
+// ---- Inbox: membership requests + contact messages ----
+export async function setRequestStatus(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMembers")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  const status = String(formData.get("status") ?? "");
+  if (!id || !["new", "approved", "rejected"].includes(status)) return;
+  await db
+    .update(membershipRequests)
+    .set({ status: status as "new" | "approved" | "rejected" })
+    .where(eq(membershipRequests.id, id));
+  revalidatePath("/backend/demandes");
+  revalidatePath("/backend");
+}
+
+export async function setContactStatus(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMembers")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  const status = String(formData.get("status") ?? "");
+  if (!id || !["new", "read", "archived"].includes(status)) return;
+  await db
+    .update(contactMessages)
+    .set({ status: status as "new" | "read" | "archived" })
+    .where(eq(contactMessages.id, id));
+  revalidatePath("/backend/demandes");
+  revalidatePath("/backend");
 }
 
 // ---- Sign out ----

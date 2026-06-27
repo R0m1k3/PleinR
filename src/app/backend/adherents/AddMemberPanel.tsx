@@ -36,8 +36,8 @@ export function AddMemberPanel({
               <input name="name" required placeholder="ex : Au Bon Pain" className="field" />
             </div>
             <div>
-              <label className="field-label">E-mail</label>
-              <input name="email" type="email" placeholder="contact@exemple.fr" className="field" />
+              <label className="field-label">E-mail (identifiant de connexion)</label>
+              <input name="email" type="email" required placeholder="contact@exemple.fr" className="field" />
             </div>
             <div>
               <label className="field-label">Catégorie</label>
@@ -62,10 +62,14 @@ export function AddMemberPanel({
               </select>
             </div>
           </div>
+          <div style={{ marginTop: 14, fontSize: 12.5, color: "#9a8d72" }}>
+            Un compte de connexion est créé automatiquement. Le mot de passe temporaire s&apos;affiche
+            sur la fiche de l&apos;adhérent jusqu&apos;à sa première connexion.
+          </div>
           <button
             type="submit"
             className="font-display"
-            style={{ marginTop: 18, border: "none", background: "#9a6638", color: "#fff", fontWeight: 700, fontSize: 14.5, padding: "12px 22px", borderRadius: 11, cursor: "pointer" }}
+            style={{ marginTop: 14, border: "none", background: "#9a6638", color: "#fff", fontWeight: 700, fontSize: 14.5, padding: "12px 22px", borderRadius: 11, cursor: "pointer" }}
           >
             Enregistrer l&apos;adhérent
           </button>

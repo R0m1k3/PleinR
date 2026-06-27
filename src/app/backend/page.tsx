@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { activityLog, members, membershipRequests, promotions } from "@/db/schema";
+import { activityLog, contactMessages, members, membershipRequests, promotions } from "@/db/schema";
 import { isStaff } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
@@ -38,11 +38,12 @@ export default async function DashboardPage() {
     redirect("/backend/espace");
   }
 
-  const [activeMembers, livePromos, pendingPromos, requests, activity] = await Promise.all([
+  const [activeMembers, livePromos, pendingPromos, requests, newMessages, activity] = await Promise.all([
     db.select({ id: members.id }).from(members).where(eq(members.status, "active")),
     db.select({ id: promotions.id }).from(promotions).where(eq(promotions.status, "live")),
     db.select({ id: promotions.id }).from(promotions).where(eq(promotions.status, "pending")),
     db.select({ id: membershipRequests.id }).from(membershipRequests).where(eq(membershipRequests.status, "new")),
+    db.select({ id: contactMessages.id }).from(contactMessages).where(eq(contactMessages.status, "new")),
     db.select().from(activityLog).orderBy(desc(activityLog.createdAt)).limit(6),
   ]);
 
@@ -63,7 +64,15 @@ export default async function DashboardPage() {
         <StatCard label="Adhérents actifs" value={activeMembers.length} hint="sur le réseau" valueColor="#13324F" hintColor="#1f8a5b" />
         <StatCard label="Promotions en ligne" value={livePromos.length} hint="visibles sur le site" />
         <StatCard label="À modérer" value={pendingCount} hint="en attente de validation" valueColor="#9a6638" hintColor="#9a6638" />
-        <StatCard label="Demandes d'adhésion" value={requests.length} hint="à traiter" valueColor="#13324F" hintColor="#9a6638" />
+        <Link href="/backend/demandes" style={{ textDecoration: "none" }}>
+          <StatCard
+            label="Demandes & messages"
+            value={requests.length + newMessages.length}
+            hint={`${requests.length} adhésion · ${newMessages.length} contact`}
+            valueColor="#13324F"
+            hintColor="#9a6638"
+          />
+        </Link>
       </div>
 
       <div className="grid dash-split">
