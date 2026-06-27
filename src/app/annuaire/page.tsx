@@ -1,8 +1,8 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { Sparkle } from "@/components/Sparkle";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { MembershipModalButton } from "@/components/MembershipModalButton";
 import {
   getActiveMembersWithCategory,
   getAllCategories,
@@ -45,7 +45,7 @@ export default async function AnnuairePage({
 
   return (
     <div style={{ background: "#F6F2E8", minHeight: "100vh", fontFamily: "'Public Sans',sans-serif", color: "#33291D" }}>
-      <SiteHeader active="annuaire" />
+      <SiteHeader active="annuaire" logo />
 
       <div className="container" style={{ paddingBottom: 56 }}>
         {/* title block */}
@@ -107,13 +107,11 @@ export default async function AnnuairePage({
               Rejoignez l&apos;annuaire Plein R
             </h2>
           </div>
-          <Link
-            href="/backend"
+          <MembershipModalButton
+            label="Adhérer à l'association"
             className="font-display"
-            style={{ textDecoration: "none", background: "#E0A63C", color: "#33291D", fontWeight: 700, fontSize: 15.5, padding: "14px 26px", borderRadius: 12, whiteSpace: "nowrap" }}
-          >
-            Adhérer à l&apos;association
-          </Link>
+            style={{ border: "none", background: "#E0A63C", color: "#33291D", fontWeight: 700, fontSize: 15.5, padding: "14px 26px", borderRadius: 12, whiteSpace: "nowrap" }}
+          />
         </section>
       </div>
 
