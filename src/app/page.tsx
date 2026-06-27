@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MembershipModalButton } from "@/components/MembershipModalButton";
 import { MembersCarousel } from "@/components/MembersCarousel";
+import { StarField } from "@/components/StarField";
 import { getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -40,12 +41,9 @@ export default async function AccueilPage() {
           className="grid hero-grid"
           style={{ position: "relative", padding: "30px 0 50px", overflow: "hidden", alignItems: "center" }}
         >
-          <Sparkle color="#E0A63C" size={22} style={{ top: 30, left: 20 }} duration={3.2} />
-          <Sparkle color="#6FB0C6" size={15} style={{ bottom: 64, left: 120 }} duration={2.6} delay={0.4} />
-          <Sparkle color="#9a6638" size={18} style={{ top: 40, right: 90 }} duration={3.8} delay={0.9} />
-          <Sparkle color="#2C6FB3" size={24} style={{ bottom: 80, right: 180 }} duration={3} delay={1.3} />
+          <StarField />
 
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+          <div style={{ position: "relative", zIndex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/assets/logo.png"
@@ -61,7 +59,7 @@ export default async function AccueilPage() {
             />
           </div>
 
-          <Reveal className="reveal">
+          <Reveal className="reveal" style={{ position: "relative", zIndex: 1 }}>
             <div
               style={{
                 display: "inline-flex",

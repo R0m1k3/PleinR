@@ -89,14 +89,8 @@ export function MembersCarousel({ members }: { members: CarouselMember[] }) {
 
   useEffect(() => {
     if (!canRotate) return;
-    // Respecte la préférence de réduction d'animation.
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
     const tick = setInterval(() => {
-      if (reduce) {
-        setStart((s) => (s + VISIBLE) % total);
-        return;
-      }
       // Disparition une à une, puis changement, puis réapparition une à une.
       setVisible(false);
       const outMs = FADE_MS + STAGGER_MS * (VISIBLE - 1);

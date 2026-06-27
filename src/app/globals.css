@@ -88,14 +88,37 @@ button {
     transform: translateY(-14px) rotate(0.6deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
+/* Dérive lente des étoiles. Utilise la propriété `translate` (indépendante de
+   `transform`) pour se cumuler avec le scintillement `plr-twinkle`. */
+@keyframes plr-drift {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  33% {
+    translate: 12px -18px;
+  }
+  66% {
+    translate: -10px 10px;
   }
 }
 
 .sparkle {
   clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+}
+
+/* ---- Champ d'étoiles flottantes ---- */
+.starfield {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.starfield .star {
+  position: absolute;
+  animation: plr-twinkle var(--tw, 3.2s) ease-in-out infinite,
+    plr-drift var(--dr, 9s) ease-in-out infinite;
 }
 
 /* ---- Scroll-reveal entrance animations ---- */
@@ -134,16 +157,6 @@ button {
 .reveal-stagger.is-visible > *:nth-child(8) { animation-delay: 0.46s; }
 .reveal-stagger.is-visible > *:nth-child(n + 9) { animation-delay: 0.52s; }
 
-@media (prefers-reduced-motion: reduce) {
-  .reveal,
-  .reveal-stagger > * {
-    opacity: 1 !important;
-  }
-  .reveal.is-visible,
-  .reveal-stagger.is-visible > * {
-    animation: none !important;
-  }
-}
 .twinkle {
   animation: plr-twinkle 3.2s ease-in-out infinite;
 }
