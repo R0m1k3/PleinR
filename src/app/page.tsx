@@ -3,6 +3,7 @@ import { Sparkle } from "@/components/Sparkle";
 import { Reveal } from "@/components/Reveal";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { MembershipModalButton } from "@/components/MembershipModalButton";
 import { getHighlightedMembers, getLivePromotions } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -456,11 +457,11 @@ export default async function AccueilPage() {
               Rejoignez plus de 120 commerçants et entreprises qui font réseau, se rencontrent et réussissent
               ensemble.
             </p>
-            <a
-              href="#"
+            <MembershipModalButton
+              label="Devenir adhérent"
               className="font-display lift-cta"
               style={{
-                textDecoration: "none",
+                border: "none",
                 background: "#fff",
                 color: "#9a6638",
                 fontWeight: 700,
@@ -469,9 +470,7 @@ export default async function AccueilPage() {
                 borderRadius: 12,
                 display: "inline-block",
               }}
-            >
-              Devenir adhérent
-            </a>
+            />
           </Reveal>
         </section>
       </div>

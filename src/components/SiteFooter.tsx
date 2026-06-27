@@ -1,3 +1,5 @@
+import { ContactModalButton } from "./ContactModalButton";
+
 export function SiteFooter() {
   return (
     <footer style={{ background: "#EFE9DA", borderTop: "1px solid #e2d6bd", padding: "28px 56px" }}>
@@ -6,7 +8,19 @@ export function SiteFooter() {
         style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}
       >
         <div style={{ fontSize: 13, color: "#8c8068", textAlign: "right", lineHeight: 1.7 }}>
-          contact@plein-r.fr · Bassin de Pompey
+          <ContactModalButton
+            label="Nous contacter"
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              font: "inherit",
+              color: "#9a6638",
+              fontWeight: 700,
+              textDecoration: "underline",
+            }}
+          />
+          {" · Bassin de Pompey"}
           <br />
           Réseau · Rencontre · Réussite
         </div>

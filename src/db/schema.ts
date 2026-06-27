@@ -25,6 +25,11 @@ export const requestStatusEnum = pgEnum("request_status", [
   "approved",
   "rejected",
 ]);
+export const contactStatusEnum = pgEnum("contact_status", [
+  "new",
+  "read",
+  "archived",
+]);
 
 // ---- Categories (métiers) ----
 export const categories = pgTable("categories", {
@@ -99,6 +104,17 @@ export const membershipRequests = pgTable("membership_requests", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ---- Contact messages (formulaire de contact) ----
+export const contactMessages = pgTable("contact_messages", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  email: varchar("email", { length: 200 }).notNull(),
+  subject: varchar("subject", { length: 200 }),
+  message: text("message").notNull(),
+  status: contactStatusEnum("status").notNull().default("new"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ---- Activity log (activité récente) ----
 export const activityLog = pgTable("activity_log", {
   id: serial("id").primaryKey(),
@@ -135,4 +151,5 @@ export type Member = typeof members.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Promotion = typeof promotions.$inferSelect;
 export type MembershipRequest = typeof membershipRequests.$inferSelect;
+export type ContactMessage = typeof contactMessages.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
