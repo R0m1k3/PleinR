@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { categories, members } from "@/db/schema";
 import { can } from "@/lib/rbac";
+import { ImageField } from "@/components/ImageField";
 import { deleteMember, updateMember } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -108,6 +109,11 @@ export default async function EditMemberPage({
               <option value="active">Actif</option>
             </select>
           </div>
+        </div>
+
+        <div className="grid grid-2" style={{ gap: 16, marginTop: 16 }}>
+          <ImageField name="coverUrl" label="Image d'entête (bannière)" defaultValue={member.coverUrl ?? ""} height={130} />
+          <ImageField name="logoUrl" label="Logo" defaultValue={member.logoUrl ?? ""} height={130} />
         </div>
 
         <div style={{ marginTop: 16 }}>
