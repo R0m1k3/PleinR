@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { addMember } from "../actions";
 
 export function AddMemberPanel({
@@ -9,6 +10,7 @@ export function AddMemberPanel({
   categories: { id: number; label: string }[];
 }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -25,8 +27,10 @@ export function AddMemberPanel({
       {open && (
         <form
           action={async (fd) => {
-            await addMember(fd);
+            const id = await addMember(fd);
             setOpen(false);
+            // Redirige vers la fiche : le login + mot de passe temporaire y sont affichés.
+            if (id) router.push(`/backend/adherents/${id}`);
           }}
           style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 22, marginTop: 14 }}
         >

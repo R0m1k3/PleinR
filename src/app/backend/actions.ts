@@ -114,12 +114,12 @@ export async function publishPromo(formData: FormData) {
 }
 
 // ---- Members CRUD ----
-export async function addMember(formData: FormData) {
+export async function addMember(formData: FormData): Promise<number | undefined> {
   const { role } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
+  if (!name) return undefined;
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email) throw new Error("L'e-mail est requis pour créer le compte de l'adhérent.");
   const categoryId = formData.get("categoryId") ? Number(formData.get("categoryId")) : null;
@@ -154,6 +154,7 @@ export async function addMember(formData: FormData) {
   revalidatePath("/backend/adherents");
   revalidatePath("/backend");
   revalidatePath("/");
+  return newMember.id;
 }
 
 // Crée des comptes de connexion pour les adhérents existants qui n'en ont pas
