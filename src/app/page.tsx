@@ -233,7 +233,7 @@ export default async function AccueilPage() {
                 <div
                   style={{
                     position: "relative",
-                    height: 168,
+                    aspectRatio: "1200 / 630",
                     background: STRIPE_WARM,
                     overflow: "hidden",
                     display: "flex",

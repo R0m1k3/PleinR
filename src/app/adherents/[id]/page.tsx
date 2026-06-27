@@ -267,7 +267,7 @@ export default async function FicheAdherentPage({
               ) : (
                 promos.map((p, idx) => (
                   <article key={p.id} className="lift" style={{ border: "1px solid #ece3d0", borderRadius: 16, overflow: "hidden", marginBottom: idx === promos.length - 1 ? 0 : 14 }}>
-                    <div style={{ position: "relative", height: 120, background: STRIPE_WARM, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ position: "relative", aspectRatio: "1200 / 630", background: STRIPE_WARM, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title} />}
                       {!p.imageUrl && (<span style={{ fontSize: 10, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>photo de l&apos;offre</span>)}
                       {p.badge && (
