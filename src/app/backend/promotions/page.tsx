@@ -75,7 +75,7 @@ export default async function PromotionsPage() {
               <div
                 style={{
                   position: "relative",
-                  aspectRatio: "1200 / 630",
+                  aspectRatio: "1 / 1",
                   background: isPending ? STRIPE_COOL : STRIPE_WARM,
                   overflow: "hidden",
                   display: "flex",

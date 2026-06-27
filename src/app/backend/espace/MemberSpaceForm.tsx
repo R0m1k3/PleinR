@@ -105,7 +105,7 @@ export function MemberSpaceForm({
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: "#6c6150" }}>
                   Cliquez pour choisir une image
                 </div>
-                <div style={{ fontSize: 12, color: "#a99c82" }}>JPG ou PNG · 1200×630 conseillé</div>
+                <div style={{ fontSize: 12, color: "#a99c82" }}>JPG ou PNG · image carrée conseillée (ex. 1080×1080)</div>
               </>
             )}
           </div>
@@ -188,7 +188,7 @@ export function MemberSpaceForm({
           <div
             style={{
               position: "relative",
-              aspectRatio: "1200 / 630",
+              aspectRatio: "1 / 1",
               background: STRIPE_WARM,
               overflow: "hidden",
               display: "flex",
