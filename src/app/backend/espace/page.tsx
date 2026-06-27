@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { categories, members, promotions, type Member } from "@/db/schema";
 import { ImageField } from "@/components/ImageField";
+import { communeOptions } from "@/lib/communes";
 import { updateOwnProfile } from "../actions";
 import { MemberSpaceForm } from "./MemberSpaceForm";
 
@@ -96,7 +97,14 @@ export default async function EspacePage() {
             </div>
             <div>
               <label className="field-label">Commune</label>
-              <input name="city" defaultValue={profile.city ?? ""} className="field" />
+              <select name="city" className="field" defaultValue={profile.city ?? ""}>
+                <option value="">—</option>
+                {communeOptions(profile.city).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="field-label">Adresse</label>

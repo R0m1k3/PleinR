@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { categories, members, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
 import { ImageField } from "@/components/ImageField";
+import { communeOptions } from "@/lib/communes";
 import { deleteMember, resetMemberPassword, updateMember } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -93,7 +94,14 @@ export default async function EditMemberPage({
           </div>
           <div>
             <label className="field-label">Commune</label>
-            <input name="city" defaultValue={member.city ?? ""} className="field" />
+            <select name="city" className="field" defaultValue={member.city ?? ""}>
+              <option value="">—</option>
+              {communeOptions(member.city).map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="field-label">Adresse</label>

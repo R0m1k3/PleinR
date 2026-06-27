@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { BASSIN_POMPEY_COMMUNES } from "@/lib/communes";
 import { addMember } from "../actions";
 
 export function AddMemberPanel({
@@ -56,7 +57,14 @@ export function AddMemberPanel({
             </div>
             <div>
               <label className="field-label">Commune</label>
-              <input name="city" placeholder="ex : Pompey" className="field" />
+              <select name="city" className="field" defaultValue="">
+                <option value="">—</option>
+                {BASSIN_POMPEY_COMMUNES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="field-label">Statut</label>
