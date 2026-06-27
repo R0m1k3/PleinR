@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export type CarouselMember = {
@@ -17,15 +18,18 @@ export type CarouselMember = {
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
 
-function Card({ m }: { m: CarouselMember }) {
+const VISIBLE = 3;
+const INTERVAL_MS = 20_000;
+const STAGGER_MS = 220; // décalage de disparition/apparition entre cartes
+const FADE_MS = 450;
+
+function Card({ m, visible, index }: { m: CarouselMember; visible: boolean; index: number }) {
   const image = m.coverUrl || m.logoUrl;
   return (
     <Link
       href={`/adherents/${m.id}`}
       className="lift-card"
       style={{
-        flex: "0 0 300px",
-        width: 300,
         background: "#fff",
         border: "1px solid #e6dcc6",
         borderRadius: 18,
@@ -33,6 +37,10 @@ function Card({ m }: { m: CarouselMember }) {
         textDecoration: "none",
         color: "inherit",
         display: "block",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(14px)",
+        transition: `opacity ${FADE_MS}ms ease, transform ${FADE_MS}ms ease`,
+        transitionDelay: `${index * STAGGER_MS}ms`,
       }}
     >
       <div
@@ -73,20 +81,44 @@ function Card({ m }: { m: CarouselMember }) {
 }
 
 export function MembersCarousel({ members }: { members: CarouselMember[] }) {
-  if (members.length === 0) return null;
+  const [start, setStart] = useState(0);
+  const [visible, setVisible] = useState(true);
 
-  // Vitesse proportionnelle au nombre de cartes (≈ 6 s par carte).
-  const duration = Math.max(20, members.length * 6);
-  // Doublé pour un défilement en boucle sans couture.
-  const loop = [...members, ...members];
+  const total = members.length;
+  const canRotate = total > VISIBLE;
+
+  useEffect(() => {
+    if (!canRotate) return;
+    // Respecte la préférence de réduction d'animation.
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    const tick = setInterval(() => {
+      if (reduce) {
+        setStart((s) => (s + VISIBLE) % total);
+        return;
+      }
+      // Disparition une à une, puis changement, puis réapparition une à une.
+      setVisible(false);
+      const outMs = FADE_MS + STAGGER_MS * (VISIBLE - 1);
+      setTimeout(() => {
+        setStart((s) => (s + VISIBLE) % total);
+        setVisible(true);
+      }, outMs);
+    }, INTERVAL_MS);
+
+    return () => clearInterval(tick);
+  }, [canRotate, total]);
+
+  if (total === 0) return null;
+
+  // Fenêtre de 3 cartes, avec bouclage propre si on dépasse la fin.
+  const shown = Array.from({ length: Math.min(VISIBLE, total) }, (_, i) => members[(start + i) % total]);
 
   return (
-    <div className="pleinr-marquee" aria-label="Adhérents à l'honneur">
-      <div className="pleinr-marquee-track" style={{ animationDuration: `${duration}s` }}>
-        {loop.map((m, i) => (
-          <Card key={`${m.id}-${i}`} m={m} />
-        ))}
-      </div>
+    <div className="grid grid-3" style={{ gap: 18 }}>
+      {shown.map((m, i) => (
+        <Card key={i} m={m} visible={visible} index={i} />
+      ))}
     </div>
   );
 }
