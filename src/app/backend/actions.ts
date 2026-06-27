@@ -429,6 +429,54 @@ export async function updateOwnProfile(formData: FormData) {
   revalidatePath("/");
 }
 
+// Approuve une demande d'adhésion ET crée directement l'adhérent + son compte
+// de connexion (mot de passe temporaire). Renvoie l'id du nouvel adhérent.
+export async function approveMembershipRequest(formData: FormData): Promise<number | undefined> {
+  const { role } = await requireRole();
+  if (!can(role, "manageMembers")) throw new Error("Accès refusé");
+
+  const id = Number(formData.get("id"));
+  if (!id) return undefined;
+
+  const [req] = await db.select().from(membershipRequests).where(eq(membershipRequests.id, id));
+  if (!req) throw new Error("Demande introuvable.");
+
+  const email = (req.email ?? "").trim().toLowerCase();
+  if (!email) {
+    throw new Error("Cette demande n'a pas d'e-mail : impossible de créer le compte. Créez l'adhérent manuellement.");
+  }
+
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
+  if (existing.length > 0) {
+    throw new Error("Un compte existe déjà avec cet e-mail.");
+  }
+
+  const [newMember] = await db
+    .insert(members)
+    .values({ name: req.name, email, status: "active" })
+    .returning({ id: members.id });
+
+  const tempPassword = generateTempPassword();
+  await db.insert(users).values({
+    name: req.name,
+    email,
+    role: "member",
+    memberId: newMember.id,
+    passwordHash: await bcrypt.hash(tempPassword, 10),
+    tempPassword,
+    mustChangePassword: true,
+  });
+
+  await db.update(membershipRequests).set({ status: "approved" }).where(eq(membershipRequests.id, id));
+  await logActivity(`Demande approuvée : adhérent <strong>${req.name}</strong> créé`, "#1f8a5b");
+
+  revalidatePath("/backend/demandes");
+  revalidatePath("/backend/adherents");
+  revalidatePath("/backend");
+  revalidatePath("/");
+  return newMember.id;
+}
+
 // ---- Inbox: membership requests + contact messages ----
 export async function setRequestStatus(formData: FormData) {
   const { role } = await requireRole();

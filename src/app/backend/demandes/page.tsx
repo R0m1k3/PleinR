@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { contactMessages, membershipRequests } from "@/db/schema";
 import { can } from "@/lib/rbac";
-import { setContactStatus, setRequestStatus } from "../actions";
+import { approveMembershipRequest, setContactStatus, setRequestStatus } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +51,14 @@ export default async function DemandesPage() {
     db.select().from(contactMessages).orderBy(desc(contactMessages.createdAt)),
   ]);
 
+  // Approuver = créer l'adhérent + son compte, puis aller sur sa fiche
+  // (login + mot de passe temporaire y sont affichés).
+  async function handleApprove(fd: FormData) {
+    "use server";
+    const id = await approveMembershipRequest(fd);
+    redirect(id ? `/backend/adherents/${id}` : "/backend/demandes");
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
       {/* ---- Demandes d'adhésion ---- */}
@@ -72,10 +80,9 @@ export default async function DemandesPage() {
               </div>
               <StatusPill map={REQ_STATUS} status={r.status} />
               <div style={{ display: "flex", gap: 8 }}>
-                <form action={setRequestStatus}>
+                <form action={handleApprove}>
                   <input type="hidden" name="id" value={r.id} />
-                  <input type="hidden" name="status" value="approved" />
-                  <ActionBtn color="#1f8a5b">Approuver</ActionBtn>
+                  <ActionBtn color="#1f8a5b">Approuver &amp; créer</ActionBtn>
                 </form>
                 <form action={setRequestStatus}>
                   <input type="hidden" name="id" value={r.id} />
