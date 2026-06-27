@@ -100,7 +100,9 @@ export default async function FicheAdherentPage({
             style={{
               position: "relative",
               height: 230,
-              background: member.coverUrl ? `url(${member.coverUrl})` : COVER_STRIPE,
+              background: (member.coverUrl || member.logoUrl)
+                ? `url(${member.coverUrl || member.logoUrl})`
+                : COVER_STRIPE,
               backgroundSize: "cover",
               backgroundPosition: "center",
               display: "flex",
@@ -108,7 +110,7 @@ export default async function FicheAdherentPage({
               justifyContent: "center",
             }}
           >
-            {!member.coverUrl && (
+            {!(member.coverUrl || member.logoUrl) && (
               <span style={{ fontSize: 11, letterSpacing: "0.14em", color: "#b3a888", textTransform: "uppercase" }}>photo de couverture</span>
             )}
             <Sparkle color={accent} size={20} style={{ top: 20, right: 24 }} duration={3.2} />
