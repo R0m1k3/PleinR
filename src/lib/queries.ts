@@ -10,6 +10,8 @@ export async function getActiveMembersWithCategory() {
       description: members.description,
       city: members.city,
       address: members.address,
+      coverUrl: members.coverUrl,
+      logoUrl: members.logoUrl,
       categoryLabel: categories.label,
       accent: categories.accent,
     })

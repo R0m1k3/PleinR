@@ -9,6 +9,8 @@ export type DirectoryMember = {
   description: string | null;
   city: string | null;
   address: string | null;
+  coverUrl: string | null;
+  logoUrl: string | null;
   categoryLabel: string | null;
   accent: string | null;
   hasPromo: boolean;
@@ -187,7 +189,9 @@ export function AnnuaireClient({
       {/* grid / empty */}
       {list.length > 0 ? (
         <div className="grid grid-3" style={{ gap: 20 }}>
-          {list.map((m, i) => (
+          {list.map((m, i) => {
+            const image = m.coverUrl || m.logoUrl;
+            return (
             <Link
               key={m.id}
               href={`/adherents/${m.id}`}
@@ -198,15 +202,19 @@ export function AnnuaireClient({
                 style={{
                   position: "relative",
                   height: 150,
-                  background: i % 2 === 0 ? STRIPE_WARM : STRIPE_COOL,
+                  background: image
+                    ? `center/cover no-repeat url(${image})`
+                    : i % 2 === 0 ? STRIPE_WARM : STRIPE_COOL,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <span style={{ fontSize: 10, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>
-                  photo vitrine
-                </span>
+                {!image && (
+                  <span style={{ fontSize: 10, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>
+                    photo vitrine
+                  </span>
+                )}
                 {m.categoryLabel && (
                   <span style={{ position: "absolute", top: 12, left: 12, background: m.accent ?? "#9a6638", color: "#fff", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
                     {m.categoryLabel}
@@ -231,7 +239,8 @@ export function AnnuaireClient({
                 </div>
               </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div style={{ background: "#fff", border: "1px dashed #d8cdb4", borderRadius: 18, padding: 54, textAlign: "center" }}>
