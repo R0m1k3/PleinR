@@ -174,7 +174,7 @@ export default async function AssociationPage() {
               const remaining = Math.max(0, meeting.capacity - registered);
               const isRegistered = myMeetingIds.has(meeting.id);
               return (
-                <article key={meeting.id} className="lift" style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 12, overflow: "hidden" }}>
+                <article id={`rencontre-${meeting.id}`} key={meeting.id} className="lift" style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 12, overflow: "hidden", scrollMarginTop: 100 }}>
                   <div style={{ aspectRatio: "16 / 10", background: meeting.imageUrl ? `center/cover no-repeat url(${meeting.imageUrl})` : "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)" }} />
                   <div style={{ padding: 18 }}>
                     <div style={{ color: "#9a6638", fontSize: 12.5, fontWeight: 800 }}>

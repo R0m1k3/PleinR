@@ -16,6 +16,7 @@ const TITLES: Record<string, [string, string]> = {
     "Validez les offres soumises par les adhérents",
   ],
   "/backend/rencontres": ["Rencontres", "Gérer les prochaines dates et les archives"],
+  "/backend/emails": ["Création d'e-mails", "Composer des messages aux couleurs de Plein R"],
   "/backend/administrateurs": ["Administrateurs", "Gérer les accès à l'administration"],
   "/backend/categories": ["Catégories", "Gérer les métiers de l'annuaire"],
   "/backend/parametres": ["Paramètres du site", "Configurer l'association et les mentions légales"],
@@ -146,6 +147,11 @@ export function BackendShell({
               {can(user.role, "manageMeetings") && (
                 <NavLink href="/backend/rencontres" active={pathname === "/backend/rencontres"}>
                   {dotRound}Rencontres
+                </NavLink>
+              )}
+              {can(user.role, "manageEmails") && (
+                <NavLink href="/backend/emails" active={pathname === "/backend/emails"}>
+                  {dot}E-mails
                 </NavLink>
               )}
               {can(user.role, "manageCategories") && (

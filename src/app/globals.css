@@ -456,3 +456,87 @@ img {
   margin-bottom: 6px;
 }
 
+/* ---- Studio e-mail Plein R ---- */
+.email-workbench {
+  display: grid;
+  grid-template-columns: 370px minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+.email-editor-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-top: 5px solid var(--gold);
+  border-radius: 16px;
+  padding: 23px;
+  box-shadow: 0 22px 44px -38px rgba(19, 50, 79, 0.75);
+}
+.email-editor-kicker {
+  color: var(--brown);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.email-preview-shell {
+  border: 1px solid #d8cdb4;
+  border-radius: 15px;
+  overflow: hidden;
+  background: #f6f2e8;
+  box-shadow: 0 24px 48px -38px rgba(19, 50, 79, 0.65);
+}
+.email-preview-shell iframe {
+  display: block;
+  width: 100%;
+  height: 760px;
+  border: 0;
+  background: #f6f2e8;
+}
+.email-preview-shell.compact iframe {
+  height: 590px;
+}
+.email-primary-button,
+.email-secondary-button,
+.meeting-email-button {
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.email-primary-button {
+  border: 1px solid #13324f;
+  background: #13324f;
+  color: #fff;
+}
+.email-secondary-button {
+  border: 1px solid #d8cdb4;
+  background: #fff;
+  color: #5a5040;
+}
+.email-primary-button:hover { background: #1e588f; }
+.email-secondary-button:hover { border-color: #9a6638; color: #9a6638; }
+.email-primary-button:disabled,
+.email-secondary-button:disabled { opacity: 0.5; cursor: wait; }
+.meeting-email-button {
+  width: 100%;
+  margin-top: 9px;
+  border: 1px solid #d6b66f;
+  background: #fff8e8;
+  color: #7a5428;
+}
+.meeting-email-button:hover { background: #f7e8bf; }
+.meeting-email-workbench {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .email-workbench,
+  .meeting-email-workbench { grid-template-columns: 1fr; }
+  .email-preview-shell iframe { height: 620px; }
+}
+

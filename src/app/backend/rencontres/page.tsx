@@ -5,7 +5,9 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { meetingRegistrations, meetings, pastMeetingPhotos, pastMeetings } from "@/db/schema";
 import { ImageField } from "@/components/ImageField";
+import { MeetingEmailComposer } from "@/components/MeetingEmailComposer";
 import { can } from "@/lib/rbac";
+import { getSiteSettings } from "@/lib/site-settings";
 import {
   addPastMeetingPhoto,
   createMeeting,
@@ -56,6 +58,14 @@ export default async function RencontresAdminPage() {
     .select()
     .from(pastMeetingPhotos)
     .orderBy(asc(pastMeetingPhotos.position), asc(pastMeetingPhotos.id));
+  const settings = await getSiteSettings();
+  const emailBrand = {
+    associationName: settings.association_name,
+    address: settings.association_address,
+    email: settings.association_email,
+    phone: settings.association_phone,
+    siret: settings.association_siret,
+  };
 
   const photosByPast = new Map<number, typeof photos>();
   for (const photo of photos) {
@@ -131,6 +141,18 @@ export default async function RencontresAdminPage() {
                 </div>
                 <button type="submit" style={primaryButton}>Enregistrer</button>
               </form>
+              <MeetingEmailComposer
+                meeting={{
+                  id: meeting.id,
+                  title: meeting.title,
+                  startsAt: meeting.startsAt.toISOString(),
+                  location: meeting.location,
+                  description: meeting.description,
+                  capacity: meeting.capacity,
+                  registered: Number(meeting.registered),
+                }}
+                brand={emailBrand}
+              />
               <form action={deleteMeeting} style={{ marginTop: 8 }}>
                 <input type="hidden" name="id" value={meeting.id} />
                 <button type="submit" style={dangerButton}>Supprimer</button>
