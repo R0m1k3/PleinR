@@ -57,7 +57,7 @@ export default async function PromotionsPage() {
         </div>
       )}
 
-      <div className="grid grid-3" style={{ gap: 18, width: "100%", maxWidth: 1096 }}>
+      <div className="grid grid-3" style={{ gap: 16, width: "100%", maxWidth: 960 }}>
         {ordered.map((p) => {
           const isPending = p.status === "pending";
           return (
@@ -75,7 +75,7 @@ export default async function PromotionsPage() {
               <div
                 style={{
                   position: "relative",
-                  aspectRatio: "1 / 1",
+                  aspectRatio: "4 / 3",
                   background: isPending ? STRIPE_COOL : STRIPE_WARM,
                   overflow: "hidden",
                   display: "flex",
@@ -105,14 +105,14 @@ export default async function PromotionsPage() {
                   {isPending ? "En attente" : "En ligne"}
                 </span>
               </div>
-              <div style={{ padding: "15px 16px 16px", display: "flex", flexDirection: "column", flex: 1 }}>
-                <h3 className="font-display" style={{ fontWeight: 700, fontSize: 16.5, margin: "0 0 4px", color: "#26201a" }}>
+              <div style={{ padding: "13px 14px 14px", display: "flex", flexDirection: "column", flex: 1 }}>
+                <h3 className="font-display" style={{ fontWeight: 700, fontSize: 15.5, margin: "0 0 4px", color: "#26201a" }}>
                   {p.title}
                 </h3>
                 <div style={{ fontSize: 12.5, color: "#9a6638", fontWeight: 600, marginBottom: 8 }}>
                   {p.memberName}
                 </div>
-                <p style={{ margin: "0 0 14px", fontSize: 13, color: "#8c8068", lineHeight: 1.5, flex: 1 }}>
+                <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "#8c8068", lineHeight: 1.45, flex: 1 }}>
                   {p.text}
                 </p>
 

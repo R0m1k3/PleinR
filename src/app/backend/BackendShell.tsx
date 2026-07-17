@@ -15,8 +15,10 @@ const TITLES: Record<string, [string, string]> = {
     "Modération des promotions",
     "Validez les offres soumises par les adhérents",
   ],
+  "/backend/rencontres": ["Rencontres", "Gérer les prochaines dates et les archives"],
   "/backend/administrateurs": ["Administrateurs", "Gérer les accès à l'administration"],
   "/backend/categories": ["Catégories", "Gérer les métiers de l'annuaire"],
+  "/backend/parametres": ["Paramètres du site", "Configurer l'association et les mentions légales"],
   "/backend/espace": ["Mon espace adhérent", "Publiez et suivez vos promotions"],
   "/backend/changer-mot-de-passe": ["Mot de passe", "Sécurisez votre compte"],
 };
@@ -141,9 +143,19 @@ export function BackendShell({
                   </span>
                 </NavLink>
               )}
+              {can(user.role, "manageMeetings") && (
+                <NavLink href="/backend/rencontres" active={pathname === "/backend/rencontres"}>
+                  {dotRound}Rencontres
+                </NavLink>
+              )}
               {can(user.role, "manageCategories") && (
                 <NavLink href="/backend/categories" active={pathname === "/backend/categories"}>
                   {dotDiamond}Catégories
+                </NavLink>
+              )}
+              {can(user.role, "manageSettings") && (
+                <NavLink href="/backend/parametres" active={pathname === "/backend/parametres"}>
+                  {dot}Paramètres
                 </NavLink>
               )}
               {can(user.role, "manageAdmins") && (

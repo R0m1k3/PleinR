@@ -4,7 +4,7 @@ const NAV = [
   { key: "accueil", label: "Accueil", href: "/" },
   { key: "annuaire", label: "Annuaire", href: "/annuaire" },
   { key: "promotions", label: "Promotions", href: "/#promotions" },
-  { key: "association", label: "L'association", href: "#" },
+  { key: "association", label: "L'association", href: "/association" },
 ];
 
 export function SiteHeader({ active, logo = false }: { active?: string; logo?: boolean }) {

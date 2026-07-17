@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, sql } from "drizzle-orm";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { and, eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { auth, signOut } from "@/auth";
 import { db } from "@/db";
@@ -9,12 +11,19 @@ import {
   activityLog,
   categories,
   contactMessages,
+  imageConsents,
+  meetingRegistrations,
+  meetings,
   members,
   membershipRequests,
+  pastMeetingPhotos,
+  pastMeetings,
   promotions,
+  siteSettings,
   users,
 } from "@/db/schema";
 import { can, LABEL_TO_ROLE } from "@/lib/rbac";
+import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
 
 const CATEGORY_PALETTE = [
@@ -60,6 +69,21 @@ async function requireRole(): Promise<{ role: AppRole; memberId: number | null; 
     memberId: session.user.memberId,
     name: session.user.name ?? "Adhérent",
   };
+}
+
+function asString(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+function asDate(formData: FormData, key: string) {
+  const raw = asString(formData, key);
+  const date = raw ? new Date(raw) : null;
+  if (!date || Number.isNaN(date.getTime())) throw new Error("Date invalide");
+  return date;
+}
+
+function asNullableString(formData: FormData, key: string) {
+  return asString(formData, key) || null;
 }
 
 // ---- Promotion moderation ----
@@ -368,6 +392,247 @@ export async function deleteCategory(formData: FormData) {
   revalidatePath("/backend/categories");
   revalidatePath("/backend/adherents");
   revalidatePath("/annuaire");
+}
+
+// ---- Rencontres ----
+export async function createMeeting(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+
+  const title = asString(formData, "title");
+  if (!title) return;
+  await db.insert(meetings).values({
+    title,
+    startsAt: asDate(formData, "startsAt"),
+    location: asNullableString(formData, "location"),
+    description: asNullableString(formData, "description"),
+    capacity: Number(formData.get("capacity") ?? 30) || 30,
+    imageUrl: asNullableString(formData, "imageUrl"),
+  });
+  await logActivity(`Rencontre ajoutée : <strong>${title}</strong>`, "#2C6FB3");
+  revalidatePath("/backend/rencontres");
+  revalidatePath("/association");
+}
+
+export async function updateMeeting(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+
+  const id = Number(formData.get("id"));
+  const title = asString(formData, "title");
+  if (!id || !title) return;
+  await db
+    .update(meetings)
+    .set({
+      title,
+      startsAt: asDate(formData, "startsAt"),
+      location: asNullableString(formData, "location"),
+      description: asNullableString(formData, "description"),
+      capacity: Number(formData.get("capacity") ?? 30) || 30,
+      imageUrl: asNullableString(formData, "imageUrl"),
+    })
+    .where(eq(meetings.id, id));
+  revalidatePath("/backend/rencontres");
+  revalidatePath("/association");
+}
+
+export async function deleteMeeting(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  await db.delete(meetings).where(eq(meetings.id, id));
+  revalidatePath("/backend/rencontres");
+  revalidatePath("/association");
+}
+
+export async function registerForMeeting(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.memberId) throw new Error("Compte adhérent requis");
+  const memberId = session.user.memberId;
+  const meetingId = Number(formData.get("meetingId"));
+  if (!meetingId) return;
+
+  await db.transaction(async (tx) => {
+    const [meeting] = await tx.select().from(meetings).where(eq(meetings.id, meetingId));
+    if (!meeting) throw new Error("Rencontre introuvable");
+    if (meeting.startsAt.getTime() < Date.now()) throw new Error("Cette rencontre est passée");
+
+    const duplicate = await tx
+      .select({ id: meetingRegistrations.id })
+      .from(meetingRegistrations)
+      .where(and(eq(meetingRegistrations.meetingId, meetingId), eq(meetingRegistrations.memberId, memberId)));
+    if (duplicate.length > 0) return;
+
+    const [{ total } = { total: 0 }] = await tx
+      .select({ total: sql<number>`count(*)` })
+      .from(meetingRegistrations)
+      .where(eq(meetingRegistrations.meetingId, meetingId));
+    if (Number(total) >= meeting.capacity) throw new Error("Rencontre complète");
+
+    const [member] = await tx
+      .select({ name: members.name, email: members.email })
+      .from(members)
+      .where(eq(members.id, memberId));
+    await tx.insert(meetingRegistrations).values({
+      meetingId,
+      memberId,
+      attendeeName: member?.name ?? session.user.name ?? "Adhérent",
+      attendeeEmail: member?.email ?? session.user.email ?? null,
+      imageConsent: formData.get("imageConsent") === "on",
+    });
+  });
+
+  revalidatePath("/association");
+  revalidatePath("/backend/espace");
+}
+
+export async function cancelMeetingRegistration(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.memberId) throw new Error("Compte adhérent requis");
+  const meetingId = Number(formData.get("meetingId"));
+  if (!meetingId) return;
+  await db
+    .delete(meetingRegistrations)
+    .where(
+      and(
+        eq(meetingRegistrations.meetingId, meetingId),
+        eq(meetingRegistrations.memberId, session.user.memberId)
+      )
+    );
+  revalidatePath("/association");
+  revalidatePath("/backend/espace");
+}
+
+export async function createPastMeeting(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+  const title = asString(formData, "title");
+  if (!title) return;
+  await db.insert(pastMeetings).values({
+    title,
+    eventDate: asDate(formData, "eventDate"),
+    location: asNullableString(formData, "location"),
+    description: asNullableString(formData, "description"),
+    participants: asNullableString(formData, "participants"),
+    meetingId: formData.get("meetingId") ? Number(formData.get("meetingId")) : null,
+  });
+  revalidatePath("/backend/rencontres");
+  revalidatePath("/association");
+}
+
+export async function updatePastMeeting(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  const title = asString(formData, "title");
+  if (!id || !title) return;
+  await db
+    .update(pastMeetings)
+    .set({
+      title,
+      eventDate: asDate(formData, "eventDate"),
+      location: asNullableString(formData, "location"),
+      description: asNullableString(formData, "description"),
+      participants: asNullableString(formData, "participants"),
+      meetingId: formData.get("meetingId") ? Number(formData.get("meetingId")) : null,
+    })
+    .where(eq(pastMeetings.id, id));
+  revalidatePath("/backend/rencontres");
+  revalidatePath("/association");
+}
+
+export async function deletePastMeeting(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  await db.delete(pastMeetings).where(eq(pastMeetings.id, id));
+  revalidatePath("/backend/rencontres");
+  revalidatePath("/association");
+}
+
+export async function addPastMeetingPhoto(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+  const pastMeetingId = Number(formData.get("pastMeetingId"));
+  const imageUrl = asString(formData, "imageUrl");
+  if (!pastMeetingId || !imageUrl) return;
+  const [{ max } = { max: 0 }] = await db
+    .select({ max: sql<number>`coalesce(max(${pastMeetingPhotos.position}), 0)` })
+    .from(pastMeetingPhotos)
+    .where(eq(pastMeetingPhotos.pastMeetingId, pastMeetingId));
+  await db.insert(pastMeetingPhotos).values({
+    pastMeetingId,
+    imageUrl,
+    caption: asNullableString(formData, "caption"),
+    position: Number(max) + 1,
+  });
+  revalidatePath("/backend/rencontres");
+  revalidatePath("/association");
+}
+
+export async function deletePastMeetingPhoto(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  await db.delete(pastMeetingPhotos).where(eq(pastMeetingPhotos.id, id));
+  revalidatePath("/backend/rencontres");
+  revalidatePath("/association");
+}
+
+// ---- Paramètres du site ----
+export async function saveSiteSettings(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageSettings")) throw new Error("Accès refusé");
+  const updatedAt = new Date();
+
+  for (const key of Object.keys(SITE_SETTING_DEFAULTS)) {
+    await db
+      .insert(siteSettings)
+      .values({ key, value: asString(formData, key), updatedAt })
+      .onConflictDoUpdate({
+        target: siteSettings.key,
+        set: { value: asString(formData, key), updatedAt },
+      });
+  }
+
+  revalidatePath("/backend/parametres");
+  revalidatePath("/association");
+  revalidatePath("/mentions-legales");
+  revalidatePath("/confidentialite");
+  revalidatePath("/");
+}
+
+// ---- RGPD / droit à l'image ----
+export async function saveImageConsent(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.memberId) throw new Error("Compte adhérent requis");
+
+  const decision = asString(formData, "decision");
+  if (!["accepted", "refused"].includes(decision)) throw new Error("Décision invalide");
+  const signatoryName = asString(formData, "signatoryName") || session.user.name || "Adhérent";
+  const signaturePng = asString(formData, "signaturePng");
+  if (decision === "accepted" && !signaturePng) {
+    throw new Error("Signature requise pour autoriser le droit à l'image");
+  }
+  const h = await headers();
+
+  await db.insert(imageConsents).values({
+    memberId: session.user.memberId,
+    decision,
+    scopes: decision === "accepted" ? "site,social,print" : "",
+    signatoryName,
+    signaturePng: decision === "accepted" ? signaturePng : null,
+    consentVersion: "2026-07-v1",
+    ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+    userAgent: h.get("user-agent") ?? null,
+  });
+
+  revalidatePath("/backend");
+  revalidatePath("/backend/espace");
+  redirect("/backend/espace");
 }
 
 // ---- Self password change (forced at first login) ----

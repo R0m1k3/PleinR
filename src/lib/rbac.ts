@@ -20,6 +20,8 @@ type Capability =
   | "moderatePromos"
   | "manageAdmins"
   | "manageCategories"
+  | "manageMeetings"
+  | "manageSettings"
   | "memberSpace";
 
 const CAPABILITIES: Record<AppRole, Capability[]> = {
@@ -29,9 +31,11 @@ const CAPABILITIES: Record<AppRole, Capability[]> = {
     "moderatePromos",
     "manageAdmins",
     "manageCategories",
+    "manageMeetings",
+    "manageSettings",
     "memberSpace",
   ],
-  moderator: ["viewDashboard", "manageMembers", "moderatePromos"],
+  moderator: ["viewDashboard", "manageMembers", "moderatePromos", "manageMeetings"],
   editor: ["viewDashboard", "manageMembers"],
   member: ["memberSpace"],
 };

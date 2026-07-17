@@ -1,30 +1,44 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
   title: "Mentions légales — Plein R",
   description: "Mentions légales du site de l'association Plein R.",
 };
 
-export default function MentionsLegalesPage() {
+export const dynamic = "force-dynamic";
+
+function value(input: string, fallback = "à renseigner") {
+  return input || fallback;
+}
+
+export default async function MentionsLegalesPage() {
+  const settings = await getSiteSettings();
+
   return (
-    <LegalPage title="Mentions légales" intro="Informations relatives à l’édition et à l’utilisation du site Plein R.">
+    <LegalPage title="Mentions légales" intro={`Informations relatives à l’édition et à l’utilisation du site ${settings.association_name}.`}>
       <h2>Éditeur du site</h2>
       <p>
-        Ce site est édité par Plein R, association des commerçants et entreprises du Bassin de Pompey.
+        Ce site est édité par {settings.association_name}, association des commerçants et entreprises du Bassin de Pompey.
       </p>
       <ul>
-        <li>Siège social : à compléter par l’association</li>
-        <li>Numéro RNA et, le cas échéant, SIREN : à compléter par l’association</li>
-        <li>Direction de la publication : à compléter par l’association</li>
+        <li>Siège social : {value(settings.association_address)}</li>
+        <li>RNA : {value(settings.association_rna)}</li>
+        <li>SIRET : {value(settings.association_siret)}</li>
+        <li>Direction de la publication : {value(settings.association_publication_director || settings.association_president)}</li>
       </ul>
-      <p>Pour contacter Plein R, utilisez le formulaire « Nous contacter » disponible en pied de page.</p>
+      <p>
+        Contact : {value(settings.association_email || settings.association_contact)}{" "}
+        {settings.association_phone ? `- ${settings.association_phone}` : ""}
+      </p>
 
       <h2>Hébergement</h2>
-      <p>
-        Nom, raison sociale, adresse et numéro de téléphone de l’hébergeur : à compléter par l’association
-        dès que l’hébergement de production est choisi.
-      </p>
+      <ul>
+        <li>Hébergeur : {value(settings.association_host_name)}</li>
+        <li>Adresse : {value(settings.association_host_address)}</li>
+        <li>Téléphone : {value(settings.association_host_phone)}</li>
+      </ul>
 
       <h2>Propriété intellectuelle</h2>
       <p>
@@ -38,6 +52,7 @@ export default function MentionsLegalesPage() {
         Plein R veille à la qualité des informations publiées, sans pouvoir garantir leur exhaustivité permanente.
         Les offres, coordonnées et contenus des adhérents relèvent de la responsabilité de leurs auteurs.
       </p>
+      {settings.legal_updated && <p>Dernière mise à jour : {settings.legal_updated}</p>}
     </LegalPage>
   );
 }

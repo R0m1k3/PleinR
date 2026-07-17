@@ -24,6 +24,7 @@ export function SiteFooter() {
             <div className="footer-links">
               <Link href="/annuaire">Annuaire</Link>
               <Link href="/#promotions">Promotions</Link>
+              <Link href="/association">Association</Link>
               <Link href="/login">Connexion</Link>
             </div>
           </div>

@@ -125,6 +125,85 @@ export const activityLog = pgTable("activity_log", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ---- Site settings (contenus configurables) ----
+export const siteSettings = pgTable("site_settings", {
+  key: varchar("key", { length: 120 }).primaryKey(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---- Rencontres à venir ----
+export const meetings = pgTable("meetings", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  location: varchar("location", { length: 240 }),
+  description: text("description"),
+  capacity: integer("capacity").notNull().default(30),
+  imageUrl: text("image_url"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const meetingRegistrations = pgTable(
+  "meeting_registrations",
+  {
+    id: serial("id").primaryKey(),
+    meetingId: integer("meeting_id")
+      .notNull()
+      .references(() => meetings.id, { onDelete: "cascade" }),
+    memberId: integer("member_id").references(() => members.id, { onDelete: "set null" }),
+    attendeeName: varchar("attendee_name", { length: 200 }).notNull(),
+    attendeeEmail: varchar("attendee_email", { length: 200 }),
+    imageConsent: boolean("image_consent").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    meetingMemberIdx: uniqueIndex("meeting_registrations_meeting_member_idx").on(
+      t.meetingId,
+      t.memberId
+    ),
+  })
+);
+
+// ---- Rencontres passées + galerie ----
+export const pastMeetings = pgTable("past_meetings", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  eventDate: timestamp("event_date", { withTimezone: true }).notNull(),
+  location: varchar("location", { length: 240 }),
+  description: text("description"),
+  participants: text("participants"),
+  meetingId: integer("meeting_id").references(() => meetings.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const pastMeetingPhotos = pgTable("past_meeting_photos", {
+  id: serial("id").primaryKey(),
+  pastMeetingId: integer("past_meeting_id")
+    .notNull()
+    .references(() => pastMeetings.id, { onDelete: "cascade" }),
+  imageUrl: text("image_url").notNull(),
+  caption: varchar("caption", { length: 200 }),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---- RGPD / droit à l'image : historique append-only ----
+export const imageConsents = pgTable("image_consents", {
+  id: serial("id").primaryKey(),
+  memberId: integer("member_id")
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
+  decision: varchar("decision", { length: 20 }).notNull(),
+  scopes: text("scopes"),
+  signatoryName: varchar("signatory_name", { length: 200 }),
+  signaturePng: text("signature_png"),
+  consentVersion: varchar("consent_version", { length: 40 }).notNull(),
+  ip: varchar("ip", { length: 120 }),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ---- Relations ----
 export const membersRelations = relations(members, ({ one, many }) => ({
   category: one(categories, {
@@ -132,6 +211,8 @@ export const membersRelations = relations(members, ({ one, many }) => ({
     references: [categories.id],
   }),
   promotions: many(promotions),
+  meetingRegistrations: many(meetingRegistrations),
+  imageConsents: many(imageConsents),
 }));
 
 export const promotionsRelations = relations(promotions, ({ one }) => ({
@@ -148,6 +229,43 @@ export const usersRelations = relations(users, ({ one }) => ({
   }),
 }));
 
+export const meetingsRelations = relations(meetings, ({ many }) => ({
+  registrations: many(meetingRegistrations),
+}));
+
+export const meetingRegistrationsRelations = relations(meetingRegistrations, ({ one }) => ({
+  meeting: one(meetings, {
+    fields: [meetingRegistrations.meetingId],
+    references: [meetings.id],
+  }),
+  member: one(members, {
+    fields: [meetingRegistrations.memberId],
+    references: [members.id],
+  }),
+}));
+
+export const pastMeetingsRelations = relations(pastMeetings, ({ one, many }) => ({
+  linkedMeeting: one(meetings, {
+    fields: [pastMeetings.meetingId],
+    references: [meetings.id],
+  }),
+  photos: many(pastMeetingPhotos),
+}));
+
+export const pastMeetingPhotosRelations = relations(pastMeetingPhotos, ({ one }) => ({
+  pastMeeting: one(pastMeetings, {
+    fields: [pastMeetingPhotos.pastMeetingId],
+    references: [pastMeetings.id],
+  }),
+}));
+
+export const imageConsentsRelations = relations(imageConsents, ({ one }) => ({
+  member: one(members, {
+    fields: [imageConsents.memberId],
+    references: [members.id],
+  }),
+}));
+
 export type Category = typeof categories.$inferSelect;
 export type Member = typeof members.$inferSelect;
 export type User = typeof users.$inferSelect;
@@ -155,3 +273,9 @@ export type Promotion = typeof promotions.$inferSelect;
 export type MembershipRequest = typeof membershipRequests.$inferSelect;
 export type ContactMessage = typeof contactMessages.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;
+export type SiteSetting = typeof siteSettings.$inferSelect;
+export type Meeting = typeof meetings.$inferSelect;
+export type MeetingRegistration = typeof meetingRegistrations.$inferSelect;
+export type PastMeeting = typeof pastMeetings.$inferSelect;
+export type PastMeetingPhoto = typeof pastMeetingPhotos.$inferSelect;
+export type ImageConsent = typeof imageConsents.$inferSelect;

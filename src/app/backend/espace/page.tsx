@@ -1,10 +1,11 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { categories, members, promotions, type Member } from "@/db/schema";
+import { categories, imageConsents, members, promotions, type Member } from "@/db/schema";
 import { ImageField } from "@/components/ImageField";
+import { ImageConsentForm } from "@/components/ImageConsentForm";
 import { communeOptions } from "@/lib/communes";
-import { updateOwnProfile } from "../actions";
+import { saveImageConsent, updateOwnProfile } from "../actions";
 import { MemberSpaceForm } from "./MemberSpaceForm";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,7 @@ export default async function EspacePage() {
   let subtitle = "Espace adhérent";
   let profile: Member | null = null;
   let myPromos: { id: number; title: string; status: string; createdAt: Date; imageUrl: string | null }[] = [];
+  let latestConsent: { decision: string; createdAt: Date } | null = null;
 
   if (memberId) {
     const [m] = await db.select().from(members).where(eq(members.id, memberId));
@@ -51,6 +53,13 @@ export default async function EspacePage() {
       .from(promotions)
       .where(eq(promotions.memberId, memberId))
       .orderBy(desc(promotions.createdAt));
+    const [consent] = await db
+      .select({ decision: imageConsents.decision, createdAt: imageConsents.createdAt })
+      .from(imageConsents)
+      .where(eq(imageConsents.memberId, memberId))
+      .orderBy(desc(imageConsents.createdAt))
+      .limit(1);
+    latestConsent = consent ?? null;
   }
 
   const catRows = await db
@@ -152,6 +161,27 @@ export default async function EspacePage() {
             Enregistrer mon profil
           </button>
         </form>
+      )}
+
+      {memberId && (
+        <section style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 24, marginBottom: 28 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start", flexWrap: "wrap", marginBottom: 14 }}>
+            <div>
+              <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: 0, color: "#26201a" }}>
+                Droit à l'image
+              </h3>
+              <div style={{ color: "#8c8068", fontSize: 13, marginTop: 4 }}>
+                Vous pouvez modifier votre décision à tout moment.
+              </div>
+            </div>
+            {latestConsent && (
+              <span style={{ background: latestConsent.decision === "accepted" ? "#e6f4ec" : "#fbe9e6", color: latestConsent.decision === "accepted" ? "#1f8a5b" : "#d8472b", borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 800 }}>
+                {latestConsent.decision === "accepted" ? "Autorisé" : "Refusé"} · {fmtDate(latestConsent.createdAt)}
+              </span>
+            )}
+          </div>
+          <ImageConsentForm saveAction={saveImageConsent} defaultName={memberName} compact />
+        </section>
       )}
 
       <MemberSpaceForm memberName={memberName} categories={categoryLabels} />

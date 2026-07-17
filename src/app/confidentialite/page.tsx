@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
   title: "Confidentialité — Plein R",
   description: "Politique de confidentialité et traitement des données personnelles par Plein R.",
 };
 
-export default function ConfidentialitePage() {
+export const dynamic = "force-dynamic";
+
+export default async function ConfidentialitePage() {
+  const settings = await getSiteSettings();
+  const contact = settings.association_privacy_contact || settings.association_email || "le formulaire « Nous contacter »";
+
   return (
-    <LegalPage title="Confidentialité" intro="Cette page explique quelles données sont recueillies et comment Plein R les utilise.">
+    <LegalPage title="Confidentialité" intro={`Cette page explique quelles données sont recueillies et comment ${settings.association_name} les utilise.`}>
       <h2>Données recueillies</h2>
       <p>Selon votre utilisation du site, Plein R peut recevoir :</p>
       <ul>
@@ -25,7 +31,7 @@ export default function ConfidentialitePage() {
 
       <h2>Responsable, bases légales et destinataires</h2>
       <p>
-        Plein R est responsable des traitements réalisés par ce site. Les traitements reposent, selon le cas,
+        {settings.association_name} est responsable des traitements réalisés par ce site. Les traitements reposent, selon le cas,
         sur les démarches précontractuelles liées à l’adhésion, l’exécution de la relation avec les adhérents,
         l’intérêt légitime de l’association à répondre aux demandes et administrer son réseau, ou une obligation légale.
       </p>
@@ -50,9 +56,10 @@ export default function ConfidentialitePage() {
       <p>
         Vous pouvez demander accès, rectification, effacement, limitation, opposition ou portabilité concernant vos données,
         selon les conditions prévues par la réglementation.
-        Envoyez votre demande via le formulaire « Nous contacter » en précisant votre identité et l’objet de votre demande.
+        Envoyez votre demande via {contact} en précisant votre identité et l’objet de votre demande.
       </p>
       <p>Vous pouvez également saisir la CNIL si vous estimez que vos droits ne sont pas respectés.</p>
+      {settings.legal_updated && <p>Dernière mise à jour : {settings.legal_updated}</p>}
     </LegalPage>
   );
 }
