@@ -57,7 +57,7 @@ export default async function PromotionsPage() {
         </div>
       )}
 
-      <div className="grid grid-3" style={{ gap: 18 }}>
+      <div className="grid grid-3" style={{ gap: 18, width: "100%", maxWidth: 1096 }}>
         {ordered.map((p) => {
           const isPending = p.status === "pending";
           return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Modal } from "./Modal";
 import { submitMembershipRequest } from "@/app/actions/public";
 
@@ -74,6 +75,13 @@ export function MembershipModalButton({
             </Field>
 
             {error && <div style={errorBox}>{error}</div>}
+
+            <p style={{ margin: "0 0 12px", fontSize: 11.5, lineHeight: 1.5, color: "#8c8068" }}>
+              Vos informations servent uniquement à traiter votre demande. Consultez notre{" "}
+              <Link href="/confidentialite" target="_blank" rel="noopener noreferrer" style={{ color: "#9a6638", fontWeight: 700 }}>
+                politique de confidentialité
+              </Link>.
+            </p>
 
             <button type="submit" className="lift-cta" disabled={pending} style={{ ...primaryBtn, opacity: pending ? 0.6 : 1 }}>
               {pending ? "Envoi…" : "Envoyer ma demande"}
