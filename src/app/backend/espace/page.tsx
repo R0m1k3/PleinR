@@ -1,7 +1,8 @@
-import { asc, desc, eq } from "drizzle-orm";
+import Link from "next/link";
+import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { categories, imageConsents, members, promotions, type Member } from "@/db/schema";
+import { categories, imageConsents, meetingRegistrations, meetings, members, promotions, type Member } from "@/db/schema";
 import { ImageField } from "@/components/ImageField";
 import { ImageConsentForm } from "@/components/ImageConsentForm";
 import { communeOptions } from "@/lib/communes";
@@ -30,6 +31,7 @@ export default async function EspacePage() {
   let subtitle = "Espace adhérent";
   let profile: Member | null = null;
   let myPromos: { id: number; title: string; status: string; createdAt: Date; imageUrl: string | null }[] = [];
+  let myRegistrations: { meetingId: number; title: string; startsAt: Date; location: string | null; participants: number; confirmed: boolean }[] = [];
   let latestConsent: { decision: string; createdAt: Date } | null = null;
 
   if (memberId) {
@@ -53,6 +55,20 @@ export default async function EspacePage() {
       .from(promotions)
       .where(eq(promotions.memberId, memberId))
       .orderBy(desc(promotions.createdAt));
+    myRegistrations = await db
+      .select({
+        meetingId: meetings.id,
+        title: meetings.title,
+        startsAt: meetings.startsAt,
+        location: meetings.location,
+        participants: sql<number>`count(${meetingRegistrations.id})`,
+        confirmed: sql<boolean>`bool_and(${meetingRegistrations.status} = 'confirmed')`,
+      })
+      .from(meetingRegistrations)
+      .innerJoin(meetings, eq(meetings.id, meetingRegistrations.meetingId))
+      .where(and(eq(meetingRegistrations.memberId, memberId), gte(meetings.startsAt, new Date())))
+      .groupBy(meetings.id)
+      .orderBy(asc(meetings.startsAt));
     const [consent] = await db
       .select({ decision: imageConsents.decision, createdAt: imageConsents.createdAt })
       .from(imageConsents)
@@ -92,6 +108,37 @@ export default async function EspacePage() {
           <div style={{ fontSize: 13, color: "#9bb6cd" }}>{subtitle}</div>
         </div>
       </div>
+
+      {memberId && (
+        <section style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 8, padding: 24, marginBottom: 28 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "end", marginBottom: 15, flexWrap: "wrap" }}>
+            <div>
+              <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: 0, color: "#26201a" }}>Mes inscriptions</h3>
+              <div style={{ color: "#8c8068", fontSize: 13, marginTop: 4 }}>Participants inscrits aux prochaines rencontres.</div>
+            </div>
+            <Link href="/association" style={{ color: "#9a6638", fontSize: 13, fontWeight: 800, textDecoration: "none" }}>Voir les rencontres</Link>
+          </div>
+          {myRegistrations.length === 0 && <div style={{ color: "#a99c82", fontSize: 13.5 }}>Aucune inscription à venir.</div>}
+          <div style={{ display: "grid", gap: 10 }}>
+            {myRegistrations.map((registration) => (
+              <div key={registration.meetingId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, borderTop: "1px solid #f0e8d6", paddingTop: 12, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ color: "#26201a", fontSize: 14, fontWeight: 800 }}>{registration.title}</div>
+                  <div style={{ color: "#8c8068", fontSize: 12.5, marginTop: 3 }}>
+                    {fmtDate(registration.startsAt)} · {registration.participants} participant{registration.participants > 1 ? "s" : ""}{registration.location ? ` · ${registration.location}` : ""}
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ background: registration.confirmed ? "#e6f4ec" : "#fbeede", color: registration.confirmed ? "#1f8a5b" : "#9a6638", borderRadius: 999, padding: "5px 10px", fontSize: 11.5, fontWeight: 800 }}>
+                    {registration.confirmed ? "Confirmée" : "En attente"}
+                  </span>
+                  <Link href={`/inscription/${registration.meetingId}`} style={{ color: "#9a6638", fontSize: 12.5, fontWeight: 800, textDecoration: "none" }}>Modifier</Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {profile && (
         <form action={updateOwnProfile} style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 24, marginBottom: 28 }}>

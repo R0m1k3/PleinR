@@ -534,6 +534,17 @@ img {
   align-items: start;
 }
 
+.meeting-registration-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+@media (max-width: 860px) {
+  .meeting-registration-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 1024px) {
   .email-workbench,
   .meeting-email-workbench { grid-template-columns: 1fr; }

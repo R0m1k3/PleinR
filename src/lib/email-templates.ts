@@ -138,7 +138,7 @@ export function buildMeetingEmail(meeting: MeetingEmailData, texts: MeetingEmail
     minute: "2-digit",
   }).format(date);
   const remaining = Math.max(0, meeting.capacity - meeting.registered);
-  const registrationUrl = `${baseUrl.replace(/\/$/, "")}/association#rencontre-${meeting.id}`;
+  const registrationUrl = `${baseUrl.replace(/\/$/, "")}/inscription/${meeting.id}`;
   const subject = `Invitation Plein R — ${meeting.title} · ${dateLong}`;
   const button = cta(registrationUrl, "Je m'inscris à la rencontre");
   const body = `

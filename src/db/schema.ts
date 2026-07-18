@@ -7,6 +7,7 @@ import {
   varchar,
   boolean,
   timestamp,
+  index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -140,6 +141,7 @@ export const meetings = pgTable("meetings", {
   location: varchar("location", { length: 240 }),
   description: text("description"),
   capacity: integer("capacity").notNull().default(30),
+  participantsPerAccount: integer("participants_per_account").notNull().default(1),
   imageUrl: text("image_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -153,15 +155,16 @@ export const meetingRegistrations = pgTable(
       .references(() => meetings.id, { onDelete: "cascade" }),
     memberId: integer("member_id").references(() => members.id, { onDelete: "set null" }),
     attendeeName: varchar("attendee_name", { length: 200 }).notNull(),
+    attendeeCompany: varchar("attendee_company", { length: 200 }).notNull().default(""),
     attendeeEmail: varchar("attendee_email", { length: 200 }),
+    attendeePhone: varchar("attendee_phone", { length: 40 }),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
     imageConsent: boolean("image_consent").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    meetingMemberIdx: uniqueIndex("meeting_registrations_meeting_member_idx").on(
-      t.meetingId,
-      t.memberId
-    ),
+    meetingIdx: index("meeting_registrations_meeting_idx").on(t.meetingId),
+    memberMeetingIdx: index("meeting_registrations_member_meeting_idx").on(t.memberId, t.meetingId),
   })
 );
 

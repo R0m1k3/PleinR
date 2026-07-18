@@ -1,18 +1,11 @@
 import Link from "next/link";
-import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import {
-  meetingRegistrations,
-  meetings,
-  pastMeetingPhotos,
-  pastMeetings,
-} from "@/db/schema";
-import { PastMeetingGallery } from "@/components/PastMeetingGallery";
+import { meetingRegistrations, meetings } from "@/db/schema";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getSiteSettings, parseBoardMembers, splitLines } from "@/lib/site-settings";
-import { cancelMeetingRegistration, registerForMeeting } from "../backend/actions";
+import { getSiteSettings, parseBoardMembers } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +35,7 @@ export default async function AssociationPage() {
       location: meetings.location,
       description: meetings.description,
       capacity: meetings.capacity,
+      participantsPerAccount: meetings.participantsPerAccount,
       imageUrl: meetings.imageUrl,
       registered: sql<number>`count(${meetingRegistrations.id})`,
     })
@@ -50,29 +44,6 @@ export default async function AssociationPage() {
     .where(gte(meetings.startsAt, now))
     .groupBy(meetings.id)
     .orderBy(asc(meetings.startsAt));
-
-  const past = await db
-    .select()
-    .from(pastMeetings)
-    .orderBy(desc(pastMeetings.eventDate));
-
-  const photoRows = await db
-    .select()
-    .from(pastMeetingPhotos)
-    .orderBy(asc(pastMeetingPhotos.position), asc(pastMeetingPhotos.id));
-
-  const meetingIds = past.map((item) => item.meetingId).filter((id): id is number => id != null);
-  const linkedRegistrations =
-    meetingIds.length > 0
-      ? await db
-          .select({
-            meetingId: meetingRegistrations.meetingId,
-            attendeeName: meetingRegistrations.attendeeName,
-          })
-          .from(meetingRegistrations)
-          .where(inArray(meetingRegistrations.meetingId, meetingIds))
-          .orderBy(asc(meetingRegistrations.attendeeName))
-      : [];
 
   const myRegistrations =
     memberId && upcoming.length > 0
@@ -90,18 +61,6 @@ export default async function AssociationPage() {
           )
       : [];
   const myMeetingIds = new Set(myRegistrations.map((row) => row.meetingId));
-
-  const photosByPast = new Map<number, typeof photoRows>();
-  for (const photo of photoRows) {
-    photosByPast.set(photo.pastMeetingId, [...(photosByPast.get(photo.pastMeetingId) ?? []), photo]);
-  }
-  const registrationsByMeeting = new Map<number, string[]>();
-  for (const reg of linkedRegistrations) {
-    registrationsByMeeting.set(reg.meetingId, [
-      ...(registrationsByMeeting.get(reg.meetingId) ?? []),
-      reg.attendeeName,
-    ]);
-  }
 
   const officers = [
     ["Vice-présidence", settings.association_vice_president],
@@ -191,77 +150,19 @@ export default async function AssociationPage() {
                       <span>{registered}/{meeting.capacity} inscrits</span>
                       <span>{remaining} place(s)</span>
                     </div>
-                    {memberId ? (
-                      isRegistered ? (
-                        <form action={cancelMeetingRegistration}>
-                          <input type="hidden" name="meetingId" value={meeting.id} />
-                          <button type="submit" style={{ width: "100%", border: "1px solid #e0c3bb", background: "#fff", color: "#d8472b", borderRadius: 10, padding: 11, fontWeight: 800, cursor: "pointer" }}>
-                            Annuler mon inscription
-                          </button>
-                        </form>
-                      ) : (
-                        <form action={registerForMeeting}>
-                          <input type="hidden" name="meetingId" value={meeting.id} />
-                          <label style={{ display: "flex", gap: 8, alignItems: "start", fontSize: 12.5, color: "#6c6150", marginBottom: 10 }}>
-                            <input type="checkbox" name="imageConsent" />
-                            J'accepte d'apparaître sur les photos de cette rencontre.
-                          </label>
-                          <button type="submit" disabled={remaining <= 0} style={{ width: "100%", border: "none", background: remaining <= 0 ? "#a99c82" : "#13324F", color: "#fff", borderRadius: 10, padding: 11, fontWeight: 800, cursor: remaining <= 0 ? "not-allowed" : "pointer" }}>
-                            {remaining <= 0 ? "Complet" : "Je m'inscris"}
-                          </button>
-                        </form>
-                      )
-                    ) : (
-                      <Link href="/login" style={{ display: "block", textAlign: "center", textDecoration: "none", background: "#13324F", color: "#fff", borderRadius: 10, padding: 11, fontWeight: 800 }}>
-                        Connexion adhérent
-                      </Link>
-                    )}
+                    <div style={{ color: "#8c8068", fontSize: 12.5, marginBottom: 10 }}>
+                      Jusqu'à {meeting.participantsPerAccount} participant{meeting.participantsPerAccount > 1 ? "s" : ""} par compte
+                    </div>
+                    <Link
+                      href={`/inscription/${meeting.id}`}
+                      style={{ display: "block", textAlign: "center", textDecoration: "none", background: remaining <= 0 && !isRegistered ? "#a99c82" : "#13324F", color: "#fff", borderRadius: 8, padding: 11, fontWeight: 800 }}
+                    >
+                      {isRegistered ? "Modifier mon inscription" : remaining <= 0 ? "Complet" : memberId ? "S'inscrire" : "Connexion et inscription"}
+                    </Link>
                   </div>
                 </article>
               );
             })}
-          </div>
-        </section>
-
-        <section style={{ background: "#EFE9DA" }}>
-          <div className="container" style={{ paddingTop: 54, paddingBottom: 54 }}>
-            <div style={{ color: "#9a6638", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 800 }}>
-              Archives
-            </div>
-            <h2 className="font-display" style={{ margin: "8px 0 20px", color: "#26201a", fontSize: 34 }}>
-              Rencontres passées
-            </h2>
-            {past.length === 0 && (
-              <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 14, padding: 24, color: "#8c8068" }}>
-                Aucune rencontre passée publiée pour le moment.
-              </div>
-            )}
-            <div className="grid grid-3" style={{ gap: 18 }}>
-              {past.map((item) => {
-                const linkedNames = item.meetingId ? registrationsByMeeting.get(item.meetingId) ?? [] : [];
-                const manualNames = splitLines(item.participants ?? "");
-                const names = linkedNames.length > 0 ? linkedNames : manualNames;
-                return (
-                  <article key={item.id} style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 12, padding: 18 }}>
-                    <div style={{ color: "#9a6638", fontSize: 12.5, fontWeight: 800 }}>
-                      {formatDate(item.eventDate)}
-                    </div>
-                    <h3 className="font-display" style={{ color: "#26201a", fontSize: 21, margin: "7px 0" }}>
-                      {item.title}
-                    </h3>
-                    {item.location && <div style={{ fontSize: 13, color: "#6c6150", fontWeight: 700 }}>{item.location}</div>}
-                    <p style={{ color: "#8c8068", fontSize: 13.5, lineHeight: 1.6 }}>{item.description}</p>
-                    {names.length > 0 && (
-                      <div style={{ color: "#6c6150", fontSize: 12.5, lineHeight: 1.6 }}>
-                        <strong>Participants:</strong> {names.slice(0, 6).join(", ")}
-                        {names.length > 6 ? ` +${names.length - 6}` : ""}
-                      </div>
-                    )}
-                    <PastMeetingGallery title={item.title} photos={photosByPast.get(item.id) ?? []} />
-                  </article>
-                );
-              })}
-            </div>
           </div>
         </section>
 

@@ -406,11 +406,13 @@ export async function createMeeting(formData: FormData) {
     startsAt: asDate(formData, "startsAt"),
     location: asNullableString(formData, "location"),
     description: asNullableString(formData, "description"),
-    capacity: Number(formData.get("capacity") ?? 30) || 30,
+    capacity: Math.min(100000, Math.max(1, Number(formData.get("capacity") ?? 30) || 30)),
+    participantsPerAccount: Math.min(100, Math.max(1, Number(formData.get("participantsPerAccount") ?? 1) || 1)),
     imageUrl: asNullableString(formData, "imageUrl"),
   });
   await logActivity(`Rencontre ajoutée : <strong>${title}</strong>`, "#2C6FB3");
   revalidatePath("/backend/rencontres");
+  revalidatePath("/backend/inscriptions");
   revalidatePath("/association");
 }
 
@@ -428,11 +430,13 @@ export async function updateMeeting(formData: FormData) {
       startsAt: asDate(formData, "startsAt"),
       location: asNullableString(formData, "location"),
       description: asNullableString(formData, "description"),
-      capacity: Number(formData.get("capacity") ?? 30) || 30,
+      capacity: Math.min(100000, Math.max(1, Number(formData.get("capacity") ?? 30) || 30)),
+      participantsPerAccount: Math.min(100, Math.max(1, Number(formData.get("participantsPerAccount") ?? 1) || 1)),
       imageUrl: asNullableString(formData, "imageUrl"),
     })
     .where(eq(meetings.id, id));
   revalidatePath("/backend/rencontres");
+  revalidatePath("/backend/inscriptions");
   revalidatePath("/association");
 }
 
@@ -443,65 +447,170 @@ export async function deleteMeeting(formData: FormData) {
   if (!id) return;
   await db.delete(meetings).where(eq(meetings.id, id));
   revalidatePath("/backend/rencontres");
+  revalidatePath("/backend/inscriptions");
   revalidatePath("/association");
 }
 
-export async function registerForMeeting(formData: FormData) {
+export type MeetingRegistrationState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  registrationCount?: number;
+};
+
+export async function saveMeetingRegistration(
+  _previousState: MeetingRegistrationState,
+  formData: FormData,
+): Promise<MeetingRegistrationState> {
   const session = await auth();
-  if (!session?.user?.memberId) throw new Error("Compte adhérent requis");
+  if (!session?.user?.memberId) {
+    return { status: "error", message: "Connectez-vous avec un compte adhérent pour vous inscrire." };
+  }
   const memberId = session.user.memberId;
   const meetingId = Number(formData.get("meetingId"));
-  if (!meetingId) return;
+  if (!meetingId) return { status: "error", message: "Rencontre introuvable." };
 
-  await db.transaction(async (tx) => {
-    const [meeting] = await tx.select().from(meetings).where(eq(meetings.id, meetingId));
-    if (!meeting) throw new Error("Rencontre introuvable");
-    if (meeting.startsAt.getTime() < Date.now()) throw new Error("Cette rencontre est passée");
+  try {
+    if (asString(formData, "intent") === "cancel") {
+      await db
+        .delete(meetingRegistrations)
+        .where(and(eq(meetingRegistrations.meetingId, meetingId), eq(meetingRegistrations.memberId, memberId)));
+      revalidateMeetingPaths(meetingId);
+      return { status: "success", message: "Votre inscription a été annulée.", registrationCount: 0 };
+    }
 
-    const duplicate = await tx
-      .select({ id: meetingRegistrations.id })
-      .from(meetingRegistrations)
-      .where(and(eq(meetingRegistrations.meetingId, meetingId), eq(meetingRegistrations.memberId, memberId)));
-    if (duplicate.length > 0) return;
+    const participantCount = Number(formData.get("participantCount"));
+    if (!Number.isInteger(participantCount) || participantCount < 1 || participantCount > 100) {
+      return { status: "error", message: "Ajoutez au moins un participant." };
+    }
 
-    const [{ total } = { total: 0 }] = await tx
-      .select({ total: sql<number>`count(*)` })
-      .from(meetingRegistrations)
-      .where(eq(meetingRegistrations.meetingId, meetingId));
-    if (Number(total) >= meeting.capacity) throw new Error("Rencontre complète");
+    const participants = Array.from({ length: participantCount }, (_, index) => ({
+      name: asString(formData, `participantName-${index}`),
+      imageConsent: formData.get(`imageConsent-${index}`) === "on",
+    }));
+    if (participants.some((participant) => !participant.name || participant.name.length > 200)) {
+      return { status: "error", message: "Renseignez le nom et le prénom de chaque participant." };
+    }
+    const normalizedNames = participants.map((participant) => participant.name.toLocaleLowerCase("fr-FR"));
+    if (new Set(normalizedNames).size !== normalizedNames.length) {
+      return { status: "error", message: "Chaque participant doit avoir un nom différent." };
+    }
+    if (formData.get("attestation") !== "on") {
+      return { status: "error", message: "Vous devez confirmer avoir recueilli le choix de chaque participant." };
+    }
 
-    const [member] = await tx
-      .select({ name: members.name, email: members.email })
-      .from(members)
-      .where(eq(members.id, memberId));
-    await tx.insert(meetingRegistrations).values({
-      meetingId,
-      memberId,
-      attendeeName: member?.name ?? session.user.name ?? "Adhérent",
-      attendeeEmail: member?.email ?? session.user.email ?? null,
-      imageConsent: formData.get("imageConsent") === "on",
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select ${meetings.id} from ${meetings} where ${meetings.id} = ${meetingId} for update`);
+      const [meeting] = await tx.select().from(meetings).where(eq(meetings.id, meetingId));
+      if (!meeting) throw new Error("Rencontre introuvable.");
+      if (meeting.startsAt.getTime() < Date.now()) throw new Error("Cette rencontre est passée.");
+      if (participants.length > meeting.participantsPerAccount) {
+        throw new Error(`Cette rencontre autorise ${meeting.participantsPerAccount} participant(s) maximum par compte.`);
+      }
+
+      const [member] = await tx
+        .select({ name: members.name, email: members.email, phone: members.phone, status: members.status })
+        .from(members)
+        .where(eq(members.id, memberId));
+      if (!member || member.status !== "active") {
+        throw new Error("Votre adhésion doit être active pour vous inscrire.");
+      }
+
+      const [{ total } = { total: 0 }] = await tx
+        .select({ total: sql<number>`count(*)` })
+        .from(meetingRegistrations)
+        .where(
+          and(
+            eq(meetingRegistrations.meetingId, meetingId),
+            sql`${meetingRegistrations.memberId} is distinct from ${memberId}`,
+          ),
+        );
+      if (Number(total) + participants.length > meeting.capacity) {
+        throw new Error("Il ne reste pas assez de places pour tous les participants.");
+      }
+
+      await tx
+        .delete(meetingRegistrations)
+        .where(and(eq(meetingRegistrations.meetingId, meetingId), eq(meetingRegistrations.memberId, memberId)));
+      await tx.insert(meetingRegistrations).values(
+        participants.map((participant) => ({
+          meetingId,
+          memberId,
+          attendeeName: participant.name,
+          attendeeCompany: member.name,
+          attendeeEmail: member.email ?? session.user.email ?? null,
+          attendeePhone: member.phone,
+          status: "pending",
+          imageConsent: participant.imageConsent,
+        })),
+      );
     });
-  });
 
-  revalidatePath("/association");
-  revalidatePath("/backend/espace");
+    revalidateMeetingPaths(meetingId);
+    return {
+      status: "success",
+      message: `Inscription enregistrée pour ${participants.length} participant${participants.length > 1 ? "s" : ""}.`,
+      registrationCount: participants.length,
+    };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Inscription impossible." };
+  }
 }
 
-export async function cancelMeetingRegistration(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.memberId) throw new Error("Compte adhérent requis");
-  const meetingId = Number(formData.get("meetingId"));
-  if (!meetingId) return;
-  await db
-    .delete(meetingRegistrations)
-    .where(
-      and(
-        eq(meetingRegistrations.meetingId, meetingId),
-        eq(meetingRegistrations.memberId, session.user.memberId)
-      )
-    );
+function revalidateMeetingPaths(meetingId?: number) {
   revalidatePath("/association");
+  revalidatePath("/backend/rencontres");
+  revalidatePath("/backend/inscriptions");
+  revalidatePath("/backend/rencontres-passees");
   revalidatePath("/backend/espace");
+  revalidatePath("/rencontres-passees");
+  if (meetingId) revalidatePath(`/inscription/${meetingId}`);
+}
+
+export async function updateMeetingRegistration(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  const attendeeName = asString(formData, "attendeeName");
+  const status = asString(formData, "status");
+  if (!id || !attendeeName || !["pending", "confirmed"].includes(status)) return;
+  const [registration] = await db
+    .update(meetingRegistrations)
+    .set({
+      attendeeName,
+      attendeeCompany: asString(formData, "attendeeCompany"),
+      attendeeEmail: asNullableString(formData, "attendeeEmail"),
+      attendeePhone: asNullableString(formData, "attendeePhone"),
+      status,
+      imageConsent: formData.get("imageConsent") === "on",
+    })
+    .where(eq(meetingRegistrations.id, id))
+    .returning({ meetingId: meetingRegistrations.meetingId });
+  revalidateMeetingPaths(registration?.meetingId);
+}
+
+export async function confirmMeetingRegistration(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  const [registration] = await db
+    .update(meetingRegistrations)
+    .set({ status: "confirmed" })
+    .where(eq(meetingRegistrations.id, id))
+    .returning({ meetingId: meetingRegistrations.meetingId });
+  revalidateMeetingPaths(registration?.meetingId);
+}
+
+export async function deleteMeetingRegistration(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+  const id = Number(formData.get("id"));
+  if (!id) return;
+  const [registration] = await db
+    .delete(meetingRegistrations)
+    .where(eq(meetingRegistrations.id, id))
+    .returning({ meetingId: meetingRegistrations.meetingId });
+  revalidateMeetingPaths(registration?.meetingId);
 }
 
 export async function createPastMeeting(formData: FormData) {
@@ -519,6 +628,8 @@ export async function createPastMeeting(formData: FormData) {
   });
   revalidatePath("/backend/rencontres");
   revalidatePath("/association");
+  revalidatePath("/backend/rencontres-passees");
+  revalidatePath("/rencontres-passees");
 }
 
 export async function updatePastMeeting(formData: FormData) {
@@ -540,6 +651,8 @@ export async function updatePastMeeting(formData: FormData) {
     .where(eq(pastMeetings.id, id));
   revalidatePath("/backend/rencontres");
   revalidatePath("/association");
+  revalidatePath("/backend/rencontres-passees");
+  revalidatePath("/rencontres-passees");
 }
 
 export async function deletePastMeeting(formData: FormData) {
@@ -550,6 +663,8 @@ export async function deletePastMeeting(formData: FormData) {
   await db.delete(pastMeetings).where(eq(pastMeetings.id, id));
   revalidatePath("/backend/rencontres");
   revalidatePath("/association");
+  revalidatePath("/backend/rencontres-passees");
+  revalidatePath("/rencontres-passees");
 }
 
 export async function addPastMeetingPhoto(formData: FormData) {
@@ -570,6 +685,8 @@ export async function addPastMeetingPhoto(formData: FormData) {
   });
   revalidatePath("/backend/rencontres");
   revalidatePath("/association");
+  revalidatePath("/backend/rencontres-passees");
+  revalidatePath("/rencontres-passees");
 }
 
 export async function deletePastMeetingPhoto(formData: FormData) {
@@ -580,6 +697,8 @@ export async function deletePastMeetingPhoto(formData: FormData) {
   await db.delete(pastMeetingPhotos).where(eq(pastMeetingPhotos.id, id));
   revalidatePath("/backend/rencontres");
   revalidatePath("/association");
+  revalidatePath("/backend/rencontres-passees");
+  revalidatePath("/rencontres-passees");
 }
 
 // ---- Paramètres du site ----
