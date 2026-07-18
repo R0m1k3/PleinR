@@ -218,7 +218,9 @@ export default async function EspacePage() {
                 Droit à l'image
               </h3>
               <div style={{ color: "#8c8068", fontSize: 13, marginTop: 4 }}>
-                Vous pouvez modifier votre décision à tout moment.
+                {latestConsent?.decision === "accepted"
+                  ? "Autorisation signée et enregistrée. Vous pouvez la retirer à tout moment."
+                  : "Vous pouvez autoriser l'utilisation de votre image à tout moment."}
               </div>
             </div>
             {latestConsent && (
@@ -227,7 +229,12 @@ export default async function EspacePage() {
               </span>
             )}
           </div>
-          <ImageConsentForm saveAction={saveImageConsent} defaultName={memberName} compact />
+          <ImageConsentForm
+            saveAction={saveImageConsent}
+            defaultName={memberName}
+            compact
+            currentDecision={latestConsent?.decision === "accepted" ? "accepted" : latestConsent?.decision === "refused" ? "refused" : null}
+          />
         </section>
       )}
 

@@ -56,7 +56,7 @@ export default async function PastMeetingsAdminPage() {
     <div style={{ display: "grid", gap: 28 }}>
       <section style={panelStyle}>
         <h2 className="font-display" style={{ margin: "0 0 6px", fontSize: 20, color: "#26201a" }}>Nouvelle rencontre passée</h2>
-        <p style={{ color: "#8c8068", fontSize: 13, margin: "0 0 18px" }}>Les archives publiées apparaissent sur la page publique « Rencontres passées ».</p>
+        <p style={{ color: "#8c8068", fontSize: 13, margin: "0 0 18px" }}>Les trois archives les plus récentes apparaissent sur « L'association » et la page complète rassemble toutes les rencontres passées.</p>
         <form action={createPastMeeting} className="grid grid-2" style={{ gap: 16 }}>
           <div>
             <label className="field-label">Titre</label>

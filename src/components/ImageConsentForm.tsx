@@ -6,10 +6,12 @@ export function ImageConsentForm({
   saveAction,
   defaultName,
   compact = false,
+  currentDecision = null,
 }: {
   saveAction: (formData: FormData) => Promise<void>;
   defaultName: string;
   compact?: boolean;
+  currentDecision?: "accepted" | "refused" | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [drawing, setDrawing] = useState(false);
@@ -63,6 +65,31 @@ export function ImageConsentForm({
       event.preventDefault();
       setError("Signez dans le cadre pour valider l'autorisation.");
     }
+  }
+
+  if (currentDecision === "accepted") {
+    return (
+      <form action={saveAction} style={{ marginTop: 12 }}>
+        <input type="hidden" name="signatoryName" value={defaultName} />
+        <input type="hidden" name="signaturePng" value="" />
+        <button
+          type="submit"
+          name="decision"
+          value="refused"
+          style={{
+            border: "1px solid #e0c3bb",
+            background: "#fff",
+            color: "#d8472b",
+            fontWeight: 800,
+            borderRadius: 8,
+            padding: "9px 14px",
+            cursor: "pointer",
+          }}
+        >
+          Retirer mon autorisation
+        </button>
+      </form>
+    );
   }
 
   return (

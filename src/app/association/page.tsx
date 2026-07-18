@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { meetingRegistrations, meetings } from "@/db/schema";
+import { meetingRegistrations, meetings, pastMeetingPhotos, pastMeetings } from "@/db/schema";
+import { PastMeetingGallery } from "@/components/PastMeetingGallery";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getSiteSettings, parseBoardMembers } from "@/lib/site-settings";
+import { getSiteSettings, parseBoardMembers, splitLines } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,25 @@ export default async function AssociationPage() {
     .groupBy(meetings.id)
     .orderBy(asc(meetings.startsAt));
 
+  const past = await db.select().from(pastMeetings).orderBy(desc(pastMeetings.eventDate)).limit(3);
+  const pastIds = past.map((meeting) => meeting.id);
+  const linkedMeetingIds = past.map((meeting) => meeting.meetingId).filter((id): id is number => id !== null);
+  const [pastPhotos, linkedRegistrations] = await Promise.all([
+    pastIds.length > 0
+      ? db
+          .select()
+          .from(pastMeetingPhotos)
+          .where(inArray(pastMeetingPhotos.pastMeetingId, pastIds))
+          .orderBy(asc(pastMeetingPhotos.position), asc(pastMeetingPhotos.id))
+      : [],
+    linkedMeetingIds.length > 0
+      ? db
+          .select({ meetingId: meetingRegistrations.meetingId, id: meetingRegistrations.id })
+          .from(meetingRegistrations)
+          .where(inArray(meetingRegistrations.meetingId, linkedMeetingIds))
+      : [],
+  ]);
+
   const myRegistrations =
     memberId && upcoming.length > 0
       ? await db
@@ -61,6 +81,14 @@ export default async function AssociationPage() {
           )
       : [];
   const myMeetingIds = new Set(myRegistrations.map((row) => row.meetingId));
+  const photosByPast = new Map<number, typeof pastPhotos>();
+  for (const photo of pastPhotos) {
+    photosByPast.set(photo.pastMeetingId, [...(photosByPast.get(photo.pastMeetingId) ?? []), photo]);
+  }
+  const registrationCounts = new Map<number, number>();
+  for (const registration of linkedRegistrations) {
+    registrationCounts.set(registration.meetingId, (registrationCounts.get(registration.meetingId) ?? 0) + 1);
+  }
 
   const officers = [
     ["Vice-présidence", settings.association_vice_president],
@@ -133,8 +161,14 @@ export default async function AssociationPage() {
               const remaining = Math.max(0, meeting.capacity - registered);
               const isRegistered = myMeetingIds.has(meeting.id);
               return (
-                <article id={`rencontre-${meeting.id}`} key={meeting.id} className="lift" style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 12, overflow: "hidden", scrollMarginTop: 100 }}>
-                  <div style={{ aspectRatio: "16 / 10", background: meeting.imageUrl ? `center/cover no-repeat url(${meeting.imageUrl})` : "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)" }} />
+                <article id={`rencontre-${meeting.id}`} key={meeting.id} className="lift" style={{ background: "#fff", border: isRegistered ? "2px solid #1f8a5b" : "1px solid #e6dcc6", borderRadius: 12, overflow: "hidden", scrollMarginTop: 100 }}>
+                  <div style={{ position: "relative", aspectRatio: "16 / 10", background: meeting.imageUrl ? `center/cover no-repeat url(${meeting.imageUrl})` : "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)" }}>
+                    {isRegistered && (
+                      <span style={{ position: "absolute", top: 12, right: 12, display: "inline-flex", alignItems: "center", gap: 6, background: "#1f8a5b", color: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 12, fontWeight: 800, boxShadow: "0 4px 14px rgba(22,72,49,0.28)" }}>
+                        ✓ Inscrit
+                      </span>
+                    )}
+                  </div>
                   <div style={{ padding: 18 }}>
                     <div style={{ color: "#9a6638", fontSize: 12.5, fontWeight: 800 }}>
                       {formatDate(meeting.startsAt)} · {formatTime(meeting.startsAt)}
@@ -163,6 +197,50 @@ export default async function AssociationPage() {
                 </article>
               );
             })}
+          </div>
+        </section>
+
+        <section style={{ background: "#EFE9DA" }}>
+          <div className="container" style={{ paddingTop: 54, paddingBottom: 54 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 18, flexWrap: "wrap", marginBottom: 20 }}>
+              <div>
+                <div style={{ color: "#9a6638", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 800 }}>
+                  Ils y étaient
+                </div>
+                <h2 className="font-display" style={{ margin: "8px 0 0", color: "#26201a", fontSize: 34 }}>
+                  Nos dernières rencontres
+                </h2>
+              </div>
+              <Link href="/rencontres-passees" style={{ display: "inline-block", background: "#13324F", color: "#fff", borderRadius: 8, padding: "11px 16px", fontSize: 13.5, fontWeight: 800, textDecoration: "none" }}>
+                Voir toutes les rencontres passées
+              </Link>
+            </div>
+            {past.length === 0 ? (
+              <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 8, padding: 24, color: "#8c8068" }}>
+                Aucune rencontre passée publiée pour le moment.
+              </div>
+            ) : (
+              <div className="grid grid-3" style={{ gap: 18 }}>
+                {past.map((meeting) => {
+                  const photos = photosByPast.get(meeting.id) ?? [];
+                  const participantCount = meeting.meetingId
+                    ? registrationCounts.get(meeting.meetingId) ?? 0
+                    : splitLines(meeting.participants ?? "").length;
+                  return (
+                    <article key={meeting.id} style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 8, padding: 18 }}>
+                      <div style={{ color: "#9a6638", fontSize: 12.5, fontWeight: 800 }}>{formatDate(meeting.eventDate)}</div>
+                      <h3 className="font-display" style={{ color: "#26201a", fontSize: 22, margin: "7px 0" }}>{meeting.title}</h3>
+                      {meeting.location && <div style={{ color: "#6c6150", fontSize: 13, fontWeight: 700 }}>{meeting.location}</div>}
+                      {meeting.description && <p style={{ color: "#8c8068", fontSize: 13.5, lineHeight: 1.65 }}>{meeting.description}</p>}
+                      <div style={{ color: "#6c6150", fontSize: 12.5, fontWeight: 800, marginBottom: 12 }}>
+                        {participantCount} participant{participantCount > 1 ? "s" : ""} · {photos.length} photo{photos.length > 1 ? "s" : ""}
+                      </div>
+                      <PastMeetingGallery title={meeting.title} photos={photos} />
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 
