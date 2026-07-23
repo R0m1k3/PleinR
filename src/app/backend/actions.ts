@@ -23,6 +23,7 @@ import {
   users,
 } from "@/db/schema";
 import { can, LABEL_TO_ROLE } from "@/lib/rbac";
+import { normalizeWebsite } from "@/lib/member-profile";
 import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
 
@@ -267,7 +268,7 @@ export async function updateMember(formData: FormData) {
       description: String(formData.get("description") ?? "").trim() || null,
       postalCode: String(formData.get("postalCode") ?? "").trim() || null,
       phone: String(formData.get("phone") ?? "").trim() || null,
-      website: String(formData.get("website") ?? "").trim() || null,
+      website: normalizeWebsite(String(formData.get("website") ?? "")),
       memberSince: formData.get("memberSince") ? Number(formData.get("memberSince")) : null,
       coverUrl: String(formData.get("coverUrl") ?? "").trim() || null,
       logoUrl: String(formData.get("logoUrl") ?? "").trim() || null,
@@ -797,7 +798,7 @@ export async function updateOwnProfile(formData: FormData) {
       postalCode: String(formData.get("postalCode") ?? "").trim() || null,
       city: String(formData.get("city") ?? "").trim() || null,
       phone: String(formData.get("phone") ?? "").trim() || null,
-      website: String(formData.get("website") ?? "").trim() || null,
+      website: normalizeWebsite(String(formData.get("website") ?? "")),
       hours: String(formData.get("hours") ?? "").trim() || null,
       tags: String(formData.get("tags") ?? "").trim() || null,
       coverUrl: String(formData.get("coverUrl") ?? "").trim() || null,

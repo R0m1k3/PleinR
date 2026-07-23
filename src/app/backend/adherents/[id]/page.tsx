@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { categories, members, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
 import { ImageField } from "@/components/ImageField";
+import { HoursEditor } from "@/components/HoursEditor";
 import { communeOptions } from "@/lib/communes";
 import { deleteMember, resetMemberPassword, updateMember } from "../../actions";
 
@@ -148,8 +149,7 @@ export default async function EditMemberPage({
         </div>
 
         <div style={{ marginTop: 16 }}>
-          <label className="field-label">Horaires (une ligne par jour : « Jour|plage », ex : Mardi – Vendredi|7h – 19h30)</label>
-          <textarea name="hours" rows={4} defaultValue={member.hours ?? ""} className="field" style={{ resize: "vertical" }} placeholder={"Mardi – Vendredi|7h – 19h30\nSamedi|7h – 19h\nDimanche|7h – 13h\nLundi|Fermé"} />
+          <HoursEditor defaultValue={member.hours} />
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 22 }}>

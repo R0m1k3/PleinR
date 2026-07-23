@@ -551,3 +551,409 @@ img {
   .email-preview-shell iframe { height: 620px; }
 }
 
+/* ---- Fiche adhérent : horaires et contact ---- */
+.profile-hero-action {
+  padding: 11px 18px;
+  border: 1px solid #d8cdb4;
+  border-radius: 11px;
+  background: #fff;
+  color: #3c3322;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.profile-hero-action:hover {
+  border-color: #2c6fb3;
+  color: #2c6fb3;
+  transform: translateY(-1px);
+}
+.profile-hero-action--primary {
+  border-color: #2c6fb3;
+  background: #2c6fb3;
+  color: #fff;
+}
+.profile-hero-action--primary:hover {
+  background: #235d97;
+  color: #fff;
+}
+.practical-section {
+  overflow: hidden;
+  padding: 26px 28px 28px;
+  border: 1px solid #e6dcc6;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(224, 166, 60, 0.12), transparent 190px),
+    #fff;
+}
+.practical-section__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.eyebrow {
+  color: #9a6638;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.open-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 154px;
+  padding: 8px 12px;
+  border: 1px solid #e7d3ce;
+  border-radius: 12px;
+  background: #fff8f6;
+  color: #9f3e2e;
+}
+.open-status > span {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #d8472b;
+  box-shadow: 0 0 0 4px rgba(216, 71, 43, 0.12);
+}
+.open-status div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.open-status strong {
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+.open-status small {
+  margin-top: 2px;
+  color: #916a61;
+  font-size: 10.5px;
+}
+.open-status.is-open {
+  border-color: #cce7d7;
+  background: #f1faf5;
+  color: #176c48;
+}
+.open-status.is-open > span {
+  background: #1f8a5b;
+  box-shadow: 0 0 0 4px rgba(31, 138, 91, 0.12);
+}
+.open-status.is-open small { color: #5d7f6e; }
+.practical-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: 14px;
+}
+.schedule-card,
+.contact-card {
+  min-width: 0;
+  border: 1px solid #eadfca;
+  border-radius: 16px;
+  padding: 18px;
+}
+.schedule-card {
+  background: linear-gradient(145deg, #fffdf8, #fbf5e8);
+}
+.contact-card {
+  background: linear-gradient(145deg, #fff, #f3f7fa);
+}
+.practical-card-title {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(216, 205, 180, 0.68);
+}
+.practical-card-title__icon {
+  display: grid;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 11px;
+  background: #f3dfb6;
+  color: #8c5f2e;
+  font-size: 20px;
+  font-weight: 800;
+}
+.practical-card-title__icon--blue {
+  background: #dfeef5;
+  color: #2c6fb3;
+}
+.practical-card-title span:not(.practical-card-title__icon) {
+  display: block;
+  margin-bottom: 2px;
+  color: #a09279;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.practical-card-title h3 {
+  margin: 0;
+  color: #26201a;
+  font-size: 15.5px;
+  line-height: 1.25;
+}
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+.schedule-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.75fr) minmax(120px, 1.25fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 38px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  color: #655b4c;
+  font-size: 12.5px;
+}
+.schedule-row.is-today {
+  background: #fff;
+  box-shadow: 0 5px 16px -12px rgba(80, 55, 22, 0.58);
+}
+.schedule-row__day {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  font-weight: 600;
+}
+.schedule-row__day small {
+  margin-top: 1px;
+  color: #9a6638;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.schedule-row > strong {
+  color: #352d22;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+.schedule-row > strong.is-closed {
+  color: #b16a5e;
+  font-weight: 600;
+}
+.contact-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.contact-action {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: #4d4437;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.contact-action:hover {
+  border-color: #d7e4eb;
+  background: #fff;
+  transform: translateX(2px);
+}
+.contact-action__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  background: #eaf2f7;
+  color: #2c6fb3;
+}
+.contact-action__icon svg {
+  width: 17px;
+  height: 17px;
+}
+.contact-action__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.contact-action__copy strong {
+  color: #33291d;
+  font-size: 12.5px;
+}
+.contact-action__copy > span {
+  overflow: hidden;
+  margin-top: 2px;
+  color: #7d715f;
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.contact-action__arrow {
+  color: #7f9db5;
+  font-size: 14px;
+}
+.practical-empty {
+  padding: 20px 4px 8px;
+  color: #9b8e78;
+  font-size: 13px;
+}
+
+/* ---- Éditeur hebdomadaire des horaires ---- */
+.hours-editor {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.hours-editor__hint {
+  margin: 5px 0 12px;
+  color: #93866f;
+  font-size: 12px;
+}
+.hours-editor__days {
+  overflow: hidden;
+  border: 1px solid #e2d7c1;
+  border-radius: 13px;
+  background: #faf7ef;
+}
+.hours-editor__day {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  min-height: 58px;
+  padding: 11px 13px;
+  border-bottom: 1px solid #ebe2d0;
+}
+.hours-editor__day:last-child { border-bottom: 0; }
+.hours-editor__day.is-open { background: #fff; }
+.hours-editor__day-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+}
+.hours-editor__day-head > strong {
+  color: #3a3125;
+  font-size: 13px;
+}
+.hours-editor__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #9b5c51;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.hours-editor__toggle:has(input:checked) { color: #1f7a53; }
+.hours-editor__toggle input {
+  width: 15px;
+  height: 15px;
+  accent-color: #1f8a5b;
+}
+.hours-editor__slots {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+}
+.hours-editor__slot {
+  display: grid;
+  grid-template-columns: minmax(112px, 1fr) minmax(112px, 1fr) 28px;
+  align-items: end;
+  gap: 7px;
+}
+.hours-editor__slot label {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  color: #93866f;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.hours-editor__slot input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 7px;
+  border: 1px solid #ddd2bb;
+  border-radius: 8px;
+  background: #faf7ef;
+  color: #3c3322;
+  font: inherit;
+}
+.hours-editor__slot input:focus {
+  outline: 2px solid rgba(44, 111, 179, 0.3);
+  outline-offset: 1px;
+}
+.hours-editor__remove {
+  width: 28px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: #b06a5e;
+  font-size: 20px;
+  cursor: pointer;
+}
+.hours-editor__add {
+  align-self: flex-start;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #2c6fb3;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .practical-section { padding: 21px 16px; }
+  .practical-section__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .practical-grid { grid-template-columns: 1fr; }
+  .schedule-card,
+  .contact-card { padding: 15px; }
+  .profile-hero-action {
+    flex: 1 1 130px;
+    text-align: center;
+  }
+  .hours-editor__day {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .hours-editor__day-head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 460px) {
+  .schedule-row {
+    grid-template-columns: minmax(82px, 0.7fr) minmax(0, 1.3fr);
+  }
+  .schedule-row > strong {
+    line-height: 1.4;
+  }
+  .hours-editor__slot {
+    grid-template-columns: 1fr 1fr 28px;
+  }
+  .hours-editor__slot label {
+    grid-template-columns: 1fr;
+  }
+}
+

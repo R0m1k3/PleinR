@@ -7,6 +7,13 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { VitrineImage } from "@/components/VitrineImage";
 import { PromoImage } from "@/components/PromoImage";
 import { getMemberLivePromotions, getPublicMember } from "@/lib/queries";
+import {
+  formatSlots,
+  getOpenStatus,
+  normalizeWebsite,
+  parseMemberHours,
+  websiteLabel,
+} from "@/lib/member-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +36,52 @@ function badgeColor(badge: string | null) {
 
 function initialsOf(name: string) {
   return name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+type ContactIconName = "phone" | "mail" | "website" | "pin";
+
+function ContactIcon({ name }: { name: ContactIconName }) {
+  const paths: Record<ContactIconName, React.ReactNode> = {
+    phone: <path d="M7.4 3.8 9 7.2 7.2 8.6a14.4 14.4 0 0 0 6.2 6.2L14.8 13l3.4 1.6-.8 3.6c-.2.9-1 1.5-1.9 1.5C8.2 19.7 2.3 13.8 2.3 6.5c0-.9.6-1.7 1.5-1.9l3.6-.8Z" />,
+    mail: <><rect x="2.5" y="4.5" width="19" height="15" rx="2.5" /><path d="m4 6 8 6 8-6" /></>,
+    website: <><circle cx="12" cy="12" r="9.5" /><path d="M2.8 12h18.4M12 2.5c2.4 2.6 3.6 5.8 3.6 9.5S14.4 18.9 12 21.5M12 2.5C9.6 5.1 8.4 8.3 8.4 12s1.2 6.9 3.6 9.5" /></>,
+    pin: <><path d="M20 10c0 5.5-8 11.5-8 11.5S4 15.5 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
+  };
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {paths[name]}
+    </svg>
+  );
+}
+
+function ContactAction({
+  href,
+  icon,
+  label,
+  detail,
+  external = false,
+}: {
+  href: string;
+  icon: ContactIconName;
+  label: string;
+  detail: string;
+  external?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      className="contact-action"
+      target={external ? "_blank" : undefined}
+      rel={external ? "noopener noreferrer" : undefined}
+    >
+      <span className="contact-action__icon"><ContactIcon name={icon} /></span>
+      <span className="contact-action__copy">
+        <strong>{label}</strong>
+        <span>{detail}</span>
+      </span>
+      <span className="contact-action__arrow" aria-hidden="true">{external ? "↗" : "→"}</span>
+    </a>
+  );
 }
 
 export async function generateMetadata({
@@ -65,10 +118,11 @@ export default async function FicheAdherentPage({
   );
   const paragraphs = (member.description ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
   const tags = (member.tags ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const hours = (member.hours ?? "")
-    .split("\n")
-    .map((line) => line.split("|").map((s) => s.trim()))
-    .filter((p) => p[0]);
+  const hours = parseMemberHours(member.hours);
+  const openStatus = getOpenStatus(hours);
+  const normalizedWebsite = normalizeWebsite(member.website);
+  const shortWebsite = websiteLabel(member.website);
+  const phoneHref = member.phone ? `tel:${member.phone.replace(/[^\d+]/g, "")}` : null;
 
   const sectionCard: React.CSSProperties = {
     background: "#fff",
@@ -149,11 +203,14 @@ export default async function FicheAdherentPage({
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, paddingBottom: 4, flexWrap: "wrap" }}>
-              {member.phone && (
-                <a href={`tel:${member.phone.replace(/\s/g, "")}`} className="font-display" style={{ textDecoration: "none", background: "#2C6FB3", color: "#fff", fontWeight: 700, fontSize: 14, padding: "11px 18px", borderRadius: 11 }}>Appeler</a>
+              {phoneHref && (
+                <a href={phoneHref} className="font-display profile-hero-action profile-hero-action--primary">Appeler</a>
+              )}
+              {normalizedWebsite && (
+                <a href={normalizedWebsite} target="_blank" rel="noopener noreferrer" className="font-display profile-hero-action">Site web ↗</a>
               )}
               {mapQuery && (
-                <a href={`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`} target="_blank" rel="noopener" className="font-display" style={{ textDecoration: "none", background: "#fff", border: "1px solid #d8cdb4", color: "#3c3322", fontWeight: 700, fontSize: 14, padding: "11px 18px", borderRadius: 11 }}>Itinéraire</a>
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`} target="_blank" rel="noopener noreferrer" className="font-display profile-hero-action">Itinéraire</a>
               )}
             </div>
           </div>
@@ -186,44 +243,90 @@ export default async function FicheAdherentPage({
             </section>
 
             {/* practical info */}
-            <section style={sectionCard}>
-              <h2 className="font-display" style={{ ...h2, marginBottom: 16 }}>Informations pratiques</h2>
-              <div className="grid grid-2" style={{ gap: 22 }}>
+            <section className="practical-section">
+              <div className="practical-section__heading">
                 <div>
-                  <div style={{ fontSize: 12.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "#a99c82", fontWeight: 700, marginBottom: 10 }}>Horaires</div>
+                  <span className="eyebrow">Préparer votre visite</span>
+                  <h2 className="font-display" style={{ ...h2, margin: "5px 0 0" }}>Informations pratiques</h2>
+                </div>
+                {openStatus && (
+                  <div className={`open-status${openStatus.isOpen ? " is-open" : ""}`}>
+                    <span />
+                    <div>
+                      <strong>{openStatus.label}</strong>
+                      {openStatus.detail && <small>{openStatus.detail}</small>}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="practical-grid">
+                <section className="schedule-card" aria-labelledby="schedule-title">
+                  <div className="practical-card-title">
+                    <span className="practical-card-title__icon" aria-hidden="true">◷</span>
+                    <div>
+                      <span>Cette semaine</span>
+                      <h3 id="schedule-title" className="font-display">Horaires d&apos;ouverture</h3>
+                    </div>
+                  </div>
                   {hours.length > 0 ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 7, fontSize: 14 }}>
-                      {hours.map(([label, range], i) => {
-                        const closed = (range ?? "").toLowerCase().includes("ferm");
+                    <div className="schedule-list">
+                      {hours.map((day) => {
+                        const isToday = openStatus?.todayKey === day.key;
                         return (
-                          <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                            <span style={{ color: "#6c6150" }}>{label}</span>
-                            <span style={{ color: closed ? "#c0392b" : "#3c3322", fontWeight: 600 }}>{range}</span>
+                          <div
+                            key={day.key}
+                            className={`schedule-row${isToday ? " is-today" : ""}`}
+                            aria-current={isToday ? "date" : undefined}
+                          >
+                            <span className="schedule-row__day">
+                              {day.label}
+                              {isToday && <small>Aujourd&apos;hui</small>}
+                            </span>
+                            <strong className={day.closed ? "is-closed" : undefined}>
+                              {day.closed ? "Fermé" : formatSlots(day.slots)}
+                            </strong>
                           </div>
                         );
                       })}
                     </div>
                   ) : (
-                    <div style={{ fontSize: 14, color: "#a99c82" }}>Horaires non communiqués.</div>
+                    <div className="practical-empty">Horaires non communiqués.</div>
                   )}
-                </div>
-                <div>
-                  <div style={{ fontSize: 12.5, letterSpacing: "0.06em", textTransform: "uppercase", color: "#a99c82", fontWeight: 700, marginBottom: 10 }}>Contact</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 9, fontSize: 14, color: "#5e5444" }}>
-                    {member.phone && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E0A63C" }} />{member.phone}</div>
+                </section>
+
+                <section className="contact-card" aria-labelledby="contact-title">
+                  <div className="practical-card-title">
+                    <span className="practical-card-title__icon practical-card-title__icon--blue" aria-hidden="true">↗</span>
+                    <div>
+                      <span>Contact direct</span>
+                      <h3 id="contact-title" className="font-display">Joindre l&apos;établissement</h3>
+                    </div>
+                  </div>
+                  <div className="contact-actions">
+                    {phoneHref && member.phone && (
+                      <ContactAction href={phoneHref} icon="phone" label="Appeler" detail={member.phone} />
                     )}
                     {member.email && (
-                      <a href={`mailto:${member.email}`} style={{ display: "flex", alignItems: "center", gap: 9, color: "#5e5444", textDecoration: "none" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#6FB0C6" }} />{member.email}</a>
+                      <ContactAction href={`mailto:${member.email}`} icon="mail" label="Envoyer un e-mail" detail={member.email} />
                     )}
-                    {member.website && (
-                      <a href={member.website} target="_blank" rel="noopener" style={{ display: "flex", alignItems: "center", gap: 9, color: "#2C6FB3", textDecoration: "none", fontWeight: 600 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#2C6FB3" }} />{member.website.replace(/^https?:\/\//, "")}</a>
+                    {normalizedWebsite && shortWebsite && (
+                      <ContactAction href={normalizedWebsite} icon="website" label="Visiter le site" detail={shortWebsite} external />
                     )}
-                    {!member.phone && !member.email && !member.website && (
-                      <div style={{ color: "#a99c82" }}>Coordonnées non communiquées.</div>
+                    {mapQuery && fullAddress && (
+                      <ContactAction
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${mapQuery}`}
+                        icon="pin"
+                        label="Itinéraire"
+                        detail={fullAddress}
+                        external
+                      />
+                    )}
+                    {!phoneHref && !member.email && !normalizedWebsite && !fullAddress && (
+                      <div className="practical-empty">Coordonnées non communiquées.</div>
                     )}
                   </div>
-                </div>
+                </section>
               </div>
             </section>
 
@@ -287,11 +390,21 @@ export default async function FicheAdherentPage({
             </section>
 
             {/* contact CTA */}
-            <section style={{ background: "linear-gradient(120deg,#13324F,#1d4a72)", borderRadius: 18, padding: 22, color: "#fff" }}>
-              <h3 className="font-display" style={{ fontWeight: 700, fontSize: 17, margin: "0 0 6px" }}>Une question pour ce commerçant ?</h3>
-              <p style={{ margin: "0 0 14px", fontSize: 13.5, color: "#bcd3e6" }}>Contactez {member.name} directement.</p>
-              <a href={member.email ? `mailto:${member.email}` : "#"} className="font-display" style={{ textDecoration: "none", display: "block", textAlign: "center", background: "#E0A63C", color: "#33291D", fontWeight: 700, fontSize: 14.5, padding: 12, borderRadius: 11 }}>Envoyer un message</a>
-            </section>
+            {(member.email || phoneHref || normalizedWebsite) && (
+              <section style={{ background: "linear-gradient(120deg,#13324F,#1d4a72)", borderRadius: 18, padding: 22, color: "#fff" }}>
+                <h3 className="font-display" style={{ fontWeight: 700, fontSize: 17, margin: "0 0 6px" }}>Une question pour ce commerçant ?</h3>
+                <p style={{ margin: "0 0 14px", fontSize: 13.5, color: "#bcd3e6" }}>Contactez {member.name} directement.</p>
+                <a
+                  href={member.email ? `mailto:${member.email}` : phoneHref ?? normalizedWebsite ?? undefined}
+                  target={!member.email && !phoneHref ? "_blank" : undefined}
+                  rel={!member.email && !phoneHref ? "noopener noreferrer" : undefined}
+                  className="font-display"
+                  style={{ textDecoration: "none", display: "block", textAlign: "center", background: "#E0A63C", color: "#33291D", fontWeight: 700, fontSize: 14.5, padding: 12, borderRadius: 11 }}
+                >
+                  {member.email ? "Envoyer un message" : phoneHref ? "Appeler maintenant" : "Visiter le site"}
+                </a>
+              </section>
+            )}
           </aside>
         </div>
       </div>

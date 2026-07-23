@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { categories, imageConsents, meetingRegistrations, meetings, members, promotions, type Member } from "@/db/schema";
 import { ImageField } from "@/components/ImageField";
 import { ImageConsentForm } from "@/components/ImageConsentForm";
+import { HoursEditor } from "@/components/HoursEditor";
 import { communeOptions } from "@/lib/communes";
 import { saveImageConsent, updateOwnProfile } from "../actions";
 import { MemberSpaceForm } from "./MemberSpaceForm";
@@ -196,8 +197,7 @@ export default async function EspacePage() {
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <label className="field-label">Horaires (une ligne par jour : « Jour|plage »)</label>
-            <textarea name="hours" rows={4} defaultValue={profile.hours ?? ""} className="field" style={{ resize: "vertical" }} placeholder={"Mardi – Vendredi|7h – 19h30\nSamedi|7h – 19h"} />
+            <HoursEditor defaultValue={profile.hours} />
           </div>
 
           <button
