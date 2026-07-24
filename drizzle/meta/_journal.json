@@ -43,6 +43,13 @@
       "when": 1784339279276,
       "tag": "0005_round_exiles",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784930674056,
+      "tag": "0006_tiresome_clea",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { getSiteSettings, socialLinks } from "@/lib/site-settings";
 import { ContactModalButton } from "./ContactModalButton";
+import { SOCIAL_BRAND, SocialIcon } from "./SocialIcons";
 
-export function SiteFooter() {
+export async function SiteFooter() {
   const year = new Date().getFullYear();
+  const socials = socialLinks(await getSiteSettings());
 
   return (
     <footer style={{ background: "#EFE9DA", borderTop: "1px solid #e2d6bd" }}>
@@ -17,6 +20,33 @@ export function SiteFooter() {
               Association des commerçants et entreprises du Bassin de Pompey.
               Réseau · Rencontre · Réussite.
             </p>
+            {socials.length > 0 && (
+              <div style={{ display: "flex", gap: 9, marginTop: 16 }}>
+                {socials.map((s) => (
+                  <a
+                    key={s.network}
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Plein R sur ${s.label}`}
+                    title={`Plein R sur ${s.label}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 38,
+                      height: 38,
+                      borderRadius: 11,
+                      border: "1px solid #e2d6bd",
+                      background: "#fff",
+                      color: SOCIAL_BRAND[s.network],
+                    }}
+                  >
+                    <SocialIcon network={s.network} />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

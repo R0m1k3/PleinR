@@ -7,7 +7,7 @@ import { ImageField } from "@/components/ImageField";
 import { ImageConsentForm } from "@/components/ImageConsentForm";
 import { HoursEditor } from "@/components/HoursEditor";
 import { communeOptions } from "@/lib/communes";
-import { saveImageConsent, updateOwnProfile } from "../actions";
+import { saveImageConsent, setOwnPromoSuspension, updateOwnProfile } from "../actions";
 import { MemberSpaceForm } from "./MemberSpaceForm";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,7 @@ const PROMO_STATUS: Record<string, { label: string; bg: string; color: string }>
   live: { label: "En ligne", bg: "#e6f4ec", color: "#1f8a5b" },
   pending: { label: "En attente", bg: "#fbeede", color: "#9a6638" },
   rejected: { label: "Refusée", bg: "#fbe9e6", color: "#d8472b" },
+  suspended: { label: "Suspendue", bg: "#fbe9e6", color: "#d8472b" },
   expired: { label: "Expirée", bg: "#f1efe7", color: "#a99c82" },
 };
 
@@ -31,7 +32,14 @@ export default async function EspacePage() {
   let memberName = fallbackName;
   let subtitle = "Espace adhérent";
   let profile: Member | null = null;
-  let myPromos: { id: number; title: string; status: string; createdAt: Date; imageUrl: string | null }[] = [];
+  let myPromos: {
+    id: number;
+    title: string;
+    status: string;
+    createdAt: Date;
+    imageUrl: string | null;
+    suspendedBy: "member" | "staff" | null;
+  }[] = [];
   let myRegistrations: { meetingId: number; title: string; startsAt: Date; location: string | null; participants: number; confirmed: boolean }[] = [];
   let latestConsent: { decision: string; createdAt: Date } | null = null;
 
@@ -52,6 +60,7 @@ export default async function EspacePage() {
         status: promotions.status,
         createdAt: promotions.createdAt,
         imageUrl: promotions.imageUrl,
+        suspendedBy: promotions.suspendedBy,
       })
       .from(promotions)
       .where(eq(promotions.memberId, memberId))
@@ -241,38 +250,70 @@ export default async function EspacePage() {
       <MemberSpaceForm memberName={memberName} categories={categoryLabels} />
 
       <div style={{ marginTop: 28 }}>
-        <div style={{ fontSize: 12.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 700, marginBottom: 12 }}>
+        <div style={{ fontSize: 12.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 700, marginBottom: 4 }}>
           Mes promotions
+        </div>
+        <div style={{ fontSize: 13, color: "#8c8068", marginBottom: 12 }}>
+          Vous pouvez suspendre une promotion en ligne à tout moment : elle disparaît du site et
+          vous la remettez en ligne quand vous voulez.
         </div>
         {myPromos.length === 0 && (
           <div style={{ fontSize: 13.5, color: "#a99c82" }}>Vous n&apos;avez pas encore publié de promotion.</div>
         )}
         {myPromos.map((mp) => {
           const st = PROMO_STATUS[mp.status] ?? PROMO_STATUS.expired;
+          const suspendedByStaff = mp.status === "suspended" && mp.suspendedBy === "staff";
           return (
-            <div key={mp.id} style={{ display: "flex", alignItems: "center", gap: 13, background: "#fff", border: "1px solid #e6dcc6", borderRadius: 12, padding: "12px 14px", marginBottom: 10 }}>
-              <span
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 9,
-                  background: mp.imageUrl
-                    ? `url(${mp.imageUrl})`
-                    : "repeating-linear-gradient(45deg,#efe9da,#efe9da 7px,#e6ddc9 7px,#e6ddc9 14px)",
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#26201a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {mp.title}
+            <div key={mp.id} style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 12, padding: "12px 14px", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
+                <span
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 9,
+                    background: mp.imageUrl
+                      ? `url(${mp.imageUrl})`
+                      : "repeating-linear-gradient(45deg,#efe9da,#efe9da 7px,#e6ddc9 7px,#e6ddc9 14px)",
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    flexShrink: 0,
+                    opacity: mp.status === "suspended" ? 0.5 : 1,
+                  }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#26201a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {mp.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#a99c82" }}>Publié le {fmtDate(mp.createdAt)}</div>
                 </div>
-                <div style={{ fontSize: 12, color: "#a99c82" }}>Publié le {fmtDate(mp.createdAt)}</div>
+                <span style={{ display: "inline-block", fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, background: st.bg, color: st.color, flexShrink: 0 }}>
+                  {st.label}
+                </span>
+                {mp.status === "live" && (
+                  <form action={setOwnPromoSuspension}>
+                    <input type="hidden" name="id" value={mp.id} />
+                    <input type="hidden" name="action" value="suspend" />
+                    <button type="submit" style={{ border: "1px solid #e0c3bb", background: "#fff", color: "#d8472b", fontWeight: 700, fontSize: 12.5, padding: "7px 13px", borderRadius: 9, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      Suspendre
+                    </button>
+                  </form>
+                )}
+                {mp.status === "suspended" && !suspendedByStaff && (
+                  <form action={setOwnPromoSuspension}>
+                    <input type="hidden" name="id" value={mp.id} />
+                    <input type="hidden" name="action" value="restore" />
+                    <button type="submit" style={{ border: "none", background: "#1f8a5b", color: "#fff", fontWeight: 700, fontSize: 12.5, padding: "8px 14px", borderRadius: 9, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      Remettre en ligne
+                    </button>
+                  </form>
+                )}
               </div>
-              <span style={{ display: "inline-block", fontSize: 11.5, fontWeight: 700, padding: "4px 11px", borderRadius: 999, background: st.bg, color: st.color }}>
-                {st.label}
-              </span>
+              {suspendedByStaff && (
+                <div style={{ marginTop: 10, background: "#fbe9e6", border: "1px solid #f2d5cf", color: "#a8503c", borderRadius: 9, padding: "9px 11px", fontSize: 12.5, lineHeight: 1.5 }}>
+                  Cette promotion a été suspendue par l&apos;association. Contactez-la pour la
+                  remettre en ligne.
+                </div>
+              )}
             </div>
           );
         })}

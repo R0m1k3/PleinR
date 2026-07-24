@@ -25,11 +25,29 @@ export default async function ParametresPage() {
           <Field label="Téléphone" name="association_phone" value={settings.association_phone} />
           <Field label="Site web" name="association_website" value={settings.association_website} />
           <Field label="Contact principal" name="association_contact" value={settings.association_contact} />
+          <Field
+            label="Page Facebook"
+            name="association_facebook"
+            value={settings.association_facebook}
+            placeholder="https://www.facebook.com/..."
+          />
+          <Field
+            label="Page LinkedIn"
+            name="association_linkedin"
+            value={settings.association_linkedin}
+            placeholder="https://www.linkedin.com/company/..."
+          />
           <div style={{ gridColumn: "1 / -1" }}>
             <Field label="Adresse" name="association_address" value={settings.association_address} />
           </div>
           <Area label="Texte d'introduction Association" name="association_intro" value={settings.association_intro} />
           <Area label="Mission" name="association_mission" value={settings.association_mission} />
+        </div>
+        <div style={{ marginTop: 14, color: "#9a6638", fontSize: 13, lineHeight: 1.6 }}>
+          Les pages Facebook et LinkedIn s&apos;affichent sur la page d&apos;accueil et dans le pied
+          de page. Laissez un champ vide pour masquer le réseau correspondant. La publication
+          automatique des promotions, elle, se configure côté serveur (jetons d&apos;accès dans les
+          variables d&apos;environnement).
         </div>
       </section>
 

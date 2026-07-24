@@ -20,9 +20,17 @@ import {
   pastMeetings,
   promotions,
   siteSettings,
+  socialPosts,
   users,
 } from "@/db/schema";
 import { can, LABEL_TO_ROLE } from "@/lib/rbac";
+import {
+  isNetworkConfigured,
+  publishPromoToNetwork,
+  SOCIAL_LABELS,
+  SOCIAL_NETWORKS,
+  type SocialNetwork,
+} from "@/lib/social";
 import { normalizeWebsite } from "@/lib/member-profile";
 import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
@@ -62,13 +70,20 @@ function generateTempPassword(): string {
   return out;
 }
 
-async function requireRole(): Promise<{ role: AppRole; memberId: number | null; name: string }> {
+async function requireRole(): Promise<{
+  role: AppRole;
+  memberId: number | null;
+  name: string;
+  userId: number | null;
+}> {
   const session = await auth();
   if (!session?.user) throw new Error("Non authentifié");
+  const userId = Number(session.user.id);
   return {
     role: session.user.role,
     memberId: session.user.memberId,
     name: session.user.name ?? "Adhérent",
+    userId: Number.isFinite(userId) ? userId : null,
   };
 }
 
@@ -87,26 +102,155 @@ function asNullableString(formData: FormData, key: string) {
   return asString(formData, key) || null;
 }
 
+function revalidatePromoPaths(memberId?: number | null) {
+  revalidatePath("/backend/promotions");
+  revalidatePath("/backend/espace");
+  revalidatePath("/backend");
+  revalidatePath("/");
+  revalidatePath("/annuaire");
+  if (memberId) revalidatePath(`/adherents/${memberId}`);
+}
+
 // ---- Promotion moderation ----
 export async function moderatePromo(formData: FormData) {
-  const { role } = await requireRole();
+  const { role, userId, name } = await requireRole();
   if (!can(role, "moderatePromos")) throw new Error("Accès refusé");
 
   const id = Number(formData.get("id"));
   const action = String(formData.get("action"));
   if (!id) return;
 
+  const [promo] = await db.select().from(promotions).where(eq(promotions.id, id));
+  if (!promo) return;
+
   if (action === "approve") {
-    await db.update(promotions).set({ status: "live" }).where(eq(promotions.id, id));
-    const [p] = await db.select().from(promotions).where(eq(promotions.id, id));
-    if (p) await logActivity(`Promotion « ${p.title} » validée et mise en ligne`, "#1f8a5b");
+    await db
+      .update(promotions)
+      .set({ status: "live", suspendedBy: null, suspendedById: null, suspendedAt: null })
+      .where(eq(promotions.id, id));
+    await logActivity(`Promotion « ${promo.title} » validée et mise en ligne`, "#1f8a5b");
+  } else if (action === "suspend") {
+    // Suspension par l'association : la promotion sort du site public et
+    // l'adhérent ne peut pas la remettre en ligne lui-même.
+    await db
+      .update(promotions)
+      .set({ status: "suspended", suspendedBy: "staff", suspendedById: userId, suspendedAt: new Date() })
+      .where(eq(promotions.id, id));
+    await logActivity(
+      `Promotion « ${promo.title} » suspendue par <strong>${name}</strong>`,
+      "#d8472b"
+    );
+  } else if (action === "restore") {
+    await db
+      .update(promotions)
+      .set({ status: "live", suspendedBy: null, suspendedById: null, suspendedAt: null })
+      .where(eq(promotions.id, id));
+    await logActivity(`Promotion « ${promo.title} » remise en ligne`, "#1f8a5b");
   } else if (action === "reject" || action === "remove") {
     await db.delete(promotions).where(eq(promotions.id, id));
   }
 
+  revalidatePromoPaths(promo.memberId);
+}
+
+// ---- Member space: suspendre / réactiver sa propre promotion ----
+export async function setOwnPromoSuspension(formData: FormData) {
+  const { memberId, userId, name } = await requireRole();
+  if (!memberId) throw new Error("Aucune fiche adhérent liée à votre compte.");
+
+  const id = Number(formData.get("id"));
+  const action = String(formData.get("action"));
+  if (!id) return;
+
+  const [promo] = await db
+    .select()
+    .from(promotions)
+    .where(and(eq(promotions.id, id), eq(promotions.memberId, memberId)));
+  if (!promo) throw new Error("Promotion introuvable.");
+
+  if (action === "suspend") {
+    if (promo.status !== "live") return;
+    await db
+      .update(promotions)
+      .set({ status: "suspended", suspendedBy: "member", suspendedById: userId, suspendedAt: new Date() })
+      .where(eq(promotions.id, id));
+    await logActivity(`<strong>${name}</strong> a suspendu sa promotion « ${promo.title} »`, "#9a6638");
+  } else if (action === "restore") {
+    if (promo.status !== "suspended") return;
+    // Une suspension décidée par l'association ne se lève que par elle.
+    if (promo.suspendedBy === "staff") {
+      throw new Error(
+        "Cette promotion a été suspendue par l'association : contactez-la pour la remettre en ligne."
+      );
+    }
+    await db
+      .update(promotions)
+      .set({ status: "live", suspendedBy: null, suspendedById: null, suspendedAt: null })
+      .where(eq(promotions.id, id));
+    await logActivity(`<strong>${name}</strong> a réactivé sa promotion « ${promo.title} »`, "#1f8a5b");
+  }
+
+  revalidatePromoPaths(memberId);
+}
+
+// ---- Publication d'une promotion sur Facebook / LinkedIn ----
+export async function sharePromoToSocial(formData: FormData) {
+  const { role, userId, name } = await requireRole();
+  if (!can(role, "publishSocial")) throw new Error("Accès refusé");
+
+  const id = Number(formData.get("id"));
+  const network = String(formData.get("network")) as SocialNetwork;
+  if (!id || !SOCIAL_NETWORKS.includes(network)) return;
+  if (!isNetworkConfigured(network)) {
+    throw new Error(`${SOCIAL_LABELS[network]} n'est pas configuré sur ce serveur.`);
+  }
+
+  const [promo] = await db
+    .select({
+      id: promotions.id,
+      title: promotions.title,
+      text: promotions.text,
+      badge: promotions.badge,
+      validUntil: promotions.validUntil,
+      imageUrl: promotions.imageUrl,
+      status: promotions.status,
+      memberId: promotions.memberId,
+      memberName: members.name,
+    })
+    .from(promotions)
+    .leftJoin(members, eq(promotions.memberId, members.id))
+    .where(eq(promotions.id, id));
+  if (!promo) throw new Error("Promotion introuvable.");
+  if (promo.status !== "live") {
+    throw new Error("Seule une promotion en ligne peut être publiée sur les réseaux.");
+  }
+
+  try {
+    const result = await publishPromoToNetwork(network, promo);
+    await db.insert(socialPosts).values({
+      promotionId: promo.id,
+      network,
+      status: "posted",
+      externalId: result.externalId,
+      url: result.url,
+      postedById: userId,
+    });
+    await logActivity(
+      `Promotion « ${promo.title} » publiée sur ${SOCIAL_LABELS[network]} par <strong>${name}</strong>`,
+      "#2C6FB3"
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erreur inconnue";
+    await db.insert(socialPosts).values({
+      promotionId: promo.id,
+      network,
+      status: "failed",
+      error: message.slice(0, 2000),
+      postedById: userId,
+    });
+  }
+
   revalidatePath("/backend/promotions");
-  revalidatePath("/backend");
-  revalidatePath("/");
 }
 
 // ---- Member space: publish a promotion ----

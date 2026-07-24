@@ -38,7 +38,7 @@ function initialsOf(name: string) {
   return name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-type ContactIconName = "phone" | "mail" | "website" | "pin";
+type ContactIconName = "phone" | "mail" | "website" | "pin" | "clock" | "chat";
 
 function ContactIcon({ name }: { name: ContactIconName }) {
   const paths: Record<ContactIconName, React.ReactNode> = {
@@ -46,6 +46,8 @@ function ContactIcon({ name }: { name: ContactIconName }) {
     mail: <><rect x="2.5" y="4.5" width="19" height="15" rx="2.5" /><path d="m4 6 8 6 8-6" /></>,
     website: <><circle cx="12" cy="12" r="9.5" /><path d="M2.8 12h18.4M12 2.5c2.4 2.6 3.6 5.8 3.6 9.5S14.4 18.9 12 21.5M12 2.5C9.6 5.1 8.4 8.3 8.4 12s1.2 6.9 3.6 9.5" /></>,
     pin: <><path d="M20 10c0 5.5-8 11.5-8 11.5S4 15.5 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
+    clock: <><circle cx="12" cy="12" r="9.5" /><path d="M12 6.6V12l3.6 2.4" /></>,
+    chat: <><path d="M20.5 12.6c0 3.9-3.8 7.1-8.5 7.1-.9 0-1.8-.1-2.6-.3l-5.4 1.7 1.7-4.2a6.6 6.6 0 0 1-2.2-4.8c0-3.9 3.8-7.1 8.5-7.1s8.5 3.2 8.5 7.1Z" /><path d="M8.8 11.9h.01M12 11.9h.01M15.2 11.9h.01" /></>,
   };
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -247,7 +249,7 @@ export default async function FicheAdherentPage({
               <div className="practical-section__heading">
                 <div>
                   <span className="eyebrow">Préparer votre visite</span>
-                  <h2 className="font-display" style={{ ...h2, margin: "5px 0 0" }}>Informations pratiques</h2>
+                  <h2 className="font-display" style={{ ...h2, margin: "10px 0 0" }}>Informations pratiques</h2>
                 </div>
                 {openStatus && (
                   <div className={`open-status${openStatus.isOpen ? " is-open" : ""}`}>
@@ -263,7 +265,7 @@ export default async function FicheAdherentPage({
               <div className="practical-grid">
                 <section className="schedule-card" aria-labelledby="schedule-title">
                   <div className="practical-card-title">
-                    <span className="practical-card-title__icon" aria-hidden="true">◷</span>
+                    <span className="practical-card-title__icon" aria-hidden="true"><ContactIcon name="clock" /></span>
                     <div>
                       <span>Cette semaine</span>
                       <h3 id="schedule-title" className="font-display">Horaires d&apos;ouverture</h3>
@@ -297,7 +299,7 @@ export default async function FicheAdherentPage({
 
                 <section className="contact-card" aria-labelledby="contact-title">
                   <div className="practical-card-title">
-                    <span className="practical-card-title__icon practical-card-title__icon--blue" aria-hidden="true">↗</span>
+                    <span className="practical-card-title__icon practical-card-title__icon--blue" aria-hidden="true"><ContactIcon name="chat" /></span>
                     <div>
                       <span>Contact direct</span>
                       <h3 id="contact-title" className="font-display">Joindre l&apos;établissement</h3>

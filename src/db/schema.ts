@@ -20,7 +20,13 @@ export const promoStatusEnum = pgEnum("promo_status", [
   "live",
   "expired",
   "rejected",
+  "suspended",
 ]);
+// Qui a suspendu la promotion : son créateur (l'adhérent) ou l'association.
+// Une promotion suspendue par l'association ne peut être réactivée que par elle.
+export const promoSuspendedByEnum = pgEnum("promo_suspended_by", ["member", "staff"]);
+export const socialNetworkEnum = pgEnum("social_network", ["facebook", "linkedin"]);
+export const socialPostStatusEnum = pgEnum("social_post_status", ["posted", "failed"]);
 export const requestStatusEnum = pgEnum("request_status", [
   "new",
   "approved",
@@ -94,8 +100,32 @@ export const promotions = pgTable("promotions", {
   memberId: integer("member_id").references(() => members.id),
   status: promoStatusEnum("status").notNull().default("pending"),
   validUntil: varchar("valid_until", { length: 120 }),
+  suspendedBy: promoSuspendedByEnum("suspended_by"),
+  suspendedById: integer("suspended_by_id").references(() => users.id, { onDelete: "set null" }),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ---- Publications réseaux sociaux (Facebook / LinkedIn) ----
+export const socialPosts = pgTable(
+  "social_posts",
+  {
+    id: serial("id").primaryKey(),
+    promotionId: integer("promotion_id")
+      .notNull()
+      .references(() => promotions.id, { onDelete: "cascade" }),
+    network: socialNetworkEnum("network").notNull(),
+    status: socialPostStatusEnum("status").notNull(),
+    externalId: varchar("external_id", { length: 200 }),
+    url: text("url"),
+    error: text("error"),
+    postedById: integer("posted_by_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    promoIdx: index("social_posts_promotion_idx").on(t.promotionId),
+  })
+);
 
 // ---- Membership requests (demandes d'adhésion) ----
 export const membershipRequests = pgTable("membership_requests", {
@@ -218,10 +248,18 @@ export const membersRelations = relations(members, ({ one, many }) => ({
   imageConsents: many(imageConsents),
 }));
 
-export const promotionsRelations = relations(promotions, ({ one }) => ({
+export const promotionsRelations = relations(promotions, ({ one, many }) => ({
   member: one(members, {
     fields: [promotions.memberId],
     references: [members.id],
+  }),
+  socialPosts: many(socialPosts),
+}));
+
+export const socialPostsRelations = relations(socialPosts, ({ one }) => ({
+  promotion: one(promotions, {
+    fields: [socialPosts.promotionId],
+    references: [promotions.id],
   }),
 }));
 
@@ -273,6 +311,8 @@ export type Category = typeof categories.$inferSelect;
 export type Member = typeof members.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Promotion = typeof promotions.$inferSelect;
+export type SocialPost = typeof socialPosts.$inferSelect;
+export type SocialNetwork = (typeof socialNetworkEnum.enumValues)[number];
 export type MembershipRequest = typeof membershipRequests.$inferSelect;
 export type ContactMessage = typeof contactMessages.$inferSelect;
 export type ActivityEntry = typeof activityLog.$inferSelect;

@@ -62,10 +62,42 @@ charge des données de démonstration. Ensuite :
 | Tableau de bord | ✅ | ✅ | ✅ | — |
 | Adhérents (CRUD) | ✅ | ✅ | ✅ | — |
 | Modération des promotions | ✅ | ✅ | — | — |
+| Publication réseaux sociaux | ✅ | ✅ | — | — |
 | Administrateurs | ✅ | — | — | — |
 | Mon espace (publier une promo) | — | — | — | ✅ |
 
 `/backend` est protégé par le middleware ; chaque vue affine l'accès selon le rôle.
+
+## Cycle de vie d'une promotion
+
+`pending` → `live` → `suspended` ⇄ `live`, ou suppression.
+
+- L'adhérent soumet la promotion depuis **Mon espace** : elle part en `pending`.
+- L'association la valide dans **Backend › Promotions** : elle passe `live` et
+  s'affiche sur l'accueil, l'annuaire et la fiche de l'adhérent.
+- **Suspension** : l'adhérent peut suspendre *ses* promotions depuis Mon espace,
+  l'association peut suspendre n'importe laquelle. Une promotion suspendue sort
+  immédiatement du site public et peut être remise en ligne à tout moment.
+  Nuance importante : une suspension décidée par l'association ne peut pas être
+  levée par l'adhérent (`promotions.suspended_by` mémorise l'auteur).
+
+## Publication sur Facebook / LinkedIn
+
+Depuis **Backend › Promotions**, une promotion `live` peut être publiée sur la
+page Facebook et/ou la page LinkedIn de l'association (image + texte + lien vers
+la fiche adhérent). Chaque tentative est tracée dans la table `social_posts`
+(succès avec le lien du post, ou échec avec le message d'erreur affiché sur la
+carte).
+
+Les jetons d'accès sont des **secrets** : ils se configurent uniquement par
+variables d'environnement (`FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_ACCESS_TOKEN`,
+`LINKEDIN_ORGANIZATION_URN` ou `LINKEDIN_ORGANIZATION_ID`,
+`LINKEDIN_ACCESS_TOKEN`), jamais depuis le backoffice. Voir
+[`.env.example`](./.env.example) pour la marche à suivre côté Meta et LinkedIn.
+Si un réseau n'est pas configuré, son bouton n'apparaît simplement pas.
+
+Les **liens publics** vers les deux pages (affichés sur l'accueil et dans le pied
+de page) se règlent, eux, dans **Backend › Paramètres**.
 
 ## Développement local (sans Docker)
 
@@ -98,6 +130,9 @@ Voir [`.env.example`](./.env.example). Les principales :
 - `AUTH_URL` — URL publique de l'application
 - `SEED_ON_START` — `true` pour seeder au démarrage du conteneur
 - `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` — premier admin
+- `NEXT_PUBLIC_SITE_URL` — URL publique reprise dans les posts réseaux sociaux
+- `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_ACCESS_TOKEN` — publication Facebook (optionnel)
+- `LINKEDIN_ORGANIZATION_URN` / `LINKEDIN_ACCESS_TOKEN` — publication LinkedIn (optionnel)
 
 ## Note sur le logo
 

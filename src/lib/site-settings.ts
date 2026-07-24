@@ -13,6 +13,10 @@ export const SITE_SETTING_DEFAULTS = {
   association_email: "",
   association_phone: "",
   association_website: "",
+  association_facebook:
+    "https://www.facebook.com/search/top?q=pleinr%20-%20les%20bons%20plan%20du%20bassin%20de%20pompey",
+  association_linkedin:
+    "https://www.linkedin.com/company/association-plein-r-bassin-de-pompey/",
   association_siret: "",
   association_rna: "",
   association_contact: "",
@@ -44,6 +48,37 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     }
   }
   return merged;
+}
+
+export type SocialLink = {
+  network: "facebook" | "linkedin";
+  label: string;
+  handle: string;
+  href: string;
+};
+
+/** Réseaux sociaux publics de l'association, dans l'ordre d'affichage. */
+export function socialLinks(settings: SiteSettings): SocialLink[] {
+  const links: SocialLink[] = [];
+  const facebook = settings.association_facebook.trim();
+  const linkedin = settings.association_linkedin.trim();
+  if (facebook) {
+    links.push({
+      network: "facebook",
+      label: "Facebook",
+      handle: "Plein R — Les bons plans du Bassin de Pompey",
+      href: facebook,
+    });
+  }
+  if (linkedin) {
+    links.push({
+      network: "linkedin",
+      label: "LinkedIn",
+      handle: "Association Plein R — Bassin de Pompey",
+      href: linkedin,
+    });
+  }
+  return links;
 }
 
 export function splitLines(value: string) {

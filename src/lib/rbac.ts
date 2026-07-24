@@ -18,6 +18,7 @@ type Capability =
   | "viewDashboard"
   | "manageMembers"
   | "moderatePromos"
+  | "publishSocial"
   | "manageAdmins"
   | "manageCategories"
   | "manageMeetings"
@@ -30,6 +31,7 @@ const CAPABILITIES: Record<AppRole, Capability[]> = {
     "viewDashboard",
     "manageMembers",
     "moderatePromos",
+    "publishSocial",
     "manageAdmins",
     "manageCategories",
     "manageMeetings",
@@ -37,7 +39,13 @@ const CAPABILITIES: Record<AppRole, Capability[]> = {
     "manageSettings",
     "memberSpace",
   ],
-  moderator: ["viewDashboard", "manageMembers", "moderatePromos", "manageMeetings"],
+  moderator: [
+    "viewDashboard",
+    "manageMembers",
+    "moderatePromos",
+    "publishSocial",
+    "manageMeetings",
+  ],
   editor: ["viewDashboard", "manageMembers"],
   member: ["memberSpace"],
 };

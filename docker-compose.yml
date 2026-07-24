@@ -47,6 +47,16 @@ services:
       AUTH_URL: ${AUTH_URL:-}
       # Lets Auth.js trust the X-Forwarded-* headers from the proxy.
       AUTH_TRUST_HOST: "true"
+      # URL publique, reprise dans le texte des posts Facebook / LinkedIn.
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+      # Publication des promotions sur les réseaux (facultatif — voir .env.example).
+      FACEBOOK_PAGE_ID: ${FACEBOOK_PAGE_ID:-}
+      FACEBOOK_PAGE_ACCESS_TOKEN: ${FACEBOOK_PAGE_ACCESS_TOKEN:-}
+      FACEBOOK_GRAPH_VERSION: ${FACEBOOK_GRAPH_VERSION:-}
+      LINKEDIN_ORGANIZATION_URN: ${LINKEDIN_ORGANIZATION_URN:-}
+      LINKEDIN_ORGANIZATION_ID: ${LINKEDIN_ORGANIZATION_ID:-}
+      LINKEDIN_ACCESS_TOKEN: ${LINKEDIN_ACCESS_TOKEN:-}
+      LINKEDIN_API_VERSION: ${LINKEDIN_API_VERSION:-}
       SEED_ON_START: ${SEED_ON_START:-true}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@plein-r.fr}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-changeme123}

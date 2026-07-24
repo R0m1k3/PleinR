@@ -41,6 +41,27 @@ docker compose up --build   # full stack
 - After changing `src/db/schema.ts`, run `npm run db:generate` and commit the new
   file under `drizzle/`.
 
+## Promotions
+
+Statuts : `pending` → `live` → `suspended` ⇄ `live` (+ `rejected` / `expired`).
+`promotions.suspended_by` retient qui a suspendu (`member` ou `staff`) : une
+suspension par le staff ne peut être levée que par le staff. Les lectures
+publiques filtrent sur `status = 'live'`, donc une promo suspendue disparaît du
+site sans traitement supplémentaire.
+
+## Réseaux sociaux
+
+- `src/lib/social.ts` publie une promo sur la page Facebook (Graph API) ou
+  LinkedIn (Posts API). Jetons **uniquement** en variables d'environnement, jamais
+  en base ni dans le backoffice. Réseau non configuré = bouton masqué.
+- Les images de promo sont stockées en data-URI : l'upload se fait donc en
+  binaire (multipart pour Facebook, Images API en 3 étapes pour LinkedIn), pas
+  par URL.
+- Chaque tentative est journalisée dans `social_posts` (succès ou échec) ; un
+  échec n'interrompt pas l'action, il s'affiche sur la carte de la promo.
+- Les URLs publiques des pages FB/LinkedIn sont des `site_settings`
+  (`association_facebook`, `association_linkedin`), éditables dans Paramètres.
+
 ## Roles
 
 `admin` > `moderator` > `editor` are staff; `member` is an adhérent linked to a

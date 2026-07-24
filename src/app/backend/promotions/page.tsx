@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 import { desc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { members, promotions } from "@/db/schema";
+import { members, promotions, socialPosts, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
-import { moderatePromo } from "../actions";
+import { configuredNetworks, SOCIAL_LABELS, type SocialNetwork } from "@/lib/social";
+import { moderatePromo, sharePromoToSocial } from "../actions";
 import { PromoImage } from "@/components/PromoImage";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +15,23 @@ const STRIPE_WARM =
 const STRIPE_COOL =
   "repeating-linear-gradient(45deg,#eef0ec,#eef0ec 11px,#e2e8e6 11px,#e2e8e6 22px)";
 
+const STATUS_CHIP: Record<string, { label: string; bg: string; color: string }> = {
+  pending: { label: "En attente", bg: "#fbeede", color: "#9a6638" },
+  live: { label: "En ligne", bg: "#e6f4ec", color: "#1f8a5b" },
+  suspended: { label: "Suspendue", bg: "#fbe9e6", color: "#d8472b" },
+};
+
+function fmtDate(d: Date) {
+  return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+}
+
 export default async function PromotionsPage() {
   const session = await auth();
   if (!can(session?.user.role, "moderatePromos")) {
     redirect("/backend");
   }
+  const canShare = can(session?.user.role, "publishSocial");
+  const networks = canShare ? configuredNetworks() : [];
 
   const rows = await db
     .select({
@@ -28,17 +41,45 @@ export default async function PromotionsPage() {
       category: promotions.category,
       status: promotions.status,
       imageUrl: promotions.imageUrl,
+      suspendedBy: promotions.suspendedBy,
+      suspendedAt: promotions.suspendedAt,
       memberName: members.name,
     })
     .from(promotions)
     .leftJoin(members, eq(promotions.memberId, members.id))
-    .where(inArray(promotions.status, ["pending", "live"]))
-    .orderBy(desc(promotions.status), desc(promotions.createdAt));
+    .where(inArray(promotions.status, ["pending", "live", "suspended"]))
+    .orderBy(desc(promotions.createdAt));
 
   const pending = rows.filter((r) => r.status === "pending");
   const live = rows.filter((r) => r.status === "live");
-  // pending first, then live
-  const ordered = [...pending, ...live];
+  const suspended = rows.filter((r) => r.status === "suspended");
+  // En attente d'abord, puis en ligne, puis suspendues.
+  const ordered = [...pending, ...live, ...suspended];
+
+  const shares = ordered.length
+    ? await db
+        .select({
+          promotionId: socialPosts.promotionId,
+          network: socialPosts.network,
+          status: socialPosts.status,
+          url: socialPosts.url,
+          error: socialPosts.error,
+          createdAt: socialPosts.createdAt,
+          authorName: users.name,
+        })
+        .from(socialPosts)
+        .leftJoin(users, eq(socialPosts.postedById, users.id))
+        .where(inArray(socialPosts.promotionId, ordered.map((r) => r.id)))
+        .orderBy(desc(socialPosts.createdAt))
+    : [];
+
+  // La liste est triée du plus récent au plus ancien : la première occurrence
+  // rencontrée pour un couple (promo, réseau) est donc la plus récente.
+  const lastShare = new Map<string, (typeof shares)[number]>();
+  for (const s of shares) {
+    const key = `${s.promotionId}:${s.network}`;
+    if (!lastShare.has(key)) lastShare.set(key, s);
+  }
 
   return (
     <div>
@@ -49,7 +90,17 @@ export default async function PromotionsPage() {
         <span style={{ background: "#fff", border: "1px solid #e6dcc6", color: "#6c6150", fontSize: 13, fontWeight: 600, padding: "8px 16px", borderRadius: 999 }}>
           En ligne · {live.length}
         </span>
+        <span style={{ background: "#fff", border: "1px solid #e6dcc6", color: "#6c6150", fontSize: 13, fontWeight: 600, padding: "8px 16px", borderRadius: 999 }}>
+          Suspendues · {suspended.length}
+        </span>
       </div>
+
+      {canShare && networks.length === 0 && (
+        <div style={{ background: "#fbeede", border: "1px solid #ecd8b8", color: "#9a6638", borderRadius: 12, padding: "12px 16px", marginBottom: 18, fontSize: 13.5, lineHeight: 1.55 }}>
+          Publication sur les réseaux indisponible : aucun jeton d&apos;accès Facebook ou LinkedIn
+          n&apos;est configuré sur le serveur (voir <code>.env.example</code>).
+        </div>
+      )}
 
       {ordered.length === 0 && (
         <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 28, color: "#a99c82", fontSize: 14 }}>
@@ -60,6 +111,8 @@ export default async function PromotionsPage() {
       <div className="grid grid-3" style={{ gap: 16, width: "100%", maxWidth: 960 }}>
         {ordered.map((p) => {
           const isPending = p.status === "pending";
+          const isSuspended = p.status === "suspended";
+          const chip = STATUS_CHIP[p.status] ?? STATUS_CHIP.pending;
           return (
             <article
               key={p.id}
@@ -81,6 +134,7 @@ export default async function PromotionsPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  opacity: isSuspended ? 0.55 : 1,
                 }}
               >
                 {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title ?? ""} />}
@@ -98,11 +152,11 @@ export default async function PromotionsPage() {
                     padding: "4px 11px",
                     fontSize: 11,
                     fontWeight: 800,
-                    background: isPending ? "#fbeede" : "#e6f4ec",
-                    color: isPending ? "#9a6638" : "#1f8a5b",
+                    background: chip.bg,
+                    color: chip.color,
                   }}
                 >
-                  {isPending ? "En attente" : "En ligne"}
+                  {chip.label}
                 </span>
               </div>
               <div style={{ padding: "13px 14px 14px", display: "flex", flexDirection: "column", flex: 1 }}>
@@ -116,7 +170,14 @@ export default async function PromotionsPage() {
                   {p.text}
                 </p>
 
-                {isPending ? (
+                {isSuspended && (
+                  <div style={{ background: "#fbe9e6", border: "1px solid #f2d5cf", color: "#a8503c", borderRadius: 10, padding: "9px 11px", fontSize: 12, lineHeight: 1.45, marginBottom: 11 }}>
+                    Suspendue par {p.suspendedBy === "member" ? "l'adhérent" : "l'association"}
+                    {p.suspendedAt ? ` le ${fmtDate(p.suspendedAt)}` : ""}.
+                  </div>
+                )}
+
+                {isPending && (
                   <div style={{ display: "flex", gap: 8 }}>
                     <form action={moderatePromo} style={{ flex: 1 }}>
                       <input type="hidden" name="id" value={p.id} />
@@ -133,16 +194,80 @@ export default async function PromotionsPage() {
                       </button>
                     </form>
                   </div>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #f0e8d6", paddingTop: 11 }}>
-                    <span style={{ fontSize: 12.5, color: "#1f8a5b", fontWeight: 700 }}>● En ligne</span>
+                )}
+
+                {!isPending && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <form action={moderatePromo} style={{ flex: 1 }}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <input type="hidden" name="action" value={isSuspended ? "restore" : "suspend"} />
+                      <button
+                        type="submit"
+                        style={{
+                          width: "100%",
+                          border: isSuspended ? "none" : "1px solid #e0c3bb",
+                          background: isSuspended ? "#1f8a5b" : "#fff",
+                          color: isSuspended ? "#fff" : "#d8472b",
+                          fontWeight: 700,
+                          fontSize: 13,
+                          padding: 10,
+                          borderRadius: 9,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {isSuspended ? "Remettre en ligne" : "Suspendre"}
+                      </button>
+                    </form>
                     <form action={moderatePromo}>
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="action" value="remove" />
-                      <button type="submit" style={{ border: "none", background: "transparent", color: "#a99c82", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
-                        Retirer
+                      <button type="submit" style={{ border: "1px solid #e6dcc6", background: "#fff", color: "#a99c82", fontWeight: 700, fontSize: 13, padding: "10px 12px", borderRadius: 9, cursor: "pointer" }}>
+                        Supprimer
                       </button>
                     </form>
+                  </div>
+                )}
+
+                {networks.length > 0 && (
+                  <div style={{ borderTop: "1px solid #f0e8d6", marginTop: 12, paddingTop: 11 }}>
+                    <div style={{ fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 800, marginBottom: 8 }}>
+                      Partager sur les réseaux
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {networks.map((network) => (
+                        <ShareButton
+                          key={network}
+                          network={network}
+                          promoId={p.id}
+                          disabled={p.status !== "live"}
+                          last={lastShare.get(`${p.id}:${network}`)}
+                        />
+                      ))}
+                    </div>
+                    {networks.map((network) => {
+                      const last = lastShare.get(`${p.id}:${network}`);
+                      if (!last) return null;
+                      return (
+                        <div key={network} style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.45, color: last.status === "posted" ? "#6c6150" : "#d8472b" }}>
+                          {last.status === "posted" ? (
+                            <>
+                              ✓ {SOCIAL_LABELS[network]} · {fmtDate(last.createdAt)}
+                              {last.authorName ? ` · ${last.authorName}` : ""}
+                              {last.url && (
+                                <>
+                                  {" "}
+                                  <a href={last.url} target="_blank" rel="noopener noreferrer" style={{ color: "#2C6FB3", fontWeight: 700 }}>
+                                    voir
+                                  </a>
+                                </>
+                              )}
+                            </>
+                          ) : (
+                            <>✕ {SOCIAL_LABELS[network]} — échec : {last.error?.slice(0, 160)}</>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -151,5 +276,45 @@ export default async function PromotionsPage() {
         })}
       </div>
     </div>
+  );
+}
+
+function ShareButton({
+  network,
+  promoId,
+  disabled,
+  last,
+}: {
+  network: SocialNetwork;
+  promoId: number;
+  disabled: boolean;
+  last?: { status: string };
+}) {
+  const alreadyPosted = last?.status === "posted";
+  const brand = network === "facebook" ? "#1877F2" : "#0A66C2";
+  return (
+    <form action={sharePromoToSocial} style={{ flex: "1 1 120px" }}>
+      <input type="hidden" name="id" value={promoId} />
+      <input type="hidden" name="network" value={network} />
+      <button
+        type="submit"
+        disabled={disabled}
+        title={disabled ? "Seule une promotion en ligne peut être publiée." : undefined}
+        style={{
+          width: "100%",
+          border: `1px solid ${brand}`,
+          background: alreadyPosted ? "#fff" : brand,
+          color: alreadyPosted ? brand : "#fff",
+          fontWeight: 700,
+          fontSize: 12.5,
+          padding: "9px 10px",
+          borderRadius: 9,
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.45 : 1,
+        }}
+      >
+        {alreadyPosted ? `Republier sur ${SOCIAL_LABELS[network]}` : `Publier sur ${SOCIAL_LABELS[network]}`}
+      </button>
+    </form>
   );
 }

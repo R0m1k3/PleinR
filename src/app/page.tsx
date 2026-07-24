@@ -7,7 +7,9 @@ import { MembershipModalButton } from "@/components/MembershipModalButton";
 import { MembersCarousel } from "@/components/MembersCarousel";
 import { StarField } from "@/components/StarField";
 import { PromoImage } from "@/components/PromoImage";
+import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import { getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
+import { getSiteSettings, socialLinks } from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +22,12 @@ function badgeColor(badge: string | null) {
 }
 
 export default async function AccueilPage() {
-  const [promos, rotatingMembers] = await Promise.all([
+  const [promos, rotatingMembers, settings] = await Promise.all([
     getLivePromotions(6),
     getRotatingActiveMembers(),
+    getSiteSettings(),
   ]);
+  const socials = socialLinks(settings);
 
   return (
     <div
@@ -317,6 +321,102 @@ export default async function AccueilPage() {
           </div>
           <MembersCarousel members={rotatingMembers} />
         </section>
+
+        {/* réseaux sociaux */}
+        {socials.length > 0 && (
+          <section
+            style={{
+              position: "relative",
+              margin: "0 0 46px",
+              background: "#fff",
+              border: "1px solid #e6dcc6",
+              borderRadius: 24,
+              padding: "34px 36px 36px",
+              overflow: "hidden",
+              boxShadow: "0 26px 60px -40px rgba(40,30,15,0.5)",
+            }}
+          >
+            <Sparkle color="#6FB0C6" size={18} style={{ top: 26, right: 42 }} duration={3.1} />
+
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: "#eaf0f6",
+                color: "#2C6FB3",
+                fontSize: 12,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                fontWeight: 800,
+                padding: "6px 13px",
+                borderRadius: 999,
+                marginBottom: 12,
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#2C6FB3" }} />
+              Suivez-nous
+            </div>
+            <h2
+              className="font-display"
+              style={{ fontWeight: 800, fontSize: "clamp(22px, 5vw, 30px)", letterSpacing: "-0.02em", margin: 0, color: "#26201a" }}
+            >
+              Plein R sur les réseaux
+            </h2>
+            <p style={{ margin: "7px 0 0", color: "#8c8068", fontSize: 15, maxWidth: 560 }}>
+              Bons plans, rencontres et actualités des commerçants du Bassin de Pompey : retrouvez-nous
+              sur Facebook et LinkedIn.
+            </p>
+
+            <div className="grid grid-2" style={{ gap: 16, marginTop: 24 }}>
+              {socials.map((s) => (
+                <a
+                  key={s.network}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="lift-card"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    textDecoration: "none",
+                    color: "inherit",
+                    background: "#faf7ef",
+                    border: "1px solid #f0e8d6",
+                    borderRadius: 16,
+                    padding: "16px 18px",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 44,
+                      height: 44,
+                      borderRadius: 13,
+                      background: SOCIAL_BRAND[s.network],
+                      color: "#fff",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <SocialIcon network={s.network} size={22} />
+                  </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span className="font-display" style={{ display: "block", fontWeight: 700, fontSize: 16, color: "#26201a" }}>
+                      {s.label}
+                    </span>
+                    <span style={{ display: "block", fontSize: 12.5, color: "#8c8068", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {s.handle}
+                    </span>
+                  </span>
+                  <span style={{ color: "#2C6FB3", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>↗</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* warm CTA */}
         <section
