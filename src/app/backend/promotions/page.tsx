@@ -32,7 +32,7 @@ export default async function PromotionsPage() {
     redirect("/backend");
   }
   const canShare = can(session?.user.role, "publishSocial");
-  const networks = canShare ? configuredNetworks() : [];
+  const networks = canShare ? await configuredNetworks() : [];
 
   const rows = await db
     .select({

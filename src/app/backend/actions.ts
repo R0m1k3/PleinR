@@ -31,6 +31,11 @@ import {
   SOCIAL_NETWORKS,
   type SocialNetwork,
 } from "@/lib/social";
+import {
+  disconnectAccount,
+  saveAppCredentials,
+  selectTarget,
+} from "@/lib/social-accounts";
 import { normalizeWebsite } from "@/lib/member-profile";
 import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
@@ -164,7 +169,7 @@ async function publishPromoShares(
   for (const network of networks) {
     if (alreadyPosted.has(network)) continue;
 
-    if (!isNetworkConfigured(network)) {
+    if (!(await isNetworkConfigured(network))) {
       await db.insert(socialPosts).values({
         promotionId: promoId,
         network,
@@ -1126,6 +1131,54 @@ export async function setContactStatus(formData: FormData) {
     .where(eq(contactMessages.id, id));
   revalidatePath("/backend/demandes");
   revalidatePath("/backend");
+}
+
+// ---- Réseaux sociaux : identifiants d'application et connexion ----
+export async function saveSocialApp(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageSettings")) throw new Error("Accès refusé");
+
+  const network = String(formData.get("network")) as SocialNetwork;
+  if (!SOCIAL_NETWORKS.includes(network)) return;
+
+  const appId = asString(formData, "appId");
+  if (!appId) throw new Error("L'identifiant de l'application est requis.");
+  // Champ secret laissé vide = on garde celui déjà enregistré.
+  const appSecret = asString(formData, "appSecret") || null;
+
+  await saveAppCredentials(network, appId, appSecret);
+  revalidatePath("/backend/reseaux");
+}
+
+export async function selectSocialTarget(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageSettings")) throw new Error("Accès refusé");
+
+  const network = String(formData.get("network")) as SocialNetwork;
+  const targetId = asString(formData, "targetId");
+  if (!SOCIAL_NETWORKS.includes(network) || !targetId) return;
+
+  await selectTarget(network, targetId);
+  await logActivity(`Page ${SOCIAL_LABELS[network]} sélectionnée pour la publication`, "#2C6FB3");
+  revalidatePath("/backend/reseaux");
+  revalidatePath("/backend/promotions");
+}
+
+export async function disconnectSocial(formData: FormData) {
+  const { role, name } = await requireRole();
+  if (!can(role, "manageSettings")) throw new Error("Accès refusé");
+
+  const network = String(formData.get("network")) as SocialNetwork;
+  if (!SOCIAL_NETWORKS.includes(network)) return;
+
+  await disconnectAccount(network);
+  await logActivity(
+    `Compte ${SOCIAL_LABELS[network]} déconnecté par <strong>${name}</strong>`,
+    "#d8472b"
+  );
+  revalidatePath("/backend/reseaux");
+  revalidatePath("/backend/promotions");
+  revalidatePath("/backend/espace");
 }
 
 // ---- Sign out ----

@@ -57,6 +57,13 @@
       "when": 1784931989372,
       "tag": "0007_foamy_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784933339220,
+      "tag": "0008_neat_makkari",
+      "breakpoints": true
     }
   ]
 }

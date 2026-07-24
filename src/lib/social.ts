@@ -1,51 +1,31 @@
 /**
  * Publication des promotions sur les pages Facebook / LinkedIn de l'association.
  *
- * Les jetons d'accès sont des SECRETS : ils vivent dans les variables
- * d'environnement du conteneur, jamais en base ni dans le backoffice. Voir
- * `.env.example` pour la marche à suivre côté Meta / LinkedIn.
+ * Les identifiants et jetons viennent de `social-accounts.ts` : base de données
+ * en premier (posés depuis Backend › Réseaux sociaux), variables
+ * d'environnement en repli.
  *
- * Si un réseau n'est pas configuré, le backoffice masque simplement son bouton :
+ * Si un réseau n'est pas configuré, le backoffice masque simplement sa case :
  * le reste du site fonctionne normalement.
  */
 
-export type SocialNetwork = "facebook" | "linkedin";
+import {
+  refreshLinkedInIfNeeded,
+  resolveCredentials,
+  siteUrl,
+  type SocialNetwork,
+} from "./social-accounts";
 
-export const SOCIAL_NETWORKS: SocialNetwork[] = ["facebook", "linkedin"];
+export {
+  configuredNetworks,
+  isNetworkConfigured,
+  SOCIAL_LABELS,
+  SOCIAL_NETWORKS,
+  type SocialNetwork,
+} from "./social-accounts";
 
-export const SOCIAL_LABELS: Record<SocialNetwork, string> = {
-  facebook: "Facebook",
-  linkedin: "LinkedIn",
-};
-
-const FACEBOOK_GRAPH_VERSION = process.env.FACEBOOK_GRAPH_VERSION ?? "v21.0";
-const LINKEDIN_VERSION = process.env.LINKEDIN_API_VERSION ?? "202506";
-
-function env(key: string): string {
-  return (process.env[key] ?? "").trim();
-}
-
-export function isNetworkConfigured(network: SocialNetwork): boolean {
-  if (network === "facebook") {
-    return !!env("FACEBOOK_PAGE_ID") && !!env("FACEBOOK_PAGE_ACCESS_TOKEN");
-  }
-  return !!linkedinOrganizationUrn() && !!env("LINKEDIN_ACCESS_TOKEN");
-}
-
-export function configuredNetworks(): SocialNetwork[] {
-  return SOCIAL_NETWORKS.filter(isNetworkConfigured);
-}
-
-function linkedinOrganizationUrn(): string {
-  const urn = env("LINKEDIN_ORGANIZATION_URN");
-  if (urn) return urn;
-  const id = env("LINKEDIN_ORGANIZATION_ID");
-  return id ? `urn:li:organization:${id}` : "";
-}
-
-function siteUrl(): string {
-  return (env("NEXT_PUBLIC_SITE_URL") || env("AUTH_URL")).replace(/\/+$/, "");
-}
+const FACEBOOK_GRAPH_VERSION = process.env.FACEBOOK_GRAPH_VERSION?.trim() || "v21.0";
+const LINKEDIN_VERSION = process.env.LINKEDIN_API_VERSION?.trim() || "202506";
 
 // ---- Contenu du post ----
 
@@ -133,9 +113,9 @@ async function readError(res: Response): Promise<string> {
 // ---- Facebook (Graph API, page de l'association) ----
 
 async function publishToFacebook(promo: PromoForSharing, message: string): Promise<PublishResult> {
-  const pageId = env("FACEBOOK_PAGE_ID");
-  const token = env("FACEBOOK_PAGE_ACCESS_TOKEN");
-  if (!pageId || !token) throw new SocialPublishError("Facebook n'est pas configuré.");
+  const credentials = await resolveCredentials("facebook");
+  if (!credentials) throw new SocialPublishError("Facebook n'est pas connecté.");
+  const { targetId: pageId, accessToken: token } = credentials;
 
   const image = await loadPromoImage(promo.imageUrl);
   const base = `https://graph.facebook.com/${FACEBOOK_GRAPH_VERSION}/${pageId}`;
@@ -218,9 +198,13 @@ async function uploadLinkedInImage(
 }
 
 async function publishToLinkedIn(promo: PromoForSharing, message: string): Promise<PublishResult> {
-  const token = env("LINKEDIN_ACCESS_TOKEN");
-  const owner = linkedinOrganizationUrn();
-  if (!token || !owner) throw new SocialPublishError("LinkedIn n'est pas configuré.");
+  // Rattrape un jeton proche de l'expiration quand LinkedIn a accordé les
+  // jetons de rafraîchissement programmatiques à l'application.
+  await refreshLinkedInIfNeeded();
+
+  const credentials = await resolveCredentials("linkedin");
+  if (!credentials) throw new SocialPublishError("LinkedIn n'est pas connecté.");
+  const { accessToken: token, targetId: owner } = credentials;
 
   const image = await loadPromoImage(promo.imageUrl);
   const imageUrn = image ? await uploadLinkedInImage(token, owner, image) : null;

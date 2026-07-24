@@ -52,8 +52,17 @@ site sans traitement supplémentaire.
 ## Réseaux sociaux
 
 - `src/lib/social.ts` publie une promo sur la page Facebook (Graph API) ou
-  LinkedIn (Posts API). Jetons **uniquement** en variables d'environnement, jamais
-  en base ni dans le backoffice. Réseau non configuré = case masquée.
+  LinkedIn (Posts API). `src/lib/social-accounts.ts` gère la configuration : OAuth,
+  jetons, cibles. Réseau non configuré = case masquée.
+- Les identifiants et jetons vivent en base (`social_accounts`), **chiffrés** via
+  `src/lib/crypto.ts` (AES-256-GCM, clé `SOCIAL_TOKEN_KEY` ou `AUTH_SECRET`), posés
+  depuis `/backend/reseaux`. Les variables d'environnement restent lues en repli.
+  Aucun secret ne doit jamais repartir vers le navigateur.
+- `isNetworkConfigured()` / `configuredNetworks()` sont **asynchrones** (accès base).
+- Routes OAuth : `src/app/api/social/[network]/{connect,callback}`. Le `state`
+  anti-CSRF passe par un cookie httpOnly ; aucun jeton ne transite par une URL.
+- Facebook : le jeton de page n'expire pas. LinkedIn : 60 jours, rafraîchissement
+  programmatique réservé à certains partenaires, d'où le bandeau de reconnexion.
 - Les images de promo sont stockées en data-URI : l'upload se fait donc en
   binaire (multipart pour Facebook, Images API en 3 étapes pour LinkedIn), pas
   par URL.

@@ -125,7 +125,7 @@ export default async function EspacePage() {
     .from(categories)
     .orderBy(asc(categories.sort));
   const categoryLabels = catRows.map((c) => c.label);
-  const networks = configuredNetworks();
+  const networks = await configuredNetworks();
 
   function fmtDate(d: Date) {
     return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });

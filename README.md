@@ -102,12 +102,40 @@ Une promotion n'est jamais publiée deux fois : un réseau ayant déjà une
 publication réussie est systématiquement ignoré, y compris sur un cycle
 suspension → remise en ligne.
 
-Les jetons d'accès sont des **secrets** : ils se configurent uniquement par
-variables d'environnement (`FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_ACCESS_TOKEN`,
-`LINKEDIN_ORGANIZATION_URN` ou `LINKEDIN_ORGANIZATION_ID`,
-`LINKEDIN_ACCESS_TOKEN`), jamais depuis le backoffice. Voir
-[`.env.example`](./.env.example) pour la marche à suivre côté Meta et LinkedIn.
-Si un réseau n'est pas configuré, son bouton n'apparaît simplement pas.
+### Connecter les comptes
+
+Tout se passe dans **Backend › Réseaux sociaux** (administrateurs) : on colle les
+identifiants de l'application, on clique **Connecter**, on choisit la page. Les
+jetons sont récupérés par OAuth et stockés **chiffrés** (AES-256-GCM, clé
+`SOCIAL_TOKEN_KEY` ou à défaut `AUTH_SECRET`) ; ils ne ressortent jamais vers le
+navigateur. Un réseau non connecté voit simplement sa case disparaître du
+formulaire de promotion.
+
+L'écran affiche l'URL de redirection à déclarer sur le portail développeur —
+c'est l'erreur de configuration la plus fréquente.
+
+**Facebook.** Créez une application « Business » sur
+[developers.facebook.com](https://developers.facebook.com/apps), ajoutez le
+produit Connexion Facebook, déclarez l'URL de redirection. Gardez l'application
+en **mode développement** avec le compte de l'association comme administrateur :
+publier sur votre propre page ne demande alors aucune revue Meta. Le jeton de
+page obtenu **n'expire pas** — une connexion suffit, définitivement.
+
+**LinkedIn.** Créez une application sur
+[linkedin.com/developers](https://www.linkedin.com/developers/apps) rattachée à
+la page de l'association, puis demandez le produit **Community Management API**.
+Deux limites à connaître avant de vous lancer :
+
+- l'accès est soumis à une revue (page vérifiée, nom légal, adresse, politique
+  de confidentialité) ; ce n'est pas garanti ni immédiat ;
+- les jetons LinkedIn durent **60 jours** et le rafraîchissement programmatique
+  est réservé à certains partenaires. En pratique il faut donc recliquer sur
+  **Reconnecter** environ tous les deux mois. Le backoffice affiche la date
+  d'expiration et un bandeau d'alerte 7 jours avant.
+
+Les variables d'environnement (`FACEBOOK_PAGE_ACCESS_TOKEN`, etc.) restent lues
+en **repli** si aucun compte n'est connecté, pour ne pas casser une installation
+antérieure.
 
 Les **liens publics** vers les deux pages (affichés sur l'accueil et dans le pied
 de page) se règlent, eux, dans **Backend › Paramètres**.
@@ -143,9 +171,11 @@ Voir [`.env.example`](./.env.example). Les principales :
 - `AUTH_URL` — URL publique de l'application
 - `SEED_ON_START` — `true` pour seeder au démarrage du conteneur
 - `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` — premier admin
-- `NEXT_PUBLIC_SITE_URL` — URL publique reprise dans les posts réseaux sociaux
-- `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_ACCESS_TOKEN` — publication Facebook (optionnel)
-- `LINKEDIN_ORGANIZATION_URN` / `LINKEDIN_ACCESS_TOKEN` — publication LinkedIn (optionnel)
+- `NEXT_PUBLIC_SITE_URL` — URL publique : sert au lien des posts **et** à l'adresse
+  de retour OAuth. Obligatoire pour connecter un réseau social.
+- `SOCIAL_TOKEN_KEY` — clé de chiffrement des jetons réseaux (défaut : `AUTH_SECRET`)
+- `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_ACCESS_TOKEN`, `LINKEDIN_ORGANIZATION_URN` /
+  `LINKEDIN_ACCESS_TOKEN` — repli si aucun compte n'est connecté via le backoffice
 
 ## Note sur le logo
 

@@ -172,6 +172,11 @@ export function BackendShell({
                 </NavLink>
               )}
               {can(user.role, "manageSettings") && (
+                <NavLink href="/backend/reseaux" active={pathname === "/backend/reseaux"}>
+                  {dot}Réseaux sociaux
+                </NavLink>
+              )}
+              {can(user.role, "manageSettings") && (
                 <NavLink href="/backend/parametres" active={pathname === "/backend/parametres"}>
                   {dot}Paramètres
                 </NavLink>

@@ -4,7 +4,8 @@ import { desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { activityLog, contactMessages, members, membershipRequests, promotions } from "@/db/schema";
-import { isStaff } from "@/lib/rbac";
+import { can, isStaff } from "@/lib/rbac";
+import { expiryStatus, getSocialAccounts, SOCIAL_LABELS } from "@/lib/social-accounts";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,15 @@ export default async function DashboardPage() {
 
   const pendingCount = pendingPromos.length;
 
+  // Jetons réseaux à renouveler : sans alerte, on ne découvre l'expiration
+  // qu'au moment où une publication échoue.
+  const expiringNetworks = can(session?.user.role, "manageSettings")
+    ? (await getSocialAccounts())
+        .filter((a) => a.accessToken && a.targetId)
+        .map((a) => ({ network: a.network, status: expiryStatus(a.expiresAt) }))
+        .filter((a) => a.status === "soon" || a.status === "expired")
+    : [];
+
   function timeAgo(date: Date) {
     const diff = Date.now() - new Date(date).getTime();
     const h = Math.floor(diff / 3_600_000);
@@ -60,6 +70,34 @@ export default async function DashboardPage() {
 
   return (
     <div>
+      {expiringNetworks.length > 0 && (
+        <Link
+          href="/backend/reseaux"
+          style={{
+            display: "block",
+            textDecoration: "none",
+            background: "#fbeede",
+            border: "1px solid #ecd8b8",
+            color: "#9a6638",
+            borderRadius: 12,
+            padding: "13px 16px",
+            marginBottom: 20,
+            fontSize: 13.5,
+            lineHeight: 1.6,
+          }}
+        >
+          {expiringNetworks.map((n) => (
+            <div key={n.network}>
+              <strong>{SOCIAL_LABELS[n.network]}</strong>{" "}
+              {n.status === "expired"
+                ? "— le jeton a expiré, les publications échoueront."
+                : "— le jeton expire dans moins de 7 jours."}{" "}
+              Reconnecter le compte →
+            </div>
+          ))}
+        </Link>
+      )}
+
       <div className="grid grid-4" style={{ marginBottom: 26 }}>
         <StatCard label="Adhérents actifs" value={activeMembers.length} hint="sur le réseau" valueColor="#13324F" hintColor="#1f8a5b" />
         <StatCard label="Promotions en ligne" value={livePromos.length} hint="visibles sur le site" />

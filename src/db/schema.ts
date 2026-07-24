@@ -131,6 +131,25 @@ export const socialPosts = pgTable(
   })
 );
 
+// ---- Comptes réseaux sociaux connectés (OAuth) ----
+// Une ligne par réseau. Les secrets sont chiffrés (src/lib/crypto.ts) et ne
+// ressortent jamais vers le navigateur.
+export const socialAccounts = pgTable("social_accounts", {
+  id: serial("id").primaryKey(),
+  network: socialNetworkEnum("network").notNull().unique(),
+  appId: varchar("app_id", { length: 200 }).notNull(),
+  appSecret: text("app_secret").notNull(),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  // Nul = n'expire pas (jeton de page Facebook).
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  targetId: varchar("target_id", { length: 200 }),
+  targetName: varchar("target_name", { length: 200 }),
+  connectedById: integer("connected_by_id").references(() => users.id, { onDelete: "set null" }),
+  connectedAt: timestamp("connected_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ---- Membership requests (demandes d'adhésion) ----
 export const membershipRequests = pgTable("membership_requests", {
   id: serial("id").primaryKey(),
@@ -316,6 +335,7 @@ export type Member = typeof members.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Promotion = typeof promotions.$inferSelect;
 export type SocialPost = typeof socialPosts.$inferSelect;
+export type SocialAccount = typeof socialAccounts.$inferSelect;
 export type SocialNetwork = (typeof socialNetworkEnum.enumValues)[number];
 export type MembershipRequest = typeof membershipRequests.$inferSelect;
 export type ContactMessage = typeof contactMessages.$inferSelect;
