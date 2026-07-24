@@ -1,13 +1,20 @@
 import Link from "next/link";
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { categories, imageConsents, meetingRegistrations, meetings, members, promotions, type Member } from "@/db/schema";
+import { categories, imageConsents, meetingRegistrations, meetings, members, promotions, socialPosts, type Member } from "@/db/schema";
+import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
+import { configuredNetworks, SOCIAL_LABELS, type SocialNetwork } from "@/lib/social";
 import { ImageField } from "@/components/ImageField";
 import { ImageConsentForm } from "@/components/ImageConsentForm";
 import { HoursEditor } from "@/components/HoursEditor";
 import { communeOptions } from "@/lib/communes";
-import { saveImageConsent, setOwnPromoSuspension, updateOwnProfile } from "../actions";
+import {
+  saveImageConsent,
+  setOwnPromoShareTargets,
+  setOwnPromoSuspension,
+  updateOwnProfile,
+} from "../actions";
 import { MemberSpaceForm } from "./MemberSpaceForm";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +46,11 @@ export default async function EspacePage() {
     createdAt: Date;
     imageUrl: string | null;
     suspendedBy: "member" | "staff" | null;
+    shareFacebook: boolean;
+    shareLinkedin: boolean;
   }[] = [];
+  // Dernière tentative de publication par (promo, réseau).
+  let lastShare = new Map<string, { status: string; url: string | null; error: string | null }>();
   let myRegistrations: { meetingId: number; title: string; startsAt: Date; location: string | null; participants: number; confirmed: boolean }[] = [];
   let latestConsent: { decision: string; createdAt: Date } | null = null;
 
@@ -61,10 +72,31 @@ export default async function EspacePage() {
         createdAt: promotions.createdAt,
         imageUrl: promotions.imageUrl,
         suspendedBy: promotions.suspendedBy,
+        shareFacebook: promotions.shareFacebook,
+        shareLinkedin: promotions.shareLinkedin,
       })
       .from(promotions)
       .where(eq(promotions.memberId, memberId))
       .orderBy(desc(promotions.createdAt));
+    if (myPromos.length > 0) {
+      const rows = await db
+        .select({
+          promotionId: socialPosts.promotionId,
+          network: socialPosts.network,
+          status: socialPosts.status,
+          url: socialPosts.url,
+          error: socialPosts.error,
+        })
+        .from(socialPosts)
+        .where(inArray(socialPosts.promotionId, myPromos.map((p) => p.id)))
+        .orderBy(desc(socialPosts.createdAt));
+      // Trié du plus récent au plus ancien : la première occurrence gagne.
+      lastShare = new Map();
+      for (const row of rows) {
+        const key = `${row.promotionId}:${row.network}`;
+        if (!lastShare.has(key)) lastShare.set(key, row);
+      }
+    }
     myRegistrations = await db
       .select({
         meetingId: meetings.id,
@@ -93,6 +125,7 @@ export default async function EspacePage() {
     .from(categories)
     .orderBy(asc(categories.sort));
   const categoryLabels = catRows.map((c) => c.label);
+  const networks = configuredNetworks();
 
   function fmtDate(d: Date) {
     return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
@@ -247,7 +280,7 @@ export default async function EspacePage() {
         </section>
       )}
 
-      <MemberSpaceForm memberName={memberName} categories={categoryLabels} />
+      <MemberSpaceForm memberName={memberName} categories={categoryLabels} networks={networks} />
 
       <div style={{ marginTop: 28 }}>
         <div style={{ fontSize: 12.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 700, marginBottom: 4 }}>
@@ -314,10 +347,92 @@ export default async function EspacePage() {
                   remettre en ligne.
                 </div>
               )}
+              {networks.length > 0 && (
+                <PromoShareState
+                  promo={mp}
+                  networks={networks}
+                  lastShare={lastShare}
+                  editable={mp.status === "pending"}
+                />
+              )}
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/**
+ * État de diffusion d'une promo côté adhérent : modifiable tant qu'elle est en
+ * attente, purement informatif dès qu'elle est validée.
+ */
+function PromoShareState({
+  promo,
+  networks,
+  lastShare,
+  editable,
+}: {
+  promo: { id: number; shareFacebook: boolean; shareLinkedin: boolean };
+  networks: SocialNetwork[];
+  lastShare: Map<string, { status: string; url: string | null; error: string | null }>;
+  editable: boolean;
+}) {
+  const wanted = (n: SocialNetwork) => (n === "facebook" ? promo.shareFacebook : promo.shareLinkedin);
+  const chosen = networks.filter(wanted);
+
+  if (editable) {
+    return (
+      <form action={setOwnPromoShareTargets} style={{ marginTop: 11, borderTop: "1px solid #f0e8d6", paddingTop: 11 }}>
+        <input type="hidden" name="id" value={promo.id} />
+        <div style={{ fontSize: 11.5, color: "#8c8068", marginBottom: 8, lineHeight: 1.5 }}>
+          Diffusion prévue après validation — modifiable tant que la promotion est en attente.
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          {networks.map((network) => (
+            <label key={network} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 700, color: SOCIAL_BRAND[network], cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                name={network === "facebook" ? "shareFacebook" : "shareLinkedin"}
+                defaultChecked={wanted(network)}
+                style={{ accentColor: SOCIAL_BRAND[network], margin: 0 }}
+              />
+              <SocialIcon network={network} size={15} />
+              {SOCIAL_LABELS[network]}
+            </label>
+          ))}
+          <button type="submit" style={{ border: "1px solid #d8cdb4", background: "#fff", color: "#6c6150", fontWeight: 700, fontSize: 12, padding: "6px 12px", borderRadius: 8, cursor: "pointer" }}>
+            Mettre à jour
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  if (chosen.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: 11, borderTop: "1px solid #f0e8d6", paddingTop: 11, display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {chosen.map((network) => {
+        const last = lastShare.get(`${promo.id}:${network}`);
+        const posted = last?.status === "posted";
+        const failed = last?.status === "failed";
+        const detail = posted ? "publié" : failed ? "échec de publication" : "en attente";
+        const color = posted ? "#1f8a5b" : failed ? "#d8472b" : "#9a6638";
+        const chip = (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#faf7ef", border: "1px solid #f0e8d6", borderRadius: 999, padding: "5px 12px", fontSize: 11.5, fontWeight: 700, color }}>
+            <SocialIcon network={network} size={13} />
+            {SOCIAL_LABELS[network]} · {detail}
+          </span>
+        );
+        return posted && last?.url ? (
+          <a key={network} href={last.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+            {chip}
+          </a>
+        ) : (
+          <span key={network}>{chip}</span>
+        );
+      })}
     </div>
   );
 }

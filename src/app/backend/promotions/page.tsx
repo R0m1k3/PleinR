@@ -4,9 +4,10 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { members, promotions, socialPosts, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
-import { configuredNetworks, SOCIAL_LABELS, type SocialNetwork } from "@/lib/social";
-import { moderatePromo, sharePromoToSocial } from "../actions";
+import { configuredNetworks, SOCIAL_LABELS } from "@/lib/social";
+import { moderatePromo, retryPromoShare } from "../actions";
 import { PromoImage } from "@/components/PromoImage";
+import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export default async function PromotionsPage() {
       imageUrl: promotions.imageUrl,
       suspendedBy: promotions.suspendedBy,
       suspendedAt: promotions.suspendedAt,
+      shareFacebook: promotions.shareFacebook,
+      shareLinkedin: promotions.shareLinkedin,
       memberName: members.name,
     })
     .from(promotions)
@@ -113,6 +116,9 @@ export default async function PromotionsPage() {
           const isPending = p.status === "pending";
           const isSuspended = p.status === "suspended";
           const chip = STATUS_CHIP[p.status] ?? STATUS_CHIP.pending;
+          const chosenNetworks = networks.filter((n) =>
+            n === "facebook" ? p.shareFacebook : p.shareLinkedin
+          );
           return (
             <article
               key={p.id}
@@ -178,15 +184,43 @@ export default async function PromotionsPage() {
                 )}
 
                 {isPending && (
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+                    {/* Les cases vivent dans le formulaire « Valider » : c'est le
+                        seul et dernier moment où la diffusion est ajustable. */}
                     <form action={moderatePromo} style={{ flex: 1 }}>
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="action" value="approve" />
+                      {networks.length > 0 && (
+                        <div style={{ background: "#faf7ef", border: "1px solid #f0e8d6", borderRadius: 10, padding: "10px 11px", marginBottom: 8 }}>
+                          <div style={{ fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 800, marginBottom: 7 }}>
+                            Diffusion demandée
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {networks.map((network) => (
+                              <label key={network} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 700, color: SOCIAL_BRAND[network], cursor: "pointer" }}>
+                                <input
+                                  type="checkbox"
+                                  name={network === "facebook" ? "shareFacebook" : "shareLinkedin"}
+                                  defaultChecked={network === "facebook" ? p.shareFacebook : p.shareLinkedin}
+                                  style={{ accentColor: SOCIAL_BRAND[network], margin: 0 }}
+                                />
+                                <SocialIcon network={network} size={14} />
+                                {SOCIAL_LABELS[network]}
+                              </label>
+                            ))}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#a99c82", marginTop: 7, lineHeight: 1.45 }}>
+                            Publié dès la validation. Ce choix n&apos;est plus modifiable ensuite.
+                          </div>
+                        </div>
+                      )}
                       <button type="submit" style={{ width: "100%", border: "none", background: "#1f8a5b", color: "#fff", fontWeight: 700, fontSize: 13, padding: 10, borderRadius: 9, cursor: "pointer" }}>
                         Valider
                       </button>
                     </form>
-                    <form action={moderatePromo} style={{ flex: 1 }}>
+                    {/* Aligné en bas pour rester au niveau du bouton Valider,
+                        que le bloc diffusion rend plus haut. */}
+                    <form action={moderatePromo} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="action" value="reject" />
                       <button type="submit" style={{ width: "100%", border: "1px solid #e0c3bb", background: "#fff", color: "#d8472b", fontWeight: 700, fontSize: 13, padding: 10, borderRadius: 9, cursor: "pointer" }}>
@@ -228,42 +262,53 @@ export default async function PromotionsPage() {
                   </div>
                 )}
 
-                {networks.length > 0 && (
+                {!isPending && chosenNetworks.length > 0 && (
                   <div style={{ borderTop: "1px solid #f0e8d6", marginTop: 12, paddingTop: 11 }}>
                     <div style={{ fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 800, marginBottom: 8 }}>
-                      Partager sur les réseaux
+                      Diffusion réseaux
                     </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {networks.map((network) => (
-                        <ShareButton
-                          key={network}
-                          network={network}
-                          promoId={p.id}
-                          disabled={p.status !== "live"}
-                          last={lastShare.get(`${p.id}:${network}`)}
-                        />
-                      ))}
-                    </div>
-                    {networks.map((network) => {
+                    {chosenNetworks.map((network) => {
                       const last = lastShare.get(`${p.id}:${network}`);
-                      if (!last) return null;
+                      const posted = last?.status === "posted";
                       return (
-                        <div key={network} style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.45, color: last.status === "posted" ? "#6c6150" : "#d8472b" }}>
-                          {last.status === "posted" ? (
-                            <>
-                              ✓ {SOCIAL_LABELS[network]} · {fmtDate(last.createdAt)}
-                              {last.authorName ? ` · ${last.authorName}` : ""}
-                              {last.url && (
-                                <>
-                                  {" "}
-                                  <a href={last.url} target="_blank" rel="noopener noreferrer" style={{ color: "#2C6FB3", fontWeight: 700 }}>
-                                    voir
-                                  </a>
-                                </>
-                              )}
-                            </>
-                          ) : (
-                            <>✕ {SOCIAL_LABELS[network]} — échec : {last.error?.slice(0, 160)}</>
+                        <div key={network} style={{ marginBottom: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, color: posted ? "#1f8a5b" : "#d8472b" }}>
+                            <span style={{ color: SOCIAL_BRAND[network], display: "inline-flex" }}>
+                              <SocialIcon network={network} size={14} />
+                            </span>
+                            {SOCIAL_LABELS[network]} ·{" "}
+                            {posted ? `publié le ${fmtDate(last!.createdAt)}` : "non publié"}
+                            {posted && last?.url && (
+                              <a href={last.url} target="_blank" rel="noopener noreferrer" style={{ color: "#2C6FB3", fontWeight: 700 }}>
+                                voir
+                              </a>
+                            )}
+                          </div>
+                          {!posted && last?.error && (
+                            <div style={{ fontSize: 11, color: "#a8503c", lineHeight: 1.45, marginTop: 3 }}>
+                              {last.error.slice(0, 200)}
+                            </div>
+                          )}
+                          {!posted && p.status === "live" && (
+                            <form action={retryPromoShare} style={{ marginTop: 6 }}>
+                              <input type="hidden" name="id" value={p.id} />
+                              <input type="hidden" name="network" value={network} />
+                              <button
+                                type="submit"
+                                style={{
+                                  border: `1px solid ${SOCIAL_BRAND[network]}`,
+                                  background: "#fff",
+                                  color: SOCIAL_BRAND[network],
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  padding: "7px 12px",
+                                  borderRadius: 8,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Réessayer sur {SOCIAL_LABELS[network]}
+                              </button>
+                            </form>
                           )}
                         </div>
                       );
@@ -279,42 +324,3 @@ export default async function PromotionsPage() {
   );
 }
 
-function ShareButton({
-  network,
-  promoId,
-  disabled,
-  last,
-}: {
-  network: SocialNetwork;
-  promoId: number;
-  disabled: boolean;
-  last?: { status: string };
-}) {
-  const alreadyPosted = last?.status === "posted";
-  const brand = network === "facebook" ? "#1877F2" : "#0A66C2";
-  return (
-    <form action={sharePromoToSocial} style={{ flex: "1 1 120px" }}>
-      <input type="hidden" name="id" value={promoId} />
-      <input type="hidden" name="network" value={network} />
-      <button
-        type="submit"
-        disabled={disabled}
-        title={disabled ? "Seule une promotion en ligne peut être publiée." : undefined}
-        style={{
-          width: "100%",
-          border: `1px solid ${brand}`,
-          background: alreadyPosted ? "#fff" : brand,
-          color: alreadyPosted ? brand : "#fff",
-          fontWeight: 700,
-          fontSize: 12.5,
-          padding: "9px 10px",
-          borderRadius: 9,
-          cursor: disabled ? "not-allowed" : "pointer",
-          opacity: disabled ? 0.45 : 1,
-        }}
-      >
-        {alreadyPosted ? `Republier sur ${SOCIAL_LABELS[network]}` : `Publier sur ${SOCIAL_LABELS[network]}`}
-      </button>
-    </form>
-  );
-}

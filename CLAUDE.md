@@ -53,12 +53,20 @@ site sans traitement supplémentaire.
 
 - `src/lib/social.ts` publie une promo sur la page Facebook (Graph API) ou
   LinkedIn (Posts API). Jetons **uniquement** en variables d'environnement, jamais
-  en base ni dans le backoffice. Réseau non configuré = bouton masqué.
+  en base ni dans le backoffice. Réseau non configuré = case masquée.
 - Les images de promo sont stockées en data-URI : l'upload se fait donc en
   binaire (multipart pour Facebook, Images API en 3 étapes pour LinkedIn), pas
   par URL.
-- Chaque tentative est journalisée dans `social_posts` (succès ou échec) ; un
-  échec n'interrompt pas l'action, il s'affiche sur la carte de la promo.
+- La diffusion est déclenchée **par la validation**, pas par un bouton :
+  `promotions.share_facebook` / `share_linkedin` sont choisis par l'adhérent,
+  ajustables par le modérateur dans le formulaire « Valider », puis figés
+  (`status !== 'pending'`).
+- `publishPromoShares()` dans `backend/actions.ts` est le seul point de
+  publication. Elle ne lève jamais et ignore tout réseau ayant déjà une ligne
+  `social_posts` en `posted` : c'est la garde anti-republication, qui couvre
+  aussi le cycle suspension → remise en ligne.
+- `retryPromoShare` ne sert qu'au rattrapage d'un échec sur un réseau déjà
+  choisi ; il ne peut pas élargir la diffusion.
 - Les URLs publiques des pages FB/LinkedIn sont des `site_settings`
   (`association_facebook`, `association_linkedin`), éditables dans Paramètres.
 

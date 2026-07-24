@@ -50,6 +50,13 @@
       "when": 1784930674056,
       "tag": "0006_tiresome_clea",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784931989372,
+      "tag": "0007_foamy_vindicator",
+      "breakpoints": true
     }
   ]
 }

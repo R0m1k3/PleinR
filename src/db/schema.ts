@@ -100,6 +100,10 @@ export const promotions = pgTable("promotions", {
   memberId: integer("member_id").references(() => members.id),
   status: promoStatusEnum("status").notNull().default("pending"),
   validUntil: varchar("valid_until", { length: 120 }),
+  // Réseaux demandés à la soumission. Le choix reste modifiable tant que la
+  // promo est « pending » ; la validation le fige ET déclenche la publication.
+  shareFacebook: boolean("share_facebook").notNull().default(false),
+  shareLinkedin: boolean("share_linkedin").notNull().default(false),
   suspendedBy: promoSuspendedByEnum("suspended_by"),
   suspendedById: integer("suspended_by_id").references(() => users.id, { onDelete: "set null" }),
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),

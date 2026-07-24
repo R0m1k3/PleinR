@@ -83,11 +83,24 @@ charge des données de démonstration. Ensuite :
 
 ## Publication sur Facebook / LinkedIn
 
-Depuis **Backend › Promotions**, une promotion `live` peut être publiée sur la
-page Facebook et/ou la page LinkedIn de l'association (image + texte + lien vers
-la fiche adhérent). Chaque tentative est tracée dans la table `social_posts`
-(succès avec le lien du post, ou échec avec le message d'erreur affiché sur la
-carte).
+La diffusion est **pilotée par la validation**, jamais déclenchée à la main :
+
+1. L'adhérent coche Facebook et/ou LinkedIn en soumettant sa promotion. Rien
+   n'est publié à ce stade ; il peut modifier son choix tant que la promo est
+   `pending`.
+2. Le modérateur voit ces cases pré-cochées sur la carte en attente et peut les
+   ajuster — c'est le dernier moment où le choix est modifiable.
+3. **Valider** met la promo en ligne *et* publie sur les réseaux retenus (image +
+   texte + lien vers la fiche adhérent). Après validation, le choix est figé.
+
+Chaque tentative est tracée dans `social_posts` : succès avec le lien du post, ou
+échec avec le message d'erreur affiché sur la carte. En cas d'échec, un bouton
+**Réessayer** apparaît, limité aux réseaux déjà choisis — il ne permet pas
+d'élargir la diffusion.
+
+Une promotion n'est jamais publiée deux fois : un réseau ayant déjà une
+publication réussie est systématiquement ignoré, y compris sur un cycle
+suspension → remise en ligne.
 
 Les jetons d'accès sont des **secrets** : ils se configurent uniquement par
 variables d'environnement (`FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_ACCESS_TOKEN`,

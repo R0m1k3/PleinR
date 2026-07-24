@@ -4,16 +4,25 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { publishPromo } from "../actions";
 import { PromoImage } from "@/components/PromoImage";
+import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
+import type { SocialNetwork } from "@/lib/social";
 
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
 
+const NETWORK_LABELS: Record<SocialNetwork, string> = {
+  facebook: "Facebook",
+  linkedin: "LinkedIn",
+};
+
 export function MemberSpaceForm({
   memberName,
   categories,
+  networks = [],
 }: {
   memberName: string;
   categories: string[];
+  networks?: SocialNetwork[];
 }) {
   const CATEGORIES = categories.length > 0 ? categories : ["Autre"];
   const router = useRouter();
@@ -22,9 +31,15 @@ export function MemberSpaceForm({
   const [cat, setCat] = useState(CATEGORIES[0]);
   const [badge, setBadge] = useState("");
   const [imgData, setImgData] = useState("");
+  const [shares, setShares] = useState<SocialNetwork[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function toggleShare(network: SocialNetwork) {
+    setShares((s) => (s.includes(network) ? s.filter((n) => n !== network) : [...s, network]));
+    setSubmitted(false);
+  }
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -42,6 +57,7 @@ export function MemberSpaceForm({
     setText("");
     setBadge("");
     setImgData("");
+    setShares([]);
     setSubmitted(false);
     if (fileRef.current) fileRef.current.value = "";
   }
@@ -55,6 +71,8 @@ export function MemberSpaceForm({
     fd.set("category", cat);
     fd.set("badge", badge);
     fd.set("imageUrl", imgData);
+    if (shares.includes("facebook")) fd.set("shareFacebook", "on");
+    if (shares.includes("linkedin")) fd.set("shareLinkedin", "on");
     await publishPromo(fd);
     setPending(false);
     setSubmitted(true);
@@ -152,6 +170,50 @@ export function MemberSpaceForm({
           style={{ resize: "vertical", marginBottom: 6 }}
         />
         <div style={{ fontSize: 12, color: "#a99c82", marginBottom: 18 }}>{text.length} / 240 caractères</div>
+
+        {networks.length > 0 && (
+          <div style={{ border: "1px solid #f0e8d6", background: "#faf7ef", borderRadius: 12, padding: "14px 15px", marginBottom: 18 }}>
+            <div className="field-label" style={{ marginBottom: 4 }}>
+              Diffusion sur les réseaux Plein R
+            </div>
+            <div style={{ fontSize: 12.5, color: "#8c8068", lineHeight: 1.5, marginBottom: 11 }}>
+              Choisissez où l&apos;association relaiera votre offre. La publication n&apos;a lieu
+              qu&apos;une fois la promotion validée — et le choix n&apos;est plus modifiable ensuite.
+            </div>
+            <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
+              {networks.map((network) => {
+                const active = shares.includes(network);
+                return (
+                  <label
+                    key={network}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 9,
+                      cursor: "pointer",
+                      padding: "9px 14px",
+                      borderRadius: 11,
+                      border: `1px solid ${active ? SOCIAL_BRAND[network] : "#e6dcc6"}`,
+                      background: active ? "#fff" : "transparent",
+                      color: active ? SOCIAL_BRAND[network] : "#6c6150",
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={active}
+                      onChange={() => toggleShare(network)}
+                      style={{ accentColor: SOCIAL_BRAND[network], margin: 0 }}
+                    />
+                    <SocialIcon network={network} size={16} />
+                    {NETWORK_LABELS[network]}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 10 }}>
           <button
