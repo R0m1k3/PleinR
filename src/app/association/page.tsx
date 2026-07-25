@@ -6,7 +6,13 @@ import { meetingRegistrations, meetings, pastMeetingPhotos, pastMeetings } from 
 import { PastMeetingGallery } from "@/components/PastMeetingGallery";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
-import { getSiteSettings, parseBoardMembers, splitLines } from "@/lib/site-settings";
+import {
+  getSiteSettings,
+  parseBoardMembers,
+  parseParagraphs,
+  parsePillars,
+  splitLines,
+} from "@/lib/site-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +102,8 @@ export default async function AssociationPage() {
     ["Secrétariat", settings.association_secretary],
   ].filter(([, name]) => name);
   const board = parseBoardMembers(settings.association_board_members);
+  const missionParagraphs = parseParagraphs(settings.association_mission);
+  const pillars = parsePillars(settings.association_pillars);
 
   return (
     <div style={{ background: "#F6F2E8", minHeight: "100vh", fontFamily: "'Public Sans',sans-serif", color: "#33291D" }}>
@@ -117,18 +125,53 @@ export default async function AssociationPage() {
         </section>
 
         <section style={{ background: "#13324F", color: "#fff" }}>
-          <div className="container grid grid-2" style={{ paddingTop: 44, paddingBottom: 44, alignItems: "start" }}>
-            <div>
-              <div style={{ color: "#E0A63C", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 800, marginBottom: 10 }}>
-                Mission
+          <div className="container" style={{ paddingTop: 44, paddingBottom: 48 }}>
+            <div className="grid grid-2" style={{ alignItems: "start" }}>
+              <div>
+                <div style={{ color: "#E0A63C", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 800, marginBottom: 10 }}>
+                  Mission
+                </div>
+                <h2 className="font-display" style={{ margin: 0, fontSize: "clamp(28px, 4vw, 44px)" }}>
+                  Réseau, rencontres, réussite locale.
+                </h2>
               </div>
-              <h2 className="font-display" style={{ margin: 0, fontSize: "clamp(28px, 4vw, 44px)" }}>
-                Réseau, rencontres, réussite locale.
-              </h2>
+              <div>
+                {missionParagraphs.map((paragraph, index) => (
+                  <p
+                    key={index}
+                    style={{
+                      margin: index === 0 ? 0 : "14px 0 0",
+                      color: "#cfe0ee",
+                      fontSize: 16,
+                      lineHeight: 1.75,
+                    }}
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
             </div>
-            <p style={{ margin: 0, color: "#cfe0ee", fontSize: 16, lineHeight: 1.75 }}>
-              {settings.association_mission}
-            </p>
+
+            {pillars.length > 0 && (
+              <>
+                <div style={{ color: "#E0A63C", fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 800, margin: "44px 0 16px" }}>
+                  Ce que l&apos;association vous apporte
+                </div>
+                <div className="pillars-grid">
+                  {pillars.map((pillar, index) => (
+                    <article key={pillar.title} className="pillar-card">
+                      <span className="font-display pillar-card__index">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <h3 className="font-display pillar-card__title">{pillar.title}</h3>
+                      {pillar.description && (
+                        <p className="pillar-card__text">{pillar.description}</p>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </section>
 

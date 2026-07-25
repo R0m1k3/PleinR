@@ -41,7 +41,16 @@ export default async function ParametresPage() {
             <Field label="Adresse" name="association_address" value={settings.association_address} />
           </div>
           <Area label="Texte d'introduction Association" name="association_intro" value={settings.association_intro} />
-          <Area label="Mission" name="association_mission" value={settings.association_mission} />
+          <Area
+            label="Mission (une ligne vide sépare les paragraphes)"
+            name="association_mission"
+            value={settings.association_mission}
+          />
+          <Area
+            label="Ce que l'association apporte (Titre|Description, une ligne par point)"
+            name="association_pillars"
+            value={settings.association_pillars}
+          />
         </div>
         <div style={{ marginTop: 14, color: "#9a6638", fontSize: 13, lineHeight: 1.6 }}>
           Les pages Facebook et LinkedIn s&apos;affichent sur la page d&apos;accueil et dans le pied
