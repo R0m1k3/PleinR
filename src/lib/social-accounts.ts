@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { socialAccounts, type SocialAccount, type SocialNetwork } from "@/db/schema";
+import { siteSettings, socialAccounts, type SocialAccount, type SocialNetwork } from "@/db/schema";
 import { decryptSecret, encryptSecret } from "./crypto";
 
 /**
@@ -30,12 +30,21 @@ function env(key: string): string {
   return (process.env[key] ?? "").trim();
 }
 
-export function siteUrl(): string {
-  return (env("NEXT_PUBLIC_SITE_URL") || env("AUTH_URL")).replace(/\/+$/, "");
+/**
+ * URL publique de l'application. Réglée dans Backend › Réseaux sociaux ; les
+ * variables d'environnement restent acceptées en repli.
+ */
+export async function siteUrl(): Promise<string> {
+  const [row] = await db
+    .select({ value: siteSettings.value })
+    .from(siteSettings)
+    .where(eq(siteSettings.key, "site_public_url"));
+  const stored = (row?.value ?? "").trim();
+  return (stored || env("NEXT_PUBLIC_SITE_URL") || env("AUTH_URL")).replace(/\/+$/, "");
 }
 
-export function redirectUri(network: SocialNetwork): string {
-  return `${siteUrl()}/api/social/${network}/callback`;
+export async function redirectUri(network: SocialNetwork): Promise<string> {
+  return `${await siteUrl()}/api/social/${network}/callback`;
 }
 
 // ---- Lecture ----
@@ -123,11 +132,16 @@ const SCOPES: Record<SocialNetwork, string> = {
   linkedin: "w_organization_social r_organization_social rw_organization_admin",
 };
 
-export function authorizeUrl(network: SocialNetwork, appId: string, state: string): string {
+export async function authorizeUrl(
+  network: SocialNetwork,
+  appId: string,
+  state: string
+): Promise<string> {
+  const redirect = await redirectUri(network);
   if (network === "facebook") {
     const params = new URLSearchParams({
       client_id: appId,
-      redirect_uri: redirectUri("facebook"),
+      redirect_uri: redirect,
       state,
       scope: SCOPES.facebook,
       response_type: "code",
@@ -137,7 +151,7 @@ export function authorizeUrl(network: SocialNetwork, appId: string, state: strin
   const params = new URLSearchParams({
     response_type: "code",
     client_id: appId,
-    redirect_uri: redirectUri("linkedin"),
+    redirect_uri: redirect,
     state,
     scope: SCOPES.linkedin,
   });
@@ -176,7 +190,7 @@ async function exchangeFacebook(
     `${base}/oauth/access_token?${new URLSearchParams({
       client_id: appId,
       client_secret: appSecret,
-      redirect_uri: redirectUri("facebook"),
+      redirect_uri: await redirectUri("facebook"),
       code,
     })}`
   );
@@ -232,7 +246,7 @@ async function exchangeLinkedIn(
       code,
       client_id: clientId,
       client_secret: clientSecret,
-      redirect_uri: redirectUri("linkedin"),
+      redirect_uri: await redirectUri("linkedin"),
     }),
   });
   if (!tokenRes.ok) throw new SocialAuthError(`LinkedIn (code) : ${await readError(tokenRes)}`);

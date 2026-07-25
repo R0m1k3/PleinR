@@ -39,20 +39,20 @@ export type PromoForSharing = {
   memberName: string | null;
 };
 
-export function promoLink(promo: PromoForSharing): string | null {
-  const base = siteUrl();
+export async function promoLink(promo: PromoForSharing): Promise<string | null> {
+  const base = await siteUrl();
   if (!base) return null;
   return promo.memberId ? `${base}/adherents/${promo.memberId}` : `${base}/#promotions`;
 }
 
 /** Texte du post, commun aux deux réseaux. */
-export function buildPromoMessage(promo: PromoForSharing): string {
+export async function buildPromoMessage(promo: PromoForSharing): Promise<string> {
   const lines: string[] = [];
   lines.push(promo.badge ? `${promo.badge} — ${promo.title}` : promo.title);
   if (promo.memberName) lines.push(`Chez ${promo.memberName}`);
   if (promo.text?.trim()) lines.push("", promo.text.trim());
   if (promo.validUntil?.trim()) lines.push("", promo.validUntil.trim());
-  const link = promoLink(promo);
+  const link = await promoLink(promo);
   if (link) lines.push("", link);
   lines.push("", "#PleinR #BassinDePompey #CommerceLocal");
   return lines.join("\n");
@@ -133,7 +133,7 @@ async function publishToFacebook(promo: PromoForSharing, message: string): Promi
   } else {
     endpoint = `${base}/feed`;
     body.set("message", message);
-    const link = promoLink(promo);
+    const link = await promoLink(promo);
     if (link) body.set("link", link);
   }
 
@@ -245,7 +245,7 @@ export async function publishPromoToNetwork(
   network: SocialNetwork,
   promo: PromoForSharing
 ): Promise<PublishResult> {
-  const message = buildPromoMessage(promo);
+  const message = await buildPromoMessage(promo);
   return network === "facebook"
     ? publishToFacebook(promo, message)
     : publishToLinkedIn(promo, message);

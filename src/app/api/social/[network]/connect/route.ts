@@ -34,10 +34,11 @@ export async function GET(
     return back(request, "Réseau inconnu.");
   }
 
-  if (!siteUrl()) {
+  const base = await siteUrl();
+  if (!base) {
     return back(
       request,
-      "L'URL publique du site n'est pas configurée (NEXT_PUBLIC_SITE_URL) : impossible de construire l'adresse de retour."
+      "Renseignez d'abord l'URL publique du site : elle sert à construire l'adresse de retour."
     );
   }
 
@@ -50,11 +51,11 @@ export async function GET(
   // `state` en cookie httpOnly : vérifié au retour pour écarter toute requête
   // de rappel forgée.
   const state = randomBytes(24).toString("hex");
-  const response = NextResponse.redirect(authorizeUrl(network, account.appId, state));
+  const response = NextResponse.redirect(await authorizeUrl(network, account.appId, state));
   response.cookies.set(`plr_oauth_${network}`, state, {
     httpOnly: true,
     sameSite: "lax",
-    secure: new URL(siteUrl()).protocol === "https:",
+    secure: new URL(base).protocol === "https:",
     path: "/",
     maxAge: 600,
   });

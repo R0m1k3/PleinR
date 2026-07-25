@@ -952,6 +952,9 @@ export async function saveSiteSettings(formData: FormData) {
   const updatedAt = new Date();
 
   for (const key of Object.keys(SITE_SETTING_DEFAULTS)) {
+    // Réglée sur l'écran Réseaux sociaux : ce formulaire ne la contient pas et
+    // l'écraserait avec une chaîne vide.
+    if (key === "site_public_url") continue;
     await db
       .insert(siteSettings)
       .values({ key, value: asString(formData, key), updatedAt })
@@ -1131,6 +1134,45 @@ export async function setContactStatus(formData: FormData) {
     .where(eq(contactMessages.id, id));
   revalidatePath("/backend/demandes");
   revalidatePath("/backend");
+}
+
+// ---- URL publique de l'application ----
+// Sert à l'adresse de retour OAuth et au lien inséré dans les publications.
+export async function saveSitePublicUrl(formData: FormData) {
+  const { role } = await requireRole();
+  if (!can(role, "manageSettings")) throw new Error("Accès refusé");
+
+  const raw = asString(formData, "sitePublicUrl");
+  let value = "";
+  if (raw) {
+    // Le schéma est facultatif à la saisie ; seul l'origine est conservée, un
+    // chemin ou des paramètres casseraient l'adresse de retour OAuth.
+    const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
+    let parsed: URL | null = null;
+    try {
+      parsed = new URL(candidate);
+    } catch {
+      parsed = null;
+    }
+    if (!parsed || !["http:", "https:"].includes(parsed.protocol) || !parsed.hostname) {
+      // Message rendu par le bandeau de l'écran, plutôt qu'une page d'erreur brute.
+      redirect(
+        `/backend/reseaux?error=${encodeURIComponent(
+          "Adresse invalide : indiquez par exemple https://pleinr.example.fr"
+        )}`
+      );
+    }
+    value = parsed.origin;
+  }
+
+  const updatedAt = new Date();
+  await db
+    .insert(siteSettings)
+    .values({ key: "site_public_url", value, updatedAt })
+    .onConflictDoUpdate({ target: siteSettings.key, set: { value, updatedAt } });
+
+  revalidatePath("/backend/reseaux");
+  revalidatePath("/backend/parametres");
 }
 
 // ---- Réseaux sociaux : identifiants d'application et connexion ----

@@ -111,8 +111,13 @@ jetons sont récupérés par OAuth et stockés **chiffrés** (AES-256-GCM, clé
 navigateur. Un réseau non connecté voit simplement sa case disparaître du
 formulaire de promotion.
 
-L'écran affiche l'URL de redirection à déclarer sur le portail développeur —
-c'est l'erreur de configuration la plus fréquente.
+Le même écran porte l'**URL publique du site**, pré-remplie avec l'adresse par
+laquelle vous consultez le backoffice : elle sert à l'adresse de retour OAuth et
+au lien inséré dans les publications. Seule l'origine est conservée (le schéma
+est ajouté si vous l'omettez, un éventuel chemin est retiré).
+
+L'écran affiche ensuite l'URL de redirection à déclarer sur le portail
+développeur — c'est l'erreur de configuration la plus fréquente.
 
 **Facebook.** Créez une application « Business » sur
 [developers.facebook.com](https://developers.facebook.com/apps), ajoutez le
@@ -171,8 +176,8 @@ Voir [`.env.example`](./.env.example). Les principales :
 - `AUTH_URL` — URL publique de l'application
 - `SEED_ON_START` — `true` pour seeder au démarrage du conteneur
 - `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` — premier admin
-- `NEXT_PUBLIC_SITE_URL` — URL publique : sert au lien des posts **et** à l'adresse
-  de retour OAuth. Obligatoire pour connecter un réseau social.
+- `NEXT_PUBLIC_SITE_URL` — repli pour l'URL publique du site ; elle se règle
+  normalement dans **Backend › Réseaux sociaux**, aucune variable n'est requise.
 - `SOCIAL_TOKEN_KEY` — clé de chiffrement des jetons réseaux (défaut : `AUTH_SECRET`)
 - `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_ACCESS_TOKEN`, `LINKEDIN_ORGANIZATION_URN` /
   `LINKEDIN_ACCESS_TOKEN` — repli si aucun compte n'est connecté via le backoffice

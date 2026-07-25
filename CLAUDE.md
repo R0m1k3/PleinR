@@ -58,7 +58,11 @@ site sans traitement supplémentaire.
   `src/lib/crypto.ts` (AES-256-GCM, clé `SOCIAL_TOKEN_KEY` ou `AUTH_SECRET`), posés
   depuis `/backend/reseaux`. Les variables d'environnement restent lues en repli.
   Aucun secret ne doit jamais repartir vers le navigateur.
-- `isNetworkConfigured()` / `configuredNetworks()` sont **asynchrones** (accès base).
+- `isNetworkConfigured()` / `configuredNetworks()` / `siteUrl()` / `redirectUri()`
+  sont **asynchrones** (accès base).
+- L'URL publique est le réglage `site_public_url`, édité sur `/backend/reseaux`
+  (pré-rempli depuis les en-têtes de la requête). `saveSiteSettings` **saute**
+  cette clé : le formulaire Paramètres ne la contient pas et l'écraserait.
 - Routes OAuth : `src/app/api/social/[network]/{connect,callback}`. Le `state`
   anti-CSRF passe par un cookie httpOnly ; aucun jeton ne transite par une URL.
 - Facebook : le jeton de page n'expire pas. LinkedIn : 60 jours, rafraîchissement

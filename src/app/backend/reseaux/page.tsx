@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import { auth } from "@/auth";
@@ -13,7 +14,7 @@ import {
   SOCIAL_NETWORKS,
   type SocialTarget,
 } from "@/lib/social-accounts";
-import { disconnectSocial, saveSocialApp, selectSocialTarget } from "../actions";
+import { disconnectSocial, saveSitePublicUrl, saveSocialApp, selectSocialTarget } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,20 @@ export default async function ReseauxPage({
   const { error, connected, choose } = await searchParams;
   const accounts = await getSocialAccounts();
   const byNetwork = new Map(accounts.map((a) => [a.network, a]));
-  const base = siteUrl();
+  const base = await siteUrl();
+
+  // Adresse par laquelle l'administrateur consulte cette page : proposée par
+  // défaut pour lui éviter de la recopier à la main.
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "";
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const detected = host ? `${protocol}://${host}` : "";
+
+  // Calculées ici : le rendu des cartes n'est pas asynchrone.
+  const redirectUris = new Map<string, string>();
+  for (const network of SOCIAL_NETWORKS) {
+    redirectUris.set(network, await redirectUri(network));
+  }
 
   // Cibles à proposer quand le compte administre plusieurs pages.
   const targets = new Map<string, SocialTarget[]>();
@@ -87,13 +101,39 @@ export default async function ReseauxPage({
         </Banner>
       )}
 
-      {!base && (
-        <Banner tone="warn">
-          L&apos;URL publique du site n&apos;est pas renseignée (variable
-          <code> NEXT_PUBLIC_SITE_URL</code>). Elle est indispensable pour construire
-          l&apos;adresse de retour OAuth : renseignez-la avant de connecter un réseau.
-        </Banner>
-      )}
+      <section style={panel}>
+        <h2 className="font-display" style={{ ...title, margin: "0 0 4px" }}>
+          URL publique du site
+        </h2>
+        <p style={{ margin: "0 0 14px", fontSize: 13.5, color: "#6c6150", lineHeight: 1.6 }}>
+          Adresse à laquelle vos visiteurs accèdent au site. Elle sert à construire
+          l&apos;adresse de retour des connexions Facebook et LinkedIn, et le lien inséré dans
+          les publications.
+        </p>
+        <form action={saveSitePublicUrl} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+            <label className="field-label">Adresse</label>
+            <input
+              name="sitePublicUrl"
+              className="field"
+              defaultValue={base || detected}
+              placeholder="https://pleinr.example.fr"
+            />
+          </div>
+          <button type="submit" style={submitButton}>Enregistrer</button>
+        </form>
+        {!base && detected && (
+          <div style={{ marginTop: 10, fontSize: 12.5, color: "#9a6638" }}>
+            Adresse détectée depuis votre navigation : <strong>{detected}</strong>. Vérifiez-la puis
+            enregistrez.
+          </div>
+        )}
+        {!base && !detected && (
+          <div style={{ marginTop: 10, fontSize: 12.5, color: "#a8503c" }}>
+            Renseignez cette adresse avant de connecter un réseau social.
+          </div>
+        )}
+      </section>
 
       {SOCIAL_NETWORKS.map((network) => {
         const account = byNetwork.get(network);
@@ -240,7 +280,7 @@ export default async function ReseauxPage({
               <div style={{ marginTop: 10 }}>
                 <div className="field-label">URL de redirection à déclarer</div>
                 <code style={{ display: "block", background: "#faf7ef", border: "1px solid #f0e8d6", borderRadius: 9, padding: "10px 12px", fontSize: 12.5, color: "#3c3322", overflowWrap: "anywhere" }}>
-                  {base ? redirectUri(network) : "— renseignez d'abord NEXT_PUBLIC_SITE_URL —"}
+                  {base ? redirectUris.get(network) : "— renseignez d'abord l'URL publique du site ci-dessus —"}
                 </code>
               </div>
               {help.caution && (

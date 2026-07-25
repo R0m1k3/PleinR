@@ -3,6 +3,9 @@ import { db } from "@/db";
 import { siteSettings } from "@/db/schema";
 
 export const SITE_SETTING_DEFAULTS = {
+  // URL publique de l'application : sert à l'adresse de retour OAuth des réseaux
+  // sociaux et au lien inséré dans les publications.
+  site_public_url: "",
   association_name: "Plein R",
   association_tagline: "Association des commerçants et entreprises du Bassin de Pompey.",
   association_intro:
