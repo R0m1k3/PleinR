@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import {
@@ -51,7 +51,7 @@ export default async function ReseauxPage({
 }: {
   searchParams: Promise<{ error?: string; connected?: string; choose?: string }>;
 }) {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageSettings")) redirect("/backend");
 
   const { error, connected, choose } = await searchParams;

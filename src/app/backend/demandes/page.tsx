@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { desc } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { contactMessages, membershipRequests } from "@/db/schema";
 import { can } from "@/lib/rbac";
@@ -41,7 +41,7 @@ function ActionBtn({ children, color }: { children: React.ReactNode; color: stri
 }
 
 export default async function DemandesPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageMembers")) {
     redirect("/backend");
   }

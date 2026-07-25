@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import {
   authorizeUrl,
@@ -23,7 +23,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ network: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageSettings")) {
     return NextResponse.redirect(new URL("/backend", request.url));
   }

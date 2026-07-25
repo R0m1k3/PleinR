@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { desc, eq, inArray } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { members, promotions, socialPosts, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
@@ -27,7 +27,7 @@ function fmtDate(d: Date) {
 }
 
 export default async function PromotionsPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "moderatePromos")) {
     redirect("/backend");
   }

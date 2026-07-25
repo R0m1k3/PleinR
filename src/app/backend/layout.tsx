@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { contactMessages, imageConsents, membershipRequests, promotions } from "@/db/schema";
 import { ImageConsentForm } from "@/components/ImageConsentForm";
@@ -15,7 +15,7 @@ export default async function BackendLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     redirect("/login");
   }

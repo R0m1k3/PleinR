@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { EmailCreator } from "@/components/EmailCreator";
 import { can } from "@/lib/rbac";
 import { getSiteSettings } from "@/lib/site-settings";
@@ -7,7 +7,7 @@ import { getSiteSettings } from "@/lib/site-settings";
 export const dynamic = "force-dynamic";
 
 export default async function EmailsPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageEmails")) redirect("/backend");
   const settings = await getSiteSettings();
   const brand = {

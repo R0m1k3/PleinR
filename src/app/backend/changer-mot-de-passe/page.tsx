@@ -1,13 +1,18 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { changeOwnPassword } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChangePasswordPage() {
-  const session = await auth();
+export default async function ChangePasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const session = await getSession();
   if (!session?.user) redirect("/login");
 
+  const { error } = await searchParams;
   const forced = session.user.mustChangePassword;
 
   return (
@@ -23,7 +28,25 @@ export default async function ChangePasswordPage() {
           </div>
         )}
 
+        {error && (
+          <div style={{ background: "#fbe9e6", border: "1px solid #f2d5cf", color: "#a8503c", borderRadius: 10, padding: "11px 14px", fontSize: 13.5, marginBottom: 16 }}>
+            {error}
+          </div>
+        )}
+
         <form action={changeOwnPassword}>
+          <label className="field-label">
+            {forced ? "Mot de passe temporaire reçu" : "Mot de passe actuel"}
+          </label>
+          <input
+            name="currentPassword"
+            type="password"
+            required
+            className="field"
+            style={{ marginBottom: 14 }}
+            autoComplete="current-password"
+          />
+
           <label className="field-label">Nouveau mot de passe (8 caractères min.)</label>
           <input name="password" type="password" required minLength={8} className="field" style={{ marginBottom: 14 }} autoComplete="new-password" />
 

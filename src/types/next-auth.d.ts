@@ -10,12 +10,15 @@ declare module "next-auth" {
       memberId: number | null;
       mustChangePassword: boolean;
     } & DefaultSession["user"];
+    /** Version du jeton, comparée à la base pour révoquer les sessions. */
+    sessionVersion?: number;
   }
 
   interface User {
     role: AppRole;
     memberId: number | null;
     mustChangePassword?: boolean;
+    sessionVersion?: number;
   }
 }
 
@@ -25,5 +28,6 @@ declare module "next-auth/jwt" {
     role?: AppRole;
     memberId?: number | null;
     mustChangePassword?: boolean;
+    sessionVersion?: number;
   }
 }

@@ -82,6 +82,9 @@ export const users = pgTable(
     memberId: integer("member_id").references(() => members.id),
     mustChangePassword: boolean("must_change_password").notNull().default(false),
     tempPassword: varchar("temp_password", { length: 60 }),
+    // Incrémenté pour invalider les jetons déjà émis (changement ou
+    // réinitialisation de mot de passe).
+    sessionVersion: integer("session_version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

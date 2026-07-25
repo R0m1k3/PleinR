@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { asc, eq, ilike } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { categories, members, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
@@ -19,7 +19,7 @@ export default async function AdherentsPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageMembers")) {
     redirect("/backend");
   }

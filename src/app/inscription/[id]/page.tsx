@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, asc, eq, gte, sql } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { MeetingRegistrationForm } from "@/components/MeetingRegistrationForm";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -25,7 +25,7 @@ function formatTime(date: Date) {
 export default async function MeetingRegistrationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const meetingId = Number(id);
-  const session = await auth();
+  const session = await getSession();
   const now = new Date();
 
   const [meeting] = Number.isInteger(meetingId)

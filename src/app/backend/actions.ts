@@ -6,7 +6,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { auth, signOut } from "@/auth";
+import { signOut } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import {
   activityLog,
@@ -86,7 +87,7 @@ async function requireRole(): Promise<{
   name: string;
   userId: number | null;
 }> {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) throw new Error("Non authentifié");
   const userId = Number(session.user.id);
   return {
@@ -509,6 +510,8 @@ export async function resetMemberPassword(formData: FormData) {
       passwordHash: await bcrypt.hash(tempPassword, 10),
       tempPassword,
       mustChangePassword: true,
+      // Coupe les sessions ouvertes avec l'ancien mot de passe.
+      sessionVersion: (u.sessionVersion ?? 0) + 1,
     })
     .where(eq(users.id, u.id));
 
@@ -727,7 +730,7 @@ export async function saveMeetingRegistration(
   _previousState: MeetingRegistrationState,
   formData: FormData,
 ): Promise<MeetingRegistrationState> {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.memberId) {
     return { status: "error", message: "Connectez-vous avec un compte adhérent pour vous inscrire." };
   }
@@ -995,7 +998,7 @@ export async function saveSiteSettings(formData: FormData) {
 
 // ---- RGPD / droit à l'image ----
 export async function saveImageConsent(formData: FormData) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.memberId) throw new Error("Compte adhérent requis");
 
   const decision = asString(formData, "decision");
@@ -1025,14 +1028,29 @@ export async function saveImageConsent(formData: FormData) {
 
 // ---- Self password change (forced at first login) ----
 export async function changeOwnPassword(formData: FormData) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) throw new Error("Non authentifié");
   const userId = Number(session.user.id);
 
+  const current = String(formData.get("currentPassword") ?? "");
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
-  if (password.length < 8) throw new Error("Le mot de passe doit faire au moins 8 caractères.");
-  if (password !== confirm) throw new Error("Les deux mots de passe ne correspondent pas.");
+
+  const back = (message: string) =>
+    redirect(`/backend/changer-mot-de-passe?error=${encodeURIComponent(message)}`);
+
+  if (password.length < 8) back("Le nouveau mot de passe doit faire au moins 8 caractères.");
+  if (password !== confirm) back("Les deux mots de passe ne correspondent pas.");
+
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  if (!user) back("Compte introuvable.");
+
+  // Le mot de passe actuel est exigé : sans lui, un poste laissé ouvert suffit
+  // à un tiers pour s'approprier le compte.
+  if (!current || !(await bcrypt.compare(current, user!.passwordHash))) {
+    back("Le mot de passe actuel est incorrect.");
+  }
+  if (current === password) back("Le nouveau mot de passe doit être différent de l'actuel.");
 
   await db
     .update(users)
@@ -1040,6 +1058,8 @@ export async function changeOwnPassword(formData: FormData) {
       passwordHash: await bcrypt.hash(password, 10),
       tempPassword: null,
       mustChangePassword: false,
+      // Invalide toutes les autres sessions ouvertes sur ce compte.
+      sessionVersion: (user!.sessionVersion ?? 0) + 1,
     })
     .where(eq(users.id, userId));
 
@@ -1049,7 +1069,7 @@ export async function changeOwnPassword(formData: FormData) {
 
 // ---- Member: edit own profile ----
 export async function updateOwnProfile(formData: FormData) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) throw new Error("Non authentifié");
   const memberId = session.user.memberId;
   if (!memberId) throw new Error("Aucune fiche adhérent liée à votre compte.");

@@ -20,10 +20,9 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
-          // frame-ancestors double X-Frame-Options pour les navigateurs récents.
-          // Une CSP complète (script-src) demanderait des nonces sur les scripts
-          // d'hydratation de Next : à traiter séparément.
-          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          // La CSP complète est posée par le middleware : elle a besoin d'un
+          // nonce différent à chaque requête, ce qu'une valeur statique ne peut
+          // pas fournir.
         ],
       },
     ];

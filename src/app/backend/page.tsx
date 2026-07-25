@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { activityLog, contactMessages, members, membershipRequests, promotions } from "@/db/schema";
 import { activityNodes } from "@/lib/activity";
@@ -35,7 +35,7 @@ function StatCard({
 }
 
 export default async function DashboardPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!isStaff(session?.user.role)) {
     redirect("/backend/espace");
   }

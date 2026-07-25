@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { categories, imageConsents, meetingRegistrations, meetings, members, promotions, socialPosts, type Member } from "@/db/schema";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
@@ -32,7 +32,7 @@ function initialsOf(name: string) {
 }
 
 export default async function EspacePage() {
-  const session = await auth();
+  const session = await getSession();
   const memberId = session?.user.memberId ?? null;
   const fallbackName = session?.user.name ?? "Adhérent";
 

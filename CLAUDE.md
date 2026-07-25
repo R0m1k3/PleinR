@@ -33,7 +33,7 @@ docker compose up --build   # full stack
   design-system in `src/app/globals.css` (palette as CSS vars, fonts, twinkle/float
   animations, hover lifts, responsive grid helpers). No Tailwind.
 - **Mutations**: server actions in `src/app/backend/actions.ts`. Each action
-  re-checks auth + capability via `auth()` and `can()` before writing, then
+  re-checks auth + capability via `getSession()` and `can()` before writing, then
   `revalidatePath()`.
 - **Access control**: `src/middleware.ts` gates `/backend/*`; each page further
   guards by role (`isStaff`, `can`) and redirects.
@@ -82,6 +82,22 @@ site sans traitement supplémentaire.
   choisi ; il ne peut pas élargir la diffusion.
 - Les URLs publiques des pages FB/LinkedIn sont des `site_settings`
   (`association_facebook`, `association_linkedin`), éditables dans Paramètres.
+
+## Sécurité
+
+- Le journal d'activité agrège des saisies de tiers, dont le formulaire de
+  contact **public** : il est filtré à l'écriture (`sanitizeActivityMessage`) et
+  rendu en éléments React (`activityNodes`), jamais en HTML brut.
+- `getSession()` (`src/lib/session.ts`) remplace `auth()` partout : le rôle et le
+  rattachement adhérent sont relus en base à chaque requête, et
+  `users.session_version` invalide les jetons émis avant un changement de mot de
+  passe. N'appelez plus `auth()` directement depuis une page ou une action.
+- Les images ne sont acceptées qu'en data-URI (`asImageDataUri`) : une URL ferait
+  appeler par le serveur une cible choisie par l'utilisateur (SSRF).
+- La CSP à nonce est posée par `src/middleware.ts`. Elle impose un rendu
+  dynamique : `export const dynamic = "force-dynamic"` est dans `app/layout.tsx`,
+  un HTML pré-généré ne pouvant pas porter de nonce.
+- `npm test` verrouille ces protections (`tests/security.test.ts`).
 
 ## Roles
 

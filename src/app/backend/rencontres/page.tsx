@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import { desc, eq, sql } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { meetingRegistrations, meetings } from "@/db/schema";
 import { ImageField } from "@/components/ImageField";
@@ -20,7 +20,7 @@ function dateTimeValue(date: Date) {
 }
 
 export default async function RencontresAdminPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageMeetings")) redirect("/backend");
 
   const [rows, settings] = await Promise.all([

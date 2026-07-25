@@ -166,6 +166,7 @@ npm run dev           # http://localhost:3000
 | `npm run db:generate` | Génère les migrations Drizzle |
 | `npm run db:migrate` | Applique les migrations |
 | `npm run db:seed` | Insère les données de démonstration |
+| `npm test` | Tests de sécurité (filtre XSS, limitation de connexion, chiffrement) |
 
 ## Variables d'environnement
 

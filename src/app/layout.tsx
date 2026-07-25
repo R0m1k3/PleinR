@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+// Rendu dynamique pour toutes les pages : la CSP à nonce du middleware ne peut
+// pas signer les scripts d'un HTML pré-généré au build. Toutes les pages
+// interrogent de toute façon la base.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Plein R — Commerçants & entreprises du Bassin de Pompey",
   description:

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import { asc, desc, eq, sql } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { meetingRegistrations, meetings, pastMeetingPhotos, pastMeetings } from "@/db/schema";
 import { ImageField } from "@/components/ImageField";
@@ -23,7 +23,7 @@ function dateValue(date: Date) {
 }
 
 export default async function PastMeetingsAdminPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageMeetings")) redirect("/backend");
 
   const [meetingRows, archives, photos, refusals] = await Promise.all([

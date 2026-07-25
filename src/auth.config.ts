@@ -23,6 +23,7 @@ export const authConfig = {
         token.memberId = (user as { memberId?: number | null }).memberId ?? null;
         token.mustChangePassword =
           (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
+        token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0;
       }
       return token;
     },
@@ -36,6 +37,8 @@ export const authConfig = {
           | "member";
         session.user.memberId = (token.memberId as number | null) ?? null;
         session.user.mustChangePassword = Boolean(token.mustChangePassword);
+        // Exposé pour la revalidation en base (src/lib/session.ts).
+        session.sessionVersion = Number(token.sessionVersion ?? 0);
       }
       return session;
     },

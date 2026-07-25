@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { ImageField } from "@/components/ImageField";
 import { can } from "@/lib/rbac";
 import { getSiteSettings } from "@/lib/site-settings";
@@ -9,7 +9,7 @@ import { saveSiteSettings } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function ParametresPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageSettings")) redirect("/backend");
 
   const settings = await getSiteSettings();

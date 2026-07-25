@@ -50,6 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role,
           memberId: user.memberId,
           mustChangePassword: user.mustChangePassword,
+          sessionVersion: user.sessionVersion ?? 0,
         };
       },
     }),

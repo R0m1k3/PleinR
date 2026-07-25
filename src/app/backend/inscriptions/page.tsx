@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import { and, desc, eq } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { meetingRegistrations, meetings } from "@/db/schema";
 import { can } from "@/lib/rbac";
@@ -18,7 +18,7 @@ function formatDate(date: Date) {
 }
 
 export default async function InscriptionsPage({ searchParams }: { searchParams: Promise<{ meeting?: string }> }) {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageMeetings")) redirect("/backend");
   const { meeting: meetingParam } = await searchParams;
   const selectedMeetingId = Number(meetingParam) || null;

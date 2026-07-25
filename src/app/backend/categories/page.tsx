@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { asc, count, eq } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { categories, members } from "@/db/schema";
 import { can } from "@/lib/rbac";
@@ -9,7 +9,7 @@ import { addCategory, deleteCategory, renameCategory } from "../actions";
 export const dynamic = "force-dynamic";
 
 export default async function CategoriesPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageCategories")) {
     redirect("/backend");
   }

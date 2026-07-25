@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { inArray } from "drizzle-orm";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { can, ROLE_LABELS, STAFF_ROLES } from "@/lib/rbac";
@@ -13,7 +13,7 @@ function initialsOf(name: string) {
 }
 
 export default async function AdminsPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!can(session?.user.role, "manageAdmins")) {
     redirect("/backend");
   }
