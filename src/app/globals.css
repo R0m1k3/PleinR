@@ -319,47 +319,128 @@ button {
 }
 
 /* ---- Public footer & legal pages ---- */
+.site-footer {
+  background: var(--cream-2);
+  /* Filet doré : referme la page au lieu d'une simple ligne grise. */
+  border-top: 3px solid var(--gold);
+}
+/* Quatre colonnes : à trois, la dernière laissait un tiers de la largeur vide. */
 .footer-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 1.8fr) 1fr 1fr;
-  gap: 48px;
+  grid-template-columns: minmax(240px, 1.5fr) repeat(3, minmax(0, 1fr));
+  gap: 40px;
   align-items: start;
 }
+.footer-brand img {
+  display: block;
+  width: 96px;
+  height: auto;
+}
+.footer-tagline {
+  margin: 10px 0 0;
+  max-width: 340px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.65;
+}
 .footer-title {
-  font-family: "Bricolage Grotesque", "Public Sans", system-ui, sans-serif;
-  color: var(--ink-strong);
-  font-size: 13px;
+  margin: 0 0 14px;
+  color: var(--brown);
+  font-size: 11.5px;
   font-weight: 800;
-  margin: 3px 0 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .footer-links {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 13.5px;
 }
 .footer-links a,
 .footer-links button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   text-decoration: none;
   cursor: pointer;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
 .footer-links a:hover,
 .footer-links button:hover {
-  color: var(--brown) !important;
-  text-decoration: underline;
+  color: var(--brown);
+  transform: translateX(2px);
+}
+/* Boutons sociaux libellés : plus lisibles que deux icônes isolées, et ils
+   donnent enfin du contenu à la quatrième colonne. */
+.footer-social {
+  display: flex;
+  flex-direction: column;
+  /* Sans cela les boutons s'étirent sur toute la colonne et deviennent des
+     pavés vides. */
+  align-items: flex-start;
+  gap: 9px;
+}
+.footer-social a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 13px;
+  border: 1px solid #e2d6bd;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.footer-social a:hover {
+  transform: translateY(-1px);
+}
+.footer-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.footer-contact a {
+  color: inherit;
+  text-decoration: none;
+}
+.footer-contact a:hover {
+  color: var(--brown);
 }
 .footer-bottom {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 10px 20px;
   flex-wrap: wrap;
   border-top: 1px solid #ded2b9;
-  margin-top: 26px;
+  margin-top: 34px;
   padding-top: 18px;
   color: var(--muted-2);
   font-size: 12.5px;
+}
+.footer-bottom__place {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.footer-bottom__place::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
 }
 .legal-content h2 {
   font-family: "Bricolage Grotesque", "Public Sans", system-ui, sans-serif;
@@ -408,8 +489,12 @@ button {
     grid-template-columns: 1fr;
   }
   .footer-grid {
-    grid-template-columns: 1.5fr 1fr 1fr;
-    gap: 28px;
+    /* Quatre colonnes ne tiennent plus : la marque prend toute la ligne. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 30px;
+  }
+  .footer-grid > :first-child {
+    grid-column: 1 / -1;
   }
 }
 @media (max-width: 640px) {
@@ -427,10 +512,20 @@ button {
     padding: 0 16px;
   }
   .footer-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 26px;
   }
-  .footer-grid > :first-child {
+  .footer-grid > :first-child,
+  /* « Nous suivre » resterait seule dans une colonne, la moitié droite vide. */
+  .footer-grid > :last-child {
     grid-column: 1 / -1;
+  }
+  .footer-social {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .footer-bottom {
+    justify-content: flex-start;
   }
 }
 

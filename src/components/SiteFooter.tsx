@@ -5,48 +5,27 @@ import { SOCIAL_BRAND, SocialIcon } from "./SocialIcons";
 
 export async function SiteFooter() {
   const year = new Date().getFullYear();
-  const socials = socialLinks(await getSiteSettings());
+  const settings = await getSiteSettings();
+  const socials = socialLinks(settings);
+
+  const email = settings.association_email.trim();
+  const phone = settings.association_phone.trim();
+  const address = settings.association_address.trim();
+  const hasContact = !!(email || phone || address);
 
   return (
-    <footer style={{ background: "#EFE9DA", borderTop: "1px solid #e2d6bd" }}>
-      <div className="container" style={{ paddingTop: 34, paddingBottom: 24 }}>
+    <footer className="site-footer">
+      <div className="container" style={{ paddingTop: 40, paddingBottom: 26 }}>
         <div className="footer-grid">
-          <div>
+          <div className="footer-brand">
             <Link href="/" aria-label="Plein R — accueil" style={{ display: "inline-flex" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/assets/logo.png" alt="Plein R" style={{ width: 118, height: "auto", display: "block" }} />
+              <img src="/assets/logo.png" alt="Plein R" />
             </Link>
-            <p style={{ margin: "12px 0 0", maxWidth: 370, fontSize: 13.5, lineHeight: 1.65, color: "#6c6150" }}>
+            <p className="footer-tagline">
               Association des commerçants et entreprises du Bassin de Pompey.
               Réseau · Rencontre · Réussite.
             </p>
-            {socials.length > 0 && (
-              <div style={{ display: "flex", gap: 9, marginTop: 16 }}>
-                {socials.map((s) => (
-                  <a
-                    key={s.network}
-                    href={s.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Plein R sur ${s.label}`}
-                    title={`Plein R sur ${s.label}`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: 38,
-                      height: 38,
-                      borderRadius: 11,
-                      border: "1px solid #e2d6bd",
-                      background: "#fff",
-                      color: SOCIAL_BRAND[s.network],
-                    }}
-                  >
-                    <SocialIcon network={s.network} />
-                  </a>
-                ))}
-              </div>
-            )}
           </div>
 
           <div>
@@ -54,27 +33,57 @@ export async function SiteFooter() {
             <div className="footer-links">
               <Link href="/annuaire">Annuaire</Link>
               <Link href="/#promotions">Promotions</Link>
-              <Link href="/association">Association</Link>
-              <Link href="/login">Connexion</Link>
+              <Link href="/association">L&apos;association</Link>
+              <Link href="/rencontres-passees">Rencontres passées</Link>
+              <Link href="/login">Espace adhérent</Link>
             </div>
           </div>
 
           <div>
             <div className="footer-title">Informations</div>
             <div className="footer-links">
-              <ContactModalButton
-                label="Nous contacter"
-                style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "inherit", textAlign: "left" }}
-              />
+              <ContactModalButton label="Nous contacter" />
               <Link href="/mentions-legales">Mentions légales</Link>
               <Link href="/confidentialite">Confidentialité</Link>
             </div>
+          </div>
+
+          <div>
+            {socials.length > 0 && (
+              <>
+                <div className="footer-title">Nous suivre</div>
+                <div className="footer-social">
+                  {socials.map((s) => (
+                    <a
+                      key={s.network}
+                      href={s.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Plein R sur ${s.label}`}
+                    >
+                      <span style={{ color: SOCIAL_BRAND[s.network], display: "inline-flex" }}>
+                        <SocialIcon network={s.network} size={17} />
+                      </span>
+                      {s.label}
+                    </a>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {hasContact && (
+              <div className="footer-contact">
+                {email && <a href={`mailto:${email}`}>{email}</a>}
+                {phone && <a href={`tel:${phone.replace(/[^\d+]/g, "")}`}>{phone}</a>}
+                {address && <span>{address}</span>}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="footer-bottom">
           <span>© {year} Plein R. Tous droits réservés.</span>
-          <span>Bassin de Pompey</span>
+          <span className="footer-bottom__place">Bassin de Pompey</span>
         </div>
       </div>
     </footer>
