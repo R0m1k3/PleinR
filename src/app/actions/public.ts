@@ -3,13 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { activityLog, contactMessages, membershipRequests } from "@/db/schema";
+import { sanitizeActivityMessage } from "@/lib/activity";
 
 export type SubmitResult = { ok: boolean; error?: string };
 
 const isEmail = (v: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v);
 
 async function logActivity(message: string, dot: string) {
-  await db.insert(activityLog).values({ message, dot });
+  // Saisie publique non authentifiée : filtrage obligatoire.
+  await db.insert(activityLog).values({ message: sanitizeActivityMessage(message), dot });
 }
 
 // ---- Demande pour devenir membre (public, sans authentification) ----

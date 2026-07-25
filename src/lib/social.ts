@@ -76,14 +76,14 @@ export async function loadPromoImage(imageUrl: string | null): Promise<LoadedIma
     return { bytes, contentType, fileName: `promo.${extensionFor(contentType)}` };
   }
 
-  if (/^https?:\/\//i.test(imageUrl)) {
-    const res = await fetch(imageUrl);
-    if (!res.ok) return null;
-    const contentType = res.headers.get("content-type")?.split(";")[0] ?? "image/jpeg";
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    return { bytes, contentType, fileName: `promo.${extensionFor(contentType)}` };
-  }
-
+  // Volontairement : aucune récupération par URL.
+  //
+  // `imageUrl` provient d'un champ de formulaire alimenté par l'adhérent. Aller
+  // chercher l'adresse qu'il indique donnerait au serveur l'ordre d'appeler une
+  // cible arbitraire (SSRF) — services internes, métadonnées d'hébergeur — dont
+  // le contenu partirait ensuite sur Facebook ou LinkedIn. Toutes les images de
+  // l'application sont des data-URI produites par l'upload, ce chemin est donc
+  // le seul légitime.
   return null;
 }
 

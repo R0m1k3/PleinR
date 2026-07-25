@@ -5,6 +5,11 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { authConfig } from "@/auth.config";
+import { clearLoginFailures, isLoginBlocked, recordLoginFailure } from "@/lib/login-throttle";
+
+// Empreinte bcrypt d'une valeur quelconque : sert de comparaison factice quand
+// l'adresse n'existe pas, pour que le temps de réponse reste identique.
+const ABSENT_USER_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -21,12 +26,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(credentials?.password ?? "");
         if (!email || !password) return null;
 
+        if (isLoginBlocked(email)) return null;
+
         const rows = await db.select().from(users).where(eq(users.email, email));
         const user = rows[0];
-        if (!user) return null;
 
-        const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        // Comparaison menée même sans compte correspondant : sans cela, le
+        // temps de réponse révélerait quelles adresses existent.
+        const hash = user?.passwordHash ?? ABSENT_USER_HASH;
+        const valid = await bcrypt.compare(password, hash);
+
+        if (!user || !valid) {
+          recordLoginFailure(email);
+          return null;
+        }
+
+        clearLoginFailures(email);
 
         return {
           id: String(user.id),

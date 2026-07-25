@@ -1,5 +1,6 @@
 "use server";
 
+import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -23,6 +24,7 @@ import {
   socialPosts,
   users,
 } from "@/db/schema";
+import { sanitizeActivityMessage } from "@/lib/activity";
 import { can, LABEL_TO_ROLE } from "@/lib/rbac";
 import {
   isNetworkConfigured,
@@ -62,15 +64,18 @@ function slugify(input: string): string {
 }
 
 async function logActivity(message: string, dot = "#2C6FB3") {
-  await db.insert(activityLog).values({ message, dot });
+  // Le message agrège des saisies de tiers : on ne laisse passer que <strong>.
+  await db.insert(activityLog).values({ message: sanitizeActivityMessage(message), dot });
 }
 
 // Mot de passe temporaire lisible (sans caractères ambigus).
+// `randomInt` et non `Math.random()` : ce dernier n'est pas cryptographique et
+// permet de prédire les mots de passe suivants à partir de quelques tirages.
 function generateTempPassword(): string {
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   let out = "";
-  for (let i = 0; i < 10; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (let i = 0; i < 12; i++) {
+    out += alphabet[randomInt(alphabet.length)];
   }
   return out;
 }
@@ -105,6 +110,23 @@ function asDate(formData: FormData, key: string) {
 
 function asNullableString(formData: FormData, key: string) {
   return asString(formData, key) || null;
+}
+
+// ~3 Mo de base64, soit environ 2,2 Mo d'image réelle.
+const MAX_IMAGE_DATA_URI = 3_000_000;
+const IMAGE_DATA_URI = /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=\s]+$/;
+
+/**
+ * N'accepte qu'une image en data-URI. Une URL http(s) ferait appeler par le
+ * serveur une adresse choisie par l'utilisateur (SSRF) au moment de la
+ * publication sur les réseaux.
+ */
+function asImageDataUri(formData: FormData, key: string): string | null {
+  const value = String(formData.get(key) ?? "").trim();
+  if (!value) return null;
+  if (value.length > MAX_IMAGE_DATA_URI) throw new Error("Image trop volumineuse (3 Mo maximum).");
+  if (!IMAGE_DATA_URI.test(value)) throw new Error("Format d'image non accepté.");
+  return value;
 }
 
 function revalidatePromoPaths(memberId?: number | null) {
@@ -360,7 +382,7 @@ export async function publishPromo(formData: FormData) {
   const text = String(formData.get("text") ?? "").slice(0, 240);
   const category = String(formData.get("category") ?? "");
   const badge = String(formData.get("badge") ?? "").trim() || null;
-  const imageUrl = String(formData.get("imageUrl") ?? "") || null;
+  const imageUrl = asImageDataUri(formData, "imageUrl");
 
   // Réseaux souhaités : rien n'est publié ici, la diffusion attend la validation.
   await db.insert(promotions).values({
@@ -558,7 +580,7 @@ export async function inviteAdmin(formData: FormData) {
   if (existing.length > 0) return;
 
   // Temporary password — the invitee resets it on first login (out of scope here).
-  const tempPassword = Math.random().toString(36).slice(2, 12);
+  const tempPassword = generateTempPassword();
   await db.insert(users).values({
     name,
     email,
@@ -1047,8 +1069,10 @@ export async function updateOwnProfile(formData: FormData) {
       website: normalizeWebsite(String(formData.get("website") ?? "")),
       hours: String(formData.get("hours") ?? "").trim() || null,
       tags: String(formData.get("tags") ?? "").trim() || null,
-      coverUrl: String(formData.get("coverUrl") ?? "").trim() || null,
-      logoUrl: String(formData.get("logoUrl") ?? "").trim() || null,
+      // Images restreintes aux data-URI : un adhérent ne peut pas faire pointer
+      // sa fiche publique vers une ressource externe qu'il contrôle.
+      coverUrl: asImageDataUri(formData, "coverUrl"),
+      logoUrl: asImageDataUri(formData, "logoUrl"),
     })
     // Sécurité : on ne touche que SA propre fiche, jamais statut/catégorie/mise à l'honneur.
     .where(eq(members.id, memberId));

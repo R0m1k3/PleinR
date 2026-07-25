@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { activityLog, contactMessages, members, membershipRequests, promotions } from "@/db/schema";
+import { activityNodes } from "@/lib/activity";
 import { can, isStaff } from "@/lib/rbac";
 import { expiryStatus, getSocialAccounts, SOCIAL_LABELS } from "@/lib/social-accounts";
 
@@ -125,10 +126,9 @@ export default async function DashboardPage() {
             {activity.map((a) => (
               <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 13 }}>
                 <span style={{ width: 9, height: 9, borderRadius: "50%", background: a.dot, flexShrink: 0 }} />
-                <div
-                  style={{ flex: 1, fontSize: 13.5, color: "#3c3322" }}
-                  dangerouslySetInnerHTML={{ __html: a.message }}
-                />
+                <div style={{ flex: 1, fontSize: 13.5, color: "#3c3322" }}>
+                  {activityNodes(a.message)}
+                </div>
                 <span style={{ fontSize: 12, color: "#a99c82", whiteSpace: "nowrap" }}>
                   {timeAgo(a.createdAt)}
                 </span>
