@@ -9,56 +9,37 @@ const NAV = [
 
 export function SiteHeader({ active, logo = false }: { active?: string; logo?: boolean }) {
   return (
-    <header
-      className="container"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: logo ? "space-between" : "flex-end",
-        padding: "18px clamp(16px, 5vw, 56px)",
-        gap: 20,
-        flexWrap: "wrap",
-      }}
-    >
-      {logo && (
-        <Link href="/" aria-label="Plein R — accueil" style={{ display: "inline-flex", alignItems: "center" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/logo.png" alt="Plein R" style={{ height: 46, width: "auto", display: "block" }} />
-        </Link>
-      )}
-      <nav style={{ display: "flex", alignItems: "center", gap: 30, flexWrap: "wrap" }}>
+    <header className="container site-header">
+      {/* Sur téléphone le logo est toujours visible : c'est le seul retour à
+          l'accueil, la page d'accueil ne l'affichant qu'en grand dans le hero. */}
+      <Link
+        href="/"
+        aria-label="Plein R — accueil"
+        className={`site-header__brand${logo ? "" : " is-desktop-hidden"}`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/assets/logo.png" alt="Plein R" />
+      </Link>
+
+      <nav className="site-header__nav">
         {NAV.map((n) => {
           const isActive = active === n.key;
           return (
             <Link
               key={n.key}
               href={n.href}
-              style={{
-                textDecoration: "none",
-                color: isActive ? "#3c3322" : "#6f6450",
-                fontWeight: isActive ? 600 : 500,
-                fontSize: 15,
-              }}
+              aria-current={isActive ? "page" : undefined}
+              className={`site-header__link${isActive ? " is-active" : ""}`}
             >
               {n.label}
             </Link>
           );
         })}
-        <Link
-          href="/backend"
-          style={{
-            textDecoration: "none",
-            color: "#fff",
-            background: "#9a6638",
-            fontWeight: 600,
-            fontSize: 14.5,
-            padding: "10px 18px",
-            borderRadius: 999,
-          }}
-        >
-          Espace adhérent
-        </Link>
       </nav>
+
+      <Link href="/backend" className="site-header__cta">
+        Espace adhérent
+      </Link>
     </header>
   );
 }

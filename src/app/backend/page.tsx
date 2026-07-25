@@ -23,12 +23,12 @@ function StatCard({
   hintColor?: string;
 }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 20 }}>
-      <div style={{ fontSize: 13, color: "#9a8d72", marginBottom: 8 }}>{label}</div>
-      <div className="font-display" style={{ fontWeight: 800, fontSize: 32, color: valueColor }}>
+    <div className="stat-card" style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16 }}>
+      <div className="stat-card__label">{label}</div>
+      <div className="font-display stat-card__value" style={{ color: valueColor }}>
         {value}
       </div>
-      <div style={{ fontSize: 12, color: hintColor, marginTop: 6, fontWeight: 600 }}>{hint}</div>
+      <div className="stat-card__hint" style={{ color: hintColor }}>{hint}</div>
     </div>
   );
 }

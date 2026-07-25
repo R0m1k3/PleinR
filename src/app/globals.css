@@ -237,6 +237,87 @@ button {
   align-items: start;
 }
 
+/* ---- En-tête public ---- */
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px clamp(16px, 5vw, 56px);
+}
+.site-header__brand {
+  display: inline-flex;
+  align-items: center;
+  margin-right: auto;
+}
+.site-header__brand.is-desktop-hidden {
+  display: none;
+}
+.site-header__brand img {
+  display: block;
+  width: auto;
+  height: 46px;
+}
+.site-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  margin-left: auto;
+}
+.site-header__link {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.site-header__link.is-active {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.site-header__cta {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--brown);
+  color: #fff;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  /* Ligne 1 : logo + accès adhérent. Ligne 2 : la navigation, répartie sur
+     toute la largeur plutôt que repliée en escalier. */
+  .site-header {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 12px 16px;
+  }
+  .site-header__brand,
+  .site-header__brand.is-desktop-hidden {
+    display: inline-flex;
+  }
+  .site-header__brand img {
+    height: 38px;
+  }
+  .site-header__nav {
+    order: 3;
+    flex: 1 1 100%;
+    margin-left: 0;
+    gap: 6px;
+    justify-content: space-between;
+    border-top: 1px solid #e2d6bd;
+    padding-top: 10px;
+  }
+  .site-header__link {
+    font-size: 14px;
+  }
+  .site-header__cta {
+    padding: 9px 15px;
+    font-size: 13.5px;
+  }
+}
+
 /* ---- Public footer & legal pages ---- */
 .footer-grid {
   display: grid;
@@ -333,9 +414,14 @@ button {
 }
 @media (max-width: 640px) {
   .grid-6,
-  .grid-4,
   .grid-3 {
     grid-template-columns: 1fr;
+  }
+  /* Les compteurs du tableau de bord restent sur deux colonnes : empilés, ils
+     imposaient un écran entier de défilement pour quatre chiffres. */
+  .grid-4 {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
   }
   .container {
     padding: 0 16px;
@@ -363,6 +449,98 @@ img {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ---- Compteurs du tableau de bord ---- */
+.stat-card {
+  padding: 20px;
+}
+.stat-card__label {
+  margin-bottom: 8px;
+  color: var(--muted-3);
+  font-size: 13px;
+}
+.stat-card__value {
+  font-size: 32px;
+  font-weight: 800;
+}
+.stat-card__hint {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .stat-card {
+    padding: 14px;
+  }
+  .stat-card__label {
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .stat-card__value {
+    font-size: 26px;
+  }
+  .stat-card__hint {
+    margin-top: 3px;
+    font-size: 11px;
+  }
+}
+
+/* ---- Liste des adhérents : tableau sur grand écran, fiches sur téléphone ---- */
+.member-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1.2fr 0.9fr 0.8fr;
+  align-items: center;
+  gap: 12px;
+}
+.member-row__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.member-row__mail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.member-row__action {
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  /* Un tableau à 5 colonnes est illisible sur un téléphone : chaque adhérent
+     devient une fiche qui se replie, sans défilement horizontal. */
+  .member-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px 10px;
+  }
+  /* Doit rester après `.member-row` : même spécificité, c'est l'ordre qui tranche. */
+  .member-row.member-head {
+    display: none;
+  }
+  .member-row__identity {
+    flex: 1 1 100%;
+  }
+  /* Base 0 : les métadonnées ne réclament pas leur largeur de contenu, donc la
+     ligne ne se replie pas et c'est le texte qui se rogne. Chaque fiche tient
+     ainsi sur deux lignes, toujours de la même façon. */
+  .member-row__meta {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 13px !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .member-row__action {
+    flex: 0 0 auto;
+    margin-left: auto;
+    text-align: right;
+  }
+}
+
 /* ---- Backend layout ---- */
 .backend {
   display: flex;
@@ -380,6 +558,61 @@ img {
   position: sticky;
   top: 0;
   height: 100vh;
+}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 8px 18px;
+}
+.sidebar-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  /* 40px : cible tactile confortable au pouce. */
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cfe0ee;
+  cursor: pointer;
+}
+.sidebar-nav {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Sans min-height:0 un enfant flex refuse de rétrécir : la zone débordait
+     sous la carte utilisateur, qui interceptait les clics sur les derniers
+     liens au lieu de laisser défiler le menu. */
+  min-height: 0;
+  overflow-y: auto;
+}
+.sidebar-section {
+  padding: 16px 10px 7px;
+  color: #5f7d97;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.sidebar-nav > div:first-child .sidebar-section {
+  padding-top: 4px;
+}
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 14px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+/* Sur grand écran les actions vivent dans l'entête, pas dans la barre. */
+.sidebar-actions {
+  display: none;
+  gap: 9px;
+  margin-top: 12px;
 }
 .nav-btn {
   display: flex;
@@ -409,6 +642,75 @@ img {
   color: #fff;
   box-shadow: inset 3px 0 0 var(--gold);
 }
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  border: 0;
+  padding: 0;
+  background: rgba(19, 50, 79, 0.5);
+}
+.backend-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 32px;
+  background: var(--cream);
+  border-bottom: 1px solid #e2d6bd;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.backend-header__title {
+  margin: 0;
+  color: var(--ink-strong);
+  font-size: 22px;
+  font-weight: 800;
+}
+.backend-header__sub {
+  margin-top: 2px;
+  color: var(--muted-3);
+  font-size: 13px;
+}
+.backend-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.backend-burger {
+  display: none;
+  padding: 9px;
+  border: 1px solid #d8cdb4;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.backend-action {
+  display: inline-block;
+  border: 1px solid #d8cdb4;
+  border-radius: 10px;
+  padding: 9px 15px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.backend-action--strong {
+  background: #fff;
+  color: var(--brown);
+  font-weight: 700;
+}
+.backend-content {
+  flex: 1;
+  padding: 28px 32px 44px;
+  min-width: 0;
+}
 
 ::-webkit-scrollbar {
   width: 10px;
@@ -419,17 +721,70 @@ img {
   border-radius: 6px;
 }
 
-@media (max-width: 860px) {
+/* Sous 1024px la barre latérale devient un tiroir : l'empiler en ligne rendait
+   la navigation illisible sur téléphone. */
+@media (max-width: 1024px) {
   .backend {
     flex-direction: column;
   }
   .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 50;
+    width: min(304px, 86vw);
+    height: 100dvh;
+    padding: 18px 14px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 0 0 40px rgba(19, 50, 79, 0.35);
+  }
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+  .sidebar-close,
+  .sidebar-actions {
+    display: flex;
+  }
+  .sidebar-actions .backend-action {
+    flex: 1;
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #cfe0ee;
+    text-align: center;
+  }
+  .sidebar-actions form {
+    flex: 1;
+  }
+  .sidebar-actions .backend-action--strong {
     width: 100%;
-    height: auto;
-    position: static;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--ink);
+  }
+  .sidebar-backdrop {
+    display: block;
+  }
+  .backend-burger {
+    display: inline-flex;
+  }
+  .backend-header__actions {
+    display: none;
+  }
+  .backend-header {
+    padding: 13px 16px;
+    gap: 12px;
+  }
+  .backend-header__title {
+    font-size: 18px;
+  }
+  .backend-header__sub {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .backend-content {
+    padding: 18px 16px 40px;
   }
 }
 
