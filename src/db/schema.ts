@@ -80,8 +80,9 @@ export const users = pgTable(
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     role: roleEnum("role").notNull().default("member"),
     memberId: integer("member_id").references(() => members.id),
+    // Le mot de passe temporaire n'est plus stocké (ni en clair ni chiffré) :
+    // il est montré une seule fois à la création / réinitialisation.
     mustChangePassword: boolean("must_change_password").notNull().default(false),
-    tempPassword: varchar("temp_password", { length: 60 }),
     // Incrémenté pour invalider les jetons déjà émis (changement ou
     // réinitialisation de mot de passe).
     sessionVersion: integer("session_version").notNull().default(0),

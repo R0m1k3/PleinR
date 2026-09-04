@@ -4,7 +4,8 @@ import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { can, ROLE_LABELS, STAFF_ROLES } from "@/lib/rbac";
-import { inviteAdmin, removeAdmin } from "../actions";
+import { removeAdmin } from "../actions";
+import { InviteAdminForm } from "./InviteAdminForm";
 
 export const dynamic = "force-dynamic";
 
@@ -70,32 +71,7 @@ export default async function AdminsPage() {
         <h3 className="font-display" style={{ fontWeight: 700, fontSize: 16, margin: "0 0 16px", color: "#26201a" }}>
           Inviter un administrateur
         </h3>
-        <form action={inviteAdmin}>
-          <label className="field-label">Nom complet</label>
-          <input name="name" required placeholder="ex : Julie Bernard" className="field" style={{ marginBottom: 14 }} />
-
-          <label className="field-label">E-mail</label>
-          <input name="email" type="email" required placeholder="prenom@plein-r.fr" className="field" style={{ marginBottom: 14 }} />
-
-          <label className="field-label">Rôle</label>
-          <select name="role" defaultValue="Administrateur" className="field" style={{ marginBottom: 18 }}>
-            <option>Administrateur</option>
-            <option>Modérateur</option>
-            <option>Éditeur</option>
-          </select>
-
-          <button
-            type="submit"
-            className="font-display"
-            style={{ width: "100%", border: "none", background: "#13324F", color: "#fff", fontWeight: 700, fontSize: 14.5, padding: 13, borderRadius: 11, cursor: "pointer" }}
-          >
-            Envoyer l&apos;invitation
-          </button>
-        </form>
-        <p style={{ fontSize: 11.5, color: "#a99c82", marginTop: 12, lineHeight: 1.5 }}>
-          Un mot de passe temporaire est généré. L&apos;invité pourra le réinitialiser à la première
-          connexion.
-        </p>
+        <InviteAdminForm />
       </div>
     </div>
   );

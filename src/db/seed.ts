@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import bcrypt from "bcryptjs";
+import { randomInt } from "node:crypto";
 import { eq } from "drizzle-orm";
 import * as schema from "./schema";
 
@@ -13,6 +14,14 @@ const {
   membershipRequests,
   activityLog,
 } = schema;
+
+// Mot de passe initial lisible, tiré avec un aléa cryptographique.
+function randomPassword(length = 16): string {
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let out = "";
+  for (let i = 0; i < length; i++) out += alphabet[randomInt(alphabet.length)];
+  return out;
+}
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -240,34 +249,63 @@ async function main() {
     for (const a of activityData) await db.insert(activityLog).values(a);
   }
 
-  // ---- Admin + sample staff/member users ----
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@plein-r.fr";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "changeme123";
+  // ---- Comptes de connexion ----
+  //
+  // Le seed tourne à chaque démarrage du conteneur (SEED_ON_START). Il ne doit
+  // donc jamais créer en production de compte dont le mot de passe est connu
+  // de tous : les comptes de démonstration sont réservés à SEED_DEMO=true, et
+  // l'administrateur initial reçoit un mot de passe aléatoire (affiché une
+  // seule fois ici) à changer à la première connexion, sauf si
+  // SEED_ADMIN_PASSWORD est fourni explicitement.
+  const adminEmail = (process.env.SEED_ADMIN_EMAIL ?? "admin@plein-r.fr").trim().toLowerCase();
   const adminName = process.env.SEED_ADMIN_NAME ?? "Administrateur Plein R";
+  const providedAdminPassword = (process.env.SEED_ADMIN_PASSWORD ?? "").trim();
+  const demo = (process.env.SEED_DEMO ?? "").trim().toLowerCase() === "true";
 
-  const seedUsers = [
-    { email: adminEmail, name: adminName, password: adminPassword, role: "admin" as const, memberId: null },
-    { email: "claire@plein-r.fr", name: "Claire Martin", password: "changeme123", role: "admin" as const, memberId: null },
-    { email: "thomas@plein-r.fr", name: "Thomas Petit", password: "changeme123", role: "moderator" as const, memberId: null },
-    { email: "sophie@plein-r.fr", name: "Sophie Aubert", password: "changeme123", role: "editor" as const, memberId: null },
-    { email: "contact@aubonpain.fr", name: "Au Bon Pain", password: "changeme123", role: "member" as const, memberId: memberId("Au Bon Pain") },
-  ];
-
-  for (const u of seedUsers) {
-    const existing = await db.select().from(users).where(eq(users.email, u.email));
-    if (existing.length === 0) {
-      await db.insert(users).values({
-        email: u.email,
-        name: u.name,
-        passwordHash: await bcrypt.hash(u.password, 10),
-        role: u.role,
-        memberId: u.memberId,
-      });
+  const [existingAdmin] = await db.select({ id: users.id }).from(users).where(eq(users.email, adminEmail));
+  if (!existingAdmin) {
+    const generated = !providedAdminPassword;
+    const adminPassword = providedAdminPassword || randomPassword();
+    await db.insert(users).values({
+      email: adminEmail,
+      name: adminName,
+      passwordHash: await bcrypt.hash(adminPassword, 10),
+      role: "admin",
+      memberId: null,
+      mustChangePassword: true,
+    });
+    if (generated) {
+      console.log("  Compte administrateur créé. Mot de passe initial (affiché une seule fois) :");
+      console.log(`  ${adminEmail} / ${adminPassword}`);
+    } else {
+      console.log(`  Compte administrateur créé : ${adminEmail} (mot de passe fourni par SEED_ADMIN_PASSWORD).`);
     }
+    console.log("  Un changement de mot de passe sera exigé à la première connexion.");
+  }
+
+  if (demo) {
+    const demoUsers = [
+      { email: "claire@plein-r.fr", name: "Claire Martin", role: "admin" as const, memberId: null },
+      { email: "thomas@plein-r.fr", name: "Thomas Petit", role: "moderator" as const, memberId: null },
+      { email: "sophie@plein-r.fr", name: "Sophie Aubert", role: "editor" as const, memberId: null },
+      { email: "contact@aubonpain.fr", name: "Au Bon Pain", role: "member" as const, memberId: memberId("Au Bon Pain") },
+    ];
+    for (const u of demoUsers) {
+      const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, u.email));
+      if (existing.length === 0) {
+        await db.insert(users).values({
+          email: u.email,
+          name: u.name,
+          passwordHash: await bcrypt.hash("changeme123", 10),
+          role: u.role,
+          memberId: u.memberId,
+        });
+      }
+    }
+    console.log("  Comptes de démonstration créés (SEED_DEMO=true) : mot de passe « changeme123 ».");
   }
 
   console.log("Seed complete.");
-  console.log(`  Admin login: ${adminEmail} / ${adminPassword}`);
   await pool.end();
 }
 

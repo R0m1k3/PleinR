@@ -5,8 +5,8 @@ import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { categories, members, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
-import { createMissingMemberAccounts } from "../actions";
 import { AddMemberPanel } from "./AddMemberPanel";
+import { BackfillAccountsForm } from "./BackfillAccountsForm";
 
 export const dynamic = "force-dynamic";
 
@@ -59,31 +59,9 @@ export default async function AdherentsPage({
     return !!e && !takenEmails.has(e);
   }).length;
 
-  async function handleBackfill() {
-    "use server";
-    await createMissingMemberAccounts();
-    redirect("/backend/adherents");
-  }
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      {missingAccounts > 0 && (
-        <form
-          action={handleBackfill}
-          style={{ background: "#fbeede", border: "1px solid #ecd8b8", borderRadius: 12, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}
-        >
-          <div style={{ fontSize: 13.5, color: "#9a6638" }}>
-            <strong>{missingAccounts}</strong> adhérent(s) avec un e-mail n&apos;ont pas encore de compte de connexion.
-          </div>
-          <button
-            type="submit"
-            className="font-display"
-            style={{ border: "none", background: "#9a6638", color: "#fff", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: 10, cursor: "pointer", whiteSpace: "nowrap" }}
-          >
-            Créer les comptes manquants
-          </button>
-        </form>
-      )}
+      {missingAccounts > 0 && <BackfillAccountsForm missingAccounts={missingAccounts} />}
 
       <AddMemberPanel categories={cats} />
 

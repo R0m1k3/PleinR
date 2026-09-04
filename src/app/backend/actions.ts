@@ -405,7 +405,19 @@ export async function publishPromo(formData: FormData) {
 }
 
 // ---- Members CRUD ----
-export async function addMember(formData: FormData): Promise<number | undefined> {
+/**
+ * Identifiants d'un compte qui vient d'être créé ou réinitialisé.
+ *
+ * Le mot de passe temporaire n'est **jamais stocké** : il n'existe qu'en
+ * mémoire le temps de la réponse et n'est montré qu'une seule fois, à l'écran
+ * qui a déclenché l'action. Un export de la base ne peut donc plus révéler de
+ * mot de passe utilisable.
+ */
+export type IssuedCredentials = { email: string; tempPassword: string };
+
+export type CreatedMemberAccount = IssuedCredentials & { memberId: number };
+
+export async function addMember(formData: FormData): Promise<CreatedMemberAccount | undefined> {
   const { role } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
@@ -436,7 +448,6 @@ export async function addMember(formData: FormData): Promise<number | undefined>
     role: "member",
     memberId: newMember.id,
     passwordHash: await bcrypt.hash(tempPassword, 10),
-    tempPassword,
     mustChangePassword: true,
   });
 
@@ -445,13 +456,14 @@ export async function addMember(formData: FormData): Promise<number | undefined>
   revalidatePath("/backend/adherents");
   revalidatePath("/backend");
   revalidatePath("/");
-  return newMember.id;
+  return { memberId: newMember.id, email, tempPassword };
 }
 
 // Crée des comptes de connexion pour les adhérents existants qui n'en ont pas
 // encore (ceux ajoutés avant l'arrivée des comptes adhérent). Chaque compte
-// reçoit un mot de passe temporaire à changer à la première connexion.
-export async function createMissingMemberAccounts() {
+// reçoit un mot de passe temporaire à changer à la première connexion. Les
+// identifiants sont renvoyés pour un affichage unique : rien n'est conservé.
+export async function createMissingMemberAccounts(): Promise<(IssuedCredentials & { name: string })[]> {
   const { role } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
@@ -465,7 +477,7 @@ export async function createMissingMemberAccounts() {
   const takenEmails = new Set(allUsers.map((u) => u.email.toLowerCase()));
   const linkedMemberIds = new Set(allUsers.map((u) => u.memberId).filter((x): x is number => x != null));
 
-  let created = 0;
+  const created: (IssuedCredentials & { name: string })[] = [];
   for (const m of allMembers) {
     if (linkedMemberIds.has(m.id)) continue;
     const email = (m.email ?? "").trim().toLowerCase();
@@ -478,27 +490,27 @@ export async function createMissingMemberAccounts() {
       role: "member",
       memberId: m.id,
       passwordHash: await bcrypt.hash(tempPassword, 10),
-      tempPassword,
       mustChangePassword: true,
     });
     takenEmails.add(email);
-    created++;
+    created.push({ name: m.name, email, tempPassword });
   }
 
-  if (created > 0) {
-    await logActivity(`${created} compte(s) adhérent créé(s) pour les fiches existantes`, "#2C6FB3");
+  if (created.length > 0) {
+    await logActivity(`${created.length} compte(s) adhérent créé(s) pour les fiches existantes`, "#2C6FB3");
   }
   revalidatePath("/backend/adherents");
+  return created;
 }
 
-// Réinitialise le mot de passe d'un adhérent : nouveau mot de passe temporaire
-// visible par l'admin jusqu'à la prochaine connexion de l'adhérent.
-export async function resetMemberPassword(formData: FormData) {
+// Réinitialise le mot de passe d'un adhérent : le nouveau mot de passe
+// temporaire est renvoyé pour un affichage unique, puis oublié.
+export async function resetMemberPassword(formData: FormData): Promise<IssuedCredentials | undefined> {
   const { role } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
   const memberId = Number(formData.get("memberId"));
-  if (!memberId) return;
+  if (!memberId) return undefined;
 
   const [u] = await db.select().from(users).where(eq(users.memberId, memberId));
   if (!u) throw new Error("Aucun compte de connexion lié à cet adhérent.");
@@ -508,7 +520,6 @@ export async function resetMemberPassword(formData: FormData) {
     .update(users)
     .set({
       passwordHash: await bcrypt.hash(tempPassword, 10),
-      tempPassword,
       mustChangePassword: true,
       // Coupe les sessions ouvertes avec l'ancien mot de passe.
       sessionVersion: (u.sessionVersion ?? 0) + 1,
@@ -516,6 +527,7 @@ export async function resetMemberPassword(formData: FormData) {
     .where(eq(users.id, u.id));
 
   revalidatePath(`/backend/adherents/${memberId}`);
+  return { email: u.email, tempPassword };
 }
 
 export async function updateMember(formData: FormData) {
@@ -568,31 +580,35 @@ export async function deleteMember(formData: FormData) {
 }
 
 // ---- Admins ----
-export async function inviteAdmin(formData: FormData) {
+export async function inviteAdmin(formData: FormData): Promise<IssuedCredentials | undefined> {
   const { role } = await requireRole();
   if (!can(role, "manageAdmins")) throw new Error("Accès refusé");
 
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
+  if (!name) return undefined;
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!email) return;
+  if (!email) return undefined;
   const roleLabel = String(formData.get("role") ?? "Administrateur");
   const newRole: AppRole = LABEL_TO_ROLE[roleLabel] ?? "editor";
 
   const existing = await db.select().from(users).where(eq(users.email, email));
-  if (existing.length > 0) return;
+  if (existing.length > 0) throw new Error("Un compte existe déjà avec cet e-mail.");
 
-  // Temporary password — the invitee resets it on first login (out of scope here).
+  // Mot de passe temporaire montré une seule fois à l'inviteur, à changer à
+  // la première connexion. Auparavant il n'était ni conservé ni affiché :
+  // l'invité ne pouvait pas se connecter.
   const tempPassword = generateTempPassword();
   await db.insert(users).values({
     name,
     email,
     role: newRole,
     passwordHash: await bcrypt.hash(tempPassword, 10),
+    mustChangePassword: true,
   });
 
   await logActivity(`<strong>${name}</strong> a été invité comme ${roleLabel}`, "#2C6FB3");
   revalidatePath("/backend/administrateurs");
+  return { email, tempPassword };
 }
 
 export async function removeAdmin(formData: FormData) {
@@ -1056,7 +1072,6 @@ export async function changeOwnPassword(formData: FormData) {
     .update(users)
     .set({
       passwordHash: await bcrypt.hash(password, 10),
-      tempPassword: null,
       mustChangePassword: false,
       // Invalide toutes les autres sessions ouvertes sur ce compte.
       sessionVersion: (user!.sessionVersion ?? 0) + 1,
@@ -1104,8 +1119,9 @@ export async function updateOwnProfile(formData: FormData) {
 }
 
 // Approuve une demande d'adhésion ET crée directement l'adhérent + son compte
-// de connexion (mot de passe temporaire). Renvoie l'id du nouvel adhérent.
-export async function approveMembershipRequest(formData: FormData): Promise<number | undefined> {
+// de connexion. Renvoie l'id du nouvel adhérent et ses identifiants, à
+// afficher une seule fois.
+export async function approveMembershipRequest(formData: FormData): Promise<CreatedMemberAccount | undefined> {
   const { role } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
@@ -1137,7 +1153,6 @@ export async function approveMembershipRequest(formData: FormData): Promise<numb
     role: "member",
     memberId: newMember.id,
     passwordHash: await bcrypt.hash(tempPassword, 10),
-    tempPassword,
     mustChangePassword: true,
   });
 
@@ -1148,7 +1163,7 @@ export async function approveMembershipRequest(formData: FormData): Promise<numb
   revalidatePath("/backend/adherents");
   revalidatePath("/backend");
   revalidatePath("/");
-  return newMember.id;
+  return { memberId: newMember.id, email, tempPassword };
 }
 
 // ---- Inbox: membership requests + contact messages ----
