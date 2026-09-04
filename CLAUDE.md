@@ -23,7 +23,8 @@ npm run dev            # dev server
 npm run build          # production build
 npm run db:generate    # regenerate SQL after editing src/db/schema.ts
 npm run db:migrate     # apply migrations
-npm run db:seed        # seed demo data
+npm run db:seed        # catégories + admin initial ; données de démo si SEED_DEMO=true
+npm run db:purge-demo  # retire les données de démo d'une base qui les a reçues
 docker compose up --build   # full stack
 ```
 
@@ -101,10 +102,13 @@ site sans traitement supplémentaire.
   invitation staff) ne sont **jamais stockés** : l'action les renvoie et le
   composant `OneTimeCredentials` les affiche une seule fois, sans redirection.
   `users.must_change_password` seul persiste.
-- Le seed ne crée en production que l'administrateur initial, avec un mot de
-  passe aléatoire affiché une fois dans les journaux (ou `SEED_ADMIN_PASSWORD`)
-  et un changement obligatoire à la première connexion. Les comptes de démo
-  (`changeme123`) exigent `SEED_DEMO=true`.
+- Le seed ne crée en production que le référentiel des catégories et
+  l'administrateur initial, avec un mot de passe aléatoire affiché une fois
+  dans les journaux (ou `SEED_ADMIN_PASSWORD`) et un changement obligatoire à
+  la première connexion. Toutes les données de démonstration (adhérents,
+  promotions, demandes, journal, comptes `changeme123`) vivent dans
+  `src/db/demo-data.ts`, exigent `SEED_DEMO=true`, et `npm run db:purge-demo`
+  les retire d'une base existante.
 - Sessions JWT limitées à 7 jours (`auth.config.ts`), HSTS et suppression de
   `X-Powered-By` dans `next.config.mjs`. Le port Postgres de `docker-compose`
   n'est publié que sur `127.0.0.1`.

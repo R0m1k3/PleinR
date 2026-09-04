@@ -65,7 +65,8 @@ services:
       # Vide = un mot de passe aléatoire est généré au premier démarrage et
       # affiché une seule fois dans les journaux du conteneur.
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
-      # Comptes de démonstration (mot de passe connu) : jamais en production.
+      # Données de démonstration (adhérents, promotions, comptes au mot de
+      # passe connu) : jamais en production. Base vide par défaut.
       SEED_DEMO: ${SEED_DEMO:-false}
       SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Administrateur Plein R}
     ports:

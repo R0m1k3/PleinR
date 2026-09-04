@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
-    "build:scripts": "esbuild src/db/migrate.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/migrate.cjs --external:pg-native && esbuild src/db/seed.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/seed.cjs --external:pg-native",
+    "db:purge-demo": "tsx src/db/purge-demo.ts",
+    "build:scripts": "esbuild src/db/migrate.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/migrate.cjs --external:pg-native && esbuild src/db/seed.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/seed.cjs --external:pg-native && esbuild src/db/purge-demo.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/purge-demo.cjs --external:pg-native",
     "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
