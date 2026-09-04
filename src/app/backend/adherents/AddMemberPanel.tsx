@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BASSIN_POMPEY_COMMUNES } from "@/lib/communes";
-import { addMember } from "../actions";
+import { OneTimeCredentials } from "@/components/OneTimeCredentials";
+import { addMember, type CreatedMemberAccount } from "../actions";
 
 export function AddMemberPanel({
   categories,
@@ -11,10 +13,19 @@ export function AddMemberPanel({
   categories: { id: number; label: string }[];
 }) {
   const [open, setOpen] = useState(false);
+  const [created, setCreated] = useState<CreatedMemberAccount | null>(null);
   const router = useRouter();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {created && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          <OneTimeCredentials items={[created]} title="Adhérent créé — identifiants à transmettre" />
+          <Link href={`/backend/adherents/${created.memberId}`} style={{ color: "#2C6FB3", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
+            Ouvrir la fiche adhérent →
+          </Link>
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <button
           onClick={() => setOpen((o) => !o)}
@@ -28,10 +39,12 @@ export function AddMemberPanel({
       {open && (
         <form
           action={async (fd) => {
-            const id = await addMember(fd);
+            const result = await addMember(fd);
             setOpen(false);
-            // Redirige vers la fiche : le login + mot de passe temporaire y sont affichés.
-            if (id) router.push(`/backend/adherents/${id}`);
+            // On reste sur la page : le mot de passe temporaire n'est affiché
+            // qu'ici, une seule fois, et n'est conservé nulle part.
+            setCreated(result ?? null);
+            router.refresh();
           }}
           style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 22, marginTop: 14 }}
         >
@@ -76,7 +89,7 @@ export function AddMemberPanel({
           </div>
           <div style={{ marginTop: 14, fontSize: 12.5, color: "#9a8d72" }}>
             Un compte de connexion est créé automatiquement. Le mot de passe temporaire s&apos;affiche
-            sur la fiche de l&apos;adhérent jusqu&apos;à sa première connexion.
+            une seule fois, juste après l&apos;enregistrement : notez-le avant de quitter la page.
           </div>
           <button
             type="submit"

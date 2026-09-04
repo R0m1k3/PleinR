@@ -8,7 +8,8 @@ import { can } from "@/lib/rbac";
 import { ImageField } from "@/components/ImageField";
 import { HoursEditor } from "@/components/HoursEditor";
 import { communeOptions } from "@/lib/communes";
-import { deleteMember, resetMemberPassword, updateMember } from "../../actions";
+import { deleteMember, updateMember } from "../../actions";
+import { ResetPasswordButton } from "../ResetPasswordButton";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function EditMemberPage({
     .orderBy(asc(categories.sort));
 
   const [account] = await db
-    .select({ email: users.email, tempPassword: users.tempPassword, mustChange: users.mustChangePassword })
+    .select({ email: users.email, mustChange: users.mustChangePassword })
     .from(users)
     .where(eq(users.memberId, memberId));
 
@@ -51,14 +52,6 @@ export default async function EditMemberPage({
     "use server";
     await updateMember(fd);
     redirect("/backend/adherents");
-  }
-
-  async function handleReset() {
-    "use server";
-    const fd = new FormData();
-    fd.set("memberId", String(memberId));
-    await resetMemberPassword(fd);
-    redirect(`/backend/adherents/${memberId}`);
   }
 
   return (
@@ -172,12 +165,11 @@ export default async function EditMemberPage({
             <div style={{ fontSize: 13.5, color: "#5a5040", marginBottom: 10 }}>
               Identifiant : <strong>{account.email}</strong>
             </div>
-            {account.tempPassword ? (
+            {account.mustChange ? (
               <div style={{ background: "#fbeede", border: "1px solid #ecd8b8", borderRadius: 10, padding: "11px 14px", fontSize: 13.5, color: "#9a6638" }}>
-                Mot de passe temporaire :{" "}
-                <strong style={{ fontFamily: "monospace", fontSize: 15 }}>{account.tempPassword}</strong>
+                En attente de première connexion : l&apos;adhérent devra changer son mot de passe temporaire.
                 <div style={{ fontSize: 12, marginTop: 4 }}>
-                  Communiquez-le à l&apos;adhérent. Il disparaît dès sa première connexion (changement obligatoire).
+                  Mot de passe égaré ? Réinitialisez-le : un nouveau vous sera montré une seule fois.
                 </div>
               </div>
             ) : (
@@ -185,14 +177,7 @@ export default async function EditMemberPage({
                 ✓ L&apos;adhérent a défini son propre mot de passe.
               </div>
             )}
-            <form action={handleReset} style={{ marginTop: 14 }}>
-              <button
-                type="submit"
-                style={{ border: "1px solid #d8cdb4", background: "#fff", color: "#6f6450", fontWeight: 600, fontSize: 13, padding: "9px 15px", borderRadius: 9, cursor: "pointer" }}
-              >
-                Réinitialiser le mot de passe
-              </button>
-            </form>
+            <ResetPasswordButton memberId={memberId} />
           </>
         ) : (
           <div style={{ fontSize: 13.5, color: "#a99c82" }}>

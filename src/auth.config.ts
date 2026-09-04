@@ -13,6 +13,10 @@ export const authConfig = {
   },
   session: {
     strategy: "jwt",
+    // 7 jours et non 30 : un jeton dérobé sur un poste partagé vaut d'autant
+    // moins longtemps. La révocation immédiate reste assurée par
+    // `users.session_version` (src/lib/session.ts).
+    maxAge: 7 * 24 * 60 * 60,
   },
   trustHost: true,
   callbacks: {
