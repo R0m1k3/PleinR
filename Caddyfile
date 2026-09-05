@@ -1,11 +1,29 @@
 # Reverse proxy Caddy pour Plein R (voir docker-compose.caddy.yml).
-# Caddy gère seul le certificat Let's Encrypt et la redirection HTTP -> HTTPS.
-
+#
+# Deux entrées, pour que l'installation soit utilisable AVANT que le DNS ne
+# soit configuré, et bascule toute seule ensuite :
+#
+#   1. {$SITE_DOMAIN} — le nom de domaine. Caddy obtient et renouvelle seul le
+#      certificat Let's Encrypt et redirige HTTP vers HTTPS. Tant que le DNS ne
+#      pointe pas sur le serveur, la demande de certificat échoue et Caddy
+#      réessaie en arrière-plan, avec un délai croissant : rien à relancer, le
+#      site devient joignable en HTTPS peu après la mise en place du DNS.
+#
+#   2. http:// — fourre-tout HTTP, qui répond notamment sur http://IP_DU_SERVEUR.
+#      Le préfixe http:// désactive explicitement le HTTPS automatique pour ce
+#      bloc (aucun certificat n'existe pour une IP nue). Le bloc du domaine étant
+#      plus spécifique, il reste prioritaire, et la redirection HTTP vers HTTPS
+#      du domaine est insérée avant ce fourre-tout.
 {
 	email {$CADDY_EMAIL}
 }
 
 {$SITE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy pleinr-app:3000
+}
+
+http:// {
 	encode zstd gzip
 	reverse_proxy pleinr-app:3000
 }

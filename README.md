@@ -48,51 +48,25 @@ charge des données de démonstration. Ensuite :
 ## Installation sur un VPS sans reverse proxy
 
 Le `docker-compose.yml` suppose un Nginx Proxy Manager déjà en place (réseau
-externe `nginx_default`). Sur un serveur nu, deux surcouches couvrent les deux
-situations, sans jamais modifier le fichier de base :
+externe `nginx_default`). Sur un serveur nu, `docker-compose.caddy.yml` ajoute
+**Caddy** devant l'application, sans modifier le fichier de base.
 
-| Surcouche | Sert sur | Pré-requis |
+Caddy sert deux entrées à la fois (voir `Caddyfile`) :
+
+| Adresse | Sert | Certificat |
 |---|---|---|
-| `docker-compose.http.yml` | `http://IP_DU_SERVEUR` (port 80) | aucun |
-| `docker-compose.caddy.yml` | `https://votre-domaine.fr` (80 + 443) | DNS pointé sur le serveur |
+| `http://IP_DU_SERVEUR` | tout de suite | aucun (impossible sur une IP nue) |
+| `https://votre-domaine.fr` | dès que le DNS pointe sur le serveur | Let's Encrypt, automatique |
 
-On choisit l'une ou l'autre avec la variable `COMPOSE_FILE` du `.env`. Passer
-de la première à la seconde ne demande que de changer cette ligne : les données,
-le compte administrateur et le secret de session vivent dans des volumes Docker
-et sont conservés.
-
-### Phase 1 — valider l'installation sans domaine (HTTP, port 80)
+On installe donc **tout d'un coup**, on valide par l'IP, et la bascule en HTTPS
+se fait ensuite d'elle-même : il n'y a **rien à relancer** au moment de
+configurer le DNS. Tant que le domaine ne résout pas, Caddy réessaie la demande
+de certificat en arrière-plan avec un délai croissant.
 
 1. Installer Docker : `curl -fsSL https://get.docker.com | sh`
-2. Cloner le dépôt, copier `.env.example` en `.env` et renseigner au minimum
-   `POSTGRES_PASSWORD`, `DATABASE_URL` et `SEED_ADMIN_EMAIL`, puis ajouter :
-
-   ```dotenv
-   COMPOSE_FILE=docker-compose.yml:docker-compose.http.yml
-   ```
-
-   Laisser `AUTH_URL` **vide** : Auth.js déduit alors l'URL des en-têtes de la
-   requête, ce qui évite de la corriger à la phase 2.
-3. Ouvrir le port : `sudo ufw allow 80/tcp`
-4. Lancer : `docker compose up -d --build`
-5. Relever le mot de passe administrateur, affiché une seule fois :
-   `docker logs pleinr-app 2>&1 | grep -i -A2 "mot de passe"`
-
-Le site répond sur `http://IP_DU_SERVEUR`. En HTTP sur une IP, la directive
-`upgrade-insecure-requests` de la CSP peut empêcher le navigateur de charger
-styles et scripts ; pour une vérification fidèle, passer par un tunnel SSH
-(`ssh -L 8080:localhost:80 utilisateur@IP`) et ouvrir `http://localhost:8080`.
-
-### Phase 2 — passer en HTTPS sur le nom de domaine
-
-`docker-compose.caddy.yml` ajoute **Caddy** devant l'application : il écoute en
-80 et 443, obtient et renouvelle seul le certificat Let's Encrypt et redirige
-HTTP vers HTTPS. Une fois l'enregistrement DNS A du domaine pointé sur le
-serveur :
-
-1. Ouvrir le port 443 : `sudo ufw allow 443/tcp`
-2. Arrêter la pile de la phase 1 : `docker compose down`
-3. Dans `.env`, remplacer la surcouche et déclarer le domaine :
+2. Ouvrir les ports : `sudo ufw allow 80,443/tcp`
+3. Cloner le dépôt, copier `.env.example` en `.env` et renseigner au minimum
+   `POSTGRES_PASSWORD`, `DATABASE_URL`, `SEED_ADMIN_EMAIL`, puis :
 
    ```dotenv
    COMPOSE_FILE=docker-compose.yml:docker-compose.caddy.yml
@@ -100,14 +74,27 @@ serveur :
    CADDY_EMAIL=vous@example.fr
    ```
 
-4. Relancer : `docker compose up -d --build`
+   Renseigner `SITE_DOMAIN` **même si le DNS n'est pas encore en place** : c'est
+   ce qui rend la bascule automatique. Laisser `AUTH_URL` **vide** : Auth.js
+   déduit alors l'URL des en-têtes de la requête, et suit donc l'IP puis le
+   domaine sans reconfiguration.
+4. Lancer : `docker compose up -d --build`
+5. Relever le mot de passe administrateur, affiché une seule fois :
+   `docker logs pleinr-app 2>&1 | grep -i -A2 "mot de passe"`
 
-Le site est alors servi sur `https://votre-domaine.fr`. Aucun port applicatif
-n'est plus publié : tout passe par Caddy. Les certificats vivent dans le volume
-`caddy_data` et se renouvellent seuls. Vérification :
+Aucun port applicatif n'est publié : tout passe par Caddy. Les certificats
+vivent dans le volume `caddy_data` et se renouvellent seuls. Une fois le DNS
+posé, vérifier la délivrance avec
 `docker logs pleinr-caddy 2>&1 | grep -i "certificate obtained"`.
 
-Mise à jour, dans les deux phases : `git pull && docker compose up -d --build`.
+> **Vérification par l'IP** : en HTTP sur une adresse IP, la directive
+> `upgrade-insecure-requests` de la CSP (`src/middleware.ts`) peut empêcher le
+> navigateur de charger styles et scripts. Pour un test fidèle avant le DNS,
+> passer par un tunnel SSH — `ssh -L 8080:localhost:80 utilisateur@IP` — puis
+> ouvrir `http://localhost:8080` : `localhost` est une origine de confiance, la
+> directive ne s'y applique pas.
+
+Mise à jour : `git pull && docker compose up -d --build`.
 
 ## Comptes de démonstration (seed)
 
