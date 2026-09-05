@@ -1,0 +1,11 @@
+# Reverse proxy Caddy pour Plein R (voir docker-compose.caddy.yml).
+# Caddy gère seul le certificat Let's Encrypt et la redirection HTTP -> HTTPS.
+
+{
+	email {$CADDY_EMAIL}
+}
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy pleinr-app:3000
+}

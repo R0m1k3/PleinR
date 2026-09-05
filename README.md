@@ -45,6 +45,35 @@ charge des données de démonstration. Ensuite :
 > **Postgres déjà existant ?** Supprimez le service `postgres` de `docker-compose.yml`
 > et pointez `DATABASE_URL` vers votre instance.
 
+## Installation sur un VPS sans reverse proxy (domaine + HTTPS)
+
+Le `docker-compose.yml` suppose un Nginx Proxy Manager déjà en place. Sur un
+serveur nu, `docker-compose.caddy.yml` ajoute **Caddy** devant l'application :
+il écoute en 80 et 443, obtient et renouvelle seul le certificat Let's Encrypt
+et redirige HTTP vers HTTPS.
+
+1. Faire pointer le DNS du domaine (enregistrement A / AAAA) vers l'IP du VPS et
+   ouvrir les ports 80 et 443 (`ufw allow 80,443/tcp`).
+2. Installer Docker : `curl -fsSL https://get.docker.com | sh`
+3. Cloner le dépôt, copier `.env.example` en `.env` et renseigner :
+
+   ```dotenv
+   COMPOSE_FILE=docker-compose.yml:docker-compose.caddy.yml
+   SITE_DOMAIN=pleinr.example.fr
+   CADDY_EMAIL=vous@example.fr
+   AUTH_URL=https://pleinr.example.fr
+   POSTGRES_PASSWORD=un-vrai-mot-de-passe
+   SEED_ADMIN_EMAIL=vous@example.fr
+   ```
+
+4. Lancer : `docker compose up -d --build`
+5. Récupérer le mot de passe administrateur généré au premier démarrage :
+   `docker logs pleinr-app 2>&1 | grep -i -A2 "mot de passe"`
+
+Le site est alors servi sur `https://pleinr.example.fr`. Le port 8413 n'est
+plus publié : tout passe par Caddy. Les certificats vivent dans le volume
+`caddy_data`. Mise à jour : `git pull && docker compose up -d --build`.
+
 ## Comptes de démonstration (seed)
 
 | E-mail | Mot de passe | Rôle |

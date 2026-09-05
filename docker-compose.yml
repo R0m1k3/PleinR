@@ -93,5 +93,6 @@ networks:
   proxy:
     # The reverse proxy's existing network. Must already exist (created by the
     # NPM/nginx stack). Override the name with PROXY_NETWORK if it differs.
+    # Sans proxy existant : voir docker-compose.caddy.yml (README).
     external: true
     name: ${PROXY_NETWORK:-nginx_default}
