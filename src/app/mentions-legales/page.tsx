@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
 import { getSiteSettings } from "@/lib/site-settings";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Mentions légales — Plein R",
-  description: "Mentions légales du site de l'association Plein R.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Mentions légales",
+  description: "Mentions légales du site de l'association Plein R : éditeur, hébergeur, propriété intellectuelle.",
+  path: "/mentions-legales",
+});
 
 export const dynamic = "force-dynamic";
 

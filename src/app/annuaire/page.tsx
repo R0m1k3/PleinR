@@ -8,15 +8,21 @@ import {
   getAllCategories,
   getLiveBadgesByMember,
 } from "@/lib/queries";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbJsonLd, memberListJsonLd, pageMetadata } from "@/lib/seo";
+import { publicBaseUrl } from "@/lib/seo-server";
 import { AnnuaireClient, type DirectoryMember } from "./AnnuaireClient";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Annuaire — Plein R",
+// Canonique sans paramètre de recherche : /annuaire?q=… ne crée pas de doublon.
+export const metadata: Metadata = pageMetadata({
+  title: "Annuaire des commerçants du Bassin de Pompey",
   description:
-    "L'annuaire des commerçants et entreprises du Bassin de Pompey. Trouvez un professionnel et ses bons plans.",
-};
+    "Trouvez un commerçant, artisan ou entreprise du Bassin de Pompey (Pompey, Frouard, Liverdun, " +
+    "Champigneulles…) : coordonnées, horaires et bons plans.",
+  path: "/annuaire",
+});
 
 export default async function AnnuairePage({
   searchParams,
@@ -24,10 +30,11 @@ export default async function AnnuairePage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const [rawMembers, categories, badges] = await Promise.all([
+  const [rawMembers, categories, badges, baseUrl] = await Promise.all([
     getActiveMembersWithCategory(),
     getAllCategories(),
     getLiveBadgesByMember(),
+    publicBaseUrl(),
   ]);
 
   const badgeByMember = new Map<number, string | null>();
@@ -46,8 +53,17 @@ export default async function AnnuairePage({
   return (
     <div style={{ background: "#F6F2E8", minHeight: "100vh", fontFamily: "'Public Sans',sans-serif", color: "#33291D" }}>
       <SiteHeader active="annuaire" logo />
+      <JsonLd
+        data={[
+          breadcrumbJsonLd(baseUrl, [
+            { name: "Accueil", path: "/" },
+            { name: "Annuaire", path: "/annuaire" },
+          ]),
+          memberListJsonLd(baseUrl, "Annuaire des adhérents Plein R", rawMembers),
+        ]}
+      />
 
-      <div className="container" style={{ paddingBottom: 56 }}>
+      <main className="container" style={{ paddingBottom: 56 }}>
         {/* title block */}
         <section style={{ position: "relative", padding: "14px 0 22px", overflow: "hidden" }}>
           <Sparkle color="#E0A63C" size={18} style={{ top: 22, right: 30 }} duration={3.2} />
@@ -113,7 +129,7 @@ export default async function AnnuairePage({
             style={{ border: "none", background: "#E0A63C", color: "#33291D", fontWeight: 700, fontSize: 15.5, padding: "14px 26px", borderRadius: 12, whiteSpace: "nowrap" }}
           />
         </section>
-      </div>
+      </main>
 
       <SiteFooter />
     </div>

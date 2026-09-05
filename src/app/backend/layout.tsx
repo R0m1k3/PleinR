@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/session";
@@ -7,8 +8,15 @@ import { ImageConsentForm } from "@/components/ImageConsentForm";
 import { isStaff } from "@/lib/rbac";
 import { saveImageConsent } from "./actions";
 import { BackendShell } from "./BackendShell";
+import { NOINDEX } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+// Espace privé : jamais indexé, même si une page fuyait hors du middleware.
+export const metadata: Metadata = {
+  title: "Espace adhérent",
+  robots: NOINDEX,
+};
 
 export default async function BackendLayout({
   children,

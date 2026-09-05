@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { getSession } from "@/lib/session";
@@ -6,8 +7,15 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { db } from "@/db";
 import { meetingRegistrations, meetings, members } from "@/db/schema";
+import { NOINDEX } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+// Page transactionnelle : rien à indexer, la rencontre est décrite sur /association.
+export const metadata: Metadata = {
+  title: "Inscription à une rencontre",
+  robots: NOINDEX,
+};
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("fr-FR", {

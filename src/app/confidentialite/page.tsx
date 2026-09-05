@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
 import { getSiteSettings } from "@/lib/site-settings";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Confidentialité — Plein R",
-  description: "Politique de confidentialité et traitement des données personnelles par Plein R.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Politique de confidentialité",
+  description: "Politique de confidentialité et traitement des données personnelles par l'association Plein R.",
+  path: "/confidentialite",
+});
 
 export const dynamic = "force-dynamic";
 

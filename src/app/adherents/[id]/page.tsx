@@ -6,7 +6,17 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { VitrineImage } from "@/components/VitrineImage";
 import { PromoImage } from "@/components/PromoImage";
+import { JsonLd } from "@/components/JsonLd";
 import { getMemberLivePromotions, getPublicMember } from "@/lib/queries";
+import {
+  NOINDEX,
+  breadcrumbJsonLd,
+  localBusinessJsonLd,
+  memberPath,
+  metaDescription,
+  pageMetadata,
+} from "@/lib/seo";
+import { publicBaseUrl } from "@/lib/seo-server";
 import {
   formatSlots,
   getOpenStatus,
@@ -86,15 +96,32 @@ function ContactAction({
   );
 }
 
+/** Titre de la fiche : « Nom · Catégorie à Ville », le plus parlant en résultat de recherche. */
+function memberTitle(member: { name: string; categoryLabel: string | null; city: string | null }) {
+  const where = member.city ? ` à ${member.city}` : " · Bassin de Pompey";
+  return member.categoryLabel ? `${member.name} · ${member.categoryLabel}${where}` : `${member.name}${where}`;
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const member = await getPublicMember(Number(id));
-  if (!member) return { title: "Adhérent — Plein R" };
-  return { title: `${member.name} — Plein R`, description: member.description ?? undefined };
+  const memberId = Number(id);
+  const member = memberId ? await getPublicMember(memberId) : null;
+  if (!member || member.status !== "active") {
+    return { title: "Adhérent introuvable", robots: NOINDEX };
+  }
+  const fallback =
+    `${member.name}, ${member.categoryLabel ? `${member.categoryLabel.toLowerCase()} ` : ""}` +
+    `adhérent Plein R${member.city ? ` à ${member.city}` : " sur le Bassin de Pompey"} : coordonnées, horaires et bons plans.`;
+  return pageMetadata({
+    title: memberTitle(member),
+    description: metaDescription(member.description, fallback),
+    path: memberPath(member.id),
+    ogType: "profile",
+  });
 }
 
 export default async function FicheAdherentPage({
@@ -109,7 +136,7 @@ export default async function FicheAdherentPage({
   const member = await getPublicMember(memberId);
   if (!member || member.status !== "active") notFound();
 
-  const promos = await getMemberLivePromotions(memberId);
+  const [promos, baseUrl] = await Promise.all([getMemberLivePromotions(memberId), publicBaseUrl()]);
   const accent = member.accent ?? "#E0A63C";
 
   const fullAddress = [member.address, [member.postalCode, member.city].filter(Boolean).join(" ")]
@@ -142,15 +169,25 @@ export default async function FicheAdherentPage({
   return (
     <div style={{ background: "#F6F2E8", minHeight: "100vh", fontFamily: "'Public Sans',sans-serif", color: "#33291D" }}>
       <SiteHeader active="annuaire" />
+      <JsonLd
+        data={[
+          breadcrumbJsonLd(baseUrl, [
+            { name: "Accueil", path: "/" },
+            { name: "Annuaire", path: "/annuaire" },
+            { name: member.name, path: memberPath(member.id) },
+          ]),
+          localBusinessJsonLd(baseUrl, member, hours, normalizedWebsite),
+        ]}
+      />
 
-      <div className="container" style={{ paddingBottom: 56 }}>
+      <main className="container" style={{ paddingBottom: 56 }}>
         {/* breadcrumb */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "#9a8d72", padding: "6px 0 18px", flexWrap: "wrap" }}>
+        <nav aria-label="Fil d'Ariane" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "#9a8d72", padding: "6px 0 18px", flexWrap: "wrap" }}>
           <Link href="/annuaire" style={{ textDecoration: "none", color: "#9a6638", fontWeight: 600 }}>Annuaire</Link>
           {member.categoryLabel && (<><span>›</span><span style={{ color: "#9a8d72" }}>{member.categoryLabel}</span></>)}
           <span>›</span>
-          <span style={{ color: "#3c3322", fontWeight: 600 }}>{member.name}</span>
-        </div>
+          <span style={{ color: "#3c3322", fontWeight: 600 }} aria-current="page">{member.name}</span>
+        </nav>
 
         {/* cover + identity */}
         <section style={{ position: "relative", borderRadius: 22, overflow: "hidden", border: "1px solid #e6dcc6" }}>
@@ -409,7 +446,7 @@ export default async function FicheAdherentPage({
             )}
           </aside>
         </div>
-      </div>
+      </main>
 
       <SiteFooter />
     </div>

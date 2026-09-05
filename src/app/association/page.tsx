@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { meetingRegistrations, meetings, pastMeetingPhotos, pastMeetings } from "@/db/schema";
+import { JsonLd } from "@/components/JsonLd";
 import { PastMeetingGallery } from "@/components/PastMeetingGallery";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -13,8 +15,25 @@ import {
   parsePillars,
   splitLines,
 } from "@/lib/site-settings";
+import { breadcrumbJsonLd, eventJsonLd, pageMetadata } from "@/lib/seo";
+import { publicBaseUrl } from "@/lib/seo-server";
 
 export const dynamic = "force-dynamic";
+
+const ASSOCIATION_TITLE = "Plein R, l'association des entreprises du Bassin de Pompey";
+
+export const metadata: Metadata = {
+  ...pageMetadata({
+    title: ASSOCIATION_TITLE,
+    ogTitle: ASSOCIATION_TITLE,
+    description:
+      "Plein R fédère commerçants, artisans et entreprises du Bassin de Pompey : mission, équipe, " +
+      "prochaines rencontres. Rejoignez le réseau économique local.",
+    path: "/association",
+  }),
+  // Le nom de l'association est déjà dans le titre : pas de suffixe « · Plein R ».
+  title: { absolute: ASSOCIATION_TITLE },
+};
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("fr-FR", {
@@ -30,7 +49,7 @@ function formatTime(date: Date) {
 }
 
 export default async function AssociationPage() {
-  const [settings, session] = await Promise.all([getSiteSettings(), auth()]);
+  const [settings, session, baseUrl] = await Promise.all([getSiteSettings(), auth(), publicBaseUrl()]);
   const now = new Date();
   const memberId = session?.user.memberId ?? null;
 
@@ -108,6 +127,15 @@ export default async function AssociationPage() {
   return (
     <div style={{ background: "#F6F2E8", minHeight: "100vh", fontFamily: "'Public Sans',sans-serif", color: "#33291D" }}>
       <SiteHeader active="association" logo />
+      <JsonLd
+        data={[
+          breadcrumbJsonLd(baseUrl, [
+            { name: "Accueil", path: "/" },
+            { name: "L'association", path: "/association" },
+          ]),
+          ...upcoming.map((meeting) => eventJsonLd(baseUrl, meeting)),
+        ]}
+      />
 
       <main>
         <section className="container" style={{ paddingTop: 34, paddingBottom: 52 }}>

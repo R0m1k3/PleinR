@@ -114,6 +114,24 @@ site sans traitement supplémentaire.
   n'est publié que sur `127.0.0.1`.
 - `npm test` verrouille ces protections (`tests/security.test.ts`).
 
+## Référencement (SEO)
+
+- `src/lib/seo.ts` est **pur** (constantes, `pageMetadata()`, générateurs JSON-LD,
+  `serializeJsonLd()` qui échappe `<>&`) et verrouillé par `tests/seo.test.ts`.
+  `src/lib/seo-server.ts` fournit `publicBaseUrl()` : réglage `site_public_url`,
+  puis variables d'environnement, puis en-têtes de la requête.
+- `app/layout.tsx` pose `metadataBase`, le gabarit de titre `%s · Plein R`,
+  Open Graph / Twitter, `robots`, le manifeste, et les JSON-LD `Organization` +
+  `WebSite`. Chaque page publique appelle `pageMetadata({ title, description,
+  path })` : le `path` sert de canonique (l'annuaire ignore ainsi `?q=`).
+- Données structurées par page via `<JsonLd data={…} />` : `BreadcrumbList`
+  partout, `ItemList` sur l'annuaire, `LocalBusiness` (+ horaires) sur la fiche
+  adhérent, `BusinessEvent` pour chaque rencontre à venir.
+- `app/robots.ts`, `app/sitemap.ts` (pages statiques + adhérents actifs),
+  `app/manifest.ts` et `app/opengraph-image.tsx` (vignette 1200×630 générée).
+- `/backend`, `/login`, `/inscription/*` et les fiches non actives sont en
+  `NOINDEX` ; les pages publiques utilisent `<main>` et un seul `<h1>`.
+
 ## Roles
 
 `admin` > `moderator` > `editor` are staff; `member` is an adhérent linked to a

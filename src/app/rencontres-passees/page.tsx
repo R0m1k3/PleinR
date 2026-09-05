@@ -1,21 +1,34 @@
+import type { Metadata } from "next";
 import { asc, desc, inArray } from "drizzle-orm";
+import { JsonLd } from "@/components/JsonLd";
 import { PastMeetingGallery } from "@/components/PastMeetingGallery";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { db } from "@/db";
 import { meetingRegistrations, pastMeetingPhotos, pastMeetings } from "@/db/schema";
 import { splitLines } from "@/lib/site-settings";
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { publicBaseUrl } from "@/lib/seo-server";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Rencontres passées de l'association",
+  description:
+    "Retour en images sur les rencontres Plein R : soirées réseau, visites d'entreprises et moments " +
+    "partagés entre entrepreneurs du Bassin de Pompey.",
+  path: "/rencontres-passees",
+});
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
 
 export default async function PastMeetingsPage() {
-  const [archives, photos] = await Promise.all([
+  const [archives, photos, baseUrl] = await Promise.all([
     db.select().from(pastMeetings).orderBy(desc(pastMeetings.eventDate)),
     db.select().from(pastMeetingPhotos).orderBy(asc(pastMeetingPhotos.position), asc(pastMeetingPhotos.id)),
+    publicBaseUrl(),
   ]);
   const linkedIds = archives.map((archive) => archive.meetingId).filter((id): id is number => id !== null);
   const linkedRegistrations = linkedIds.length > 0
@@ -37,6 +50,13 @@ export default async function PastMeetingsPage() {
   return (
     <div style={{ background: "#F6F2E8", minHeight: "100vh", fontFamily: "'Public Sans',sans-serif", color: "#33291D" }}>
       <SiteHeader active="association" logo />
+      <JsonLd
+        data={breadcrumbJsonLd(baseUrl, [
+          { name: "Accueil", path: "/" },
+          { name: "L'association", path: "/association" },
+          { name: "Rencontres passées", path: "/rencontres-passees" },
+        ])}
+      />
       <main>
         <section style={{ background: "#13324F", color: "#fff" }}>
           <div className="container" style={{ paddingTop: 58, paddingBottom: 54 }}>

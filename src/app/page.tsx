@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Sparkle } from "@/components/Sparkle";
 import { Reveal } from "@/components/Reveal";
@@ -10,8 +11,20 @@ import { PromoImage } from "@/components/PromoImage";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import { getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
 import { getSiteSettings, socialLinks } from "@/lib/site-settings";
+import { SITE_DESCRIPTION, SITE_TITLE, pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  ...pageMetadata({
+    title: SITE_TITLE,
+    ogTitle: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    path: "/",
+  }),
+  // Titre absolu : la page d'accueil ne prend pas le suffixe « · Plein R ».
+  title: { absolute: SITE_TITLE },
+};
 
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
@@ -40,7 +53,7 @@ export default async function AccueilPage() {
     >
       <SiteHeader active="accueil" />
 
-      <div className="container">
+      <main className="container">
         {/* hero */}
         <section
           className="grid hero-grid"
@@ -456,7 +469,7 @@ export default async function AccueilPage() {
             />
           </Reveal>
         </section>
-      </div>
+      </main>
 
       <SiteFooter />
     </div>
