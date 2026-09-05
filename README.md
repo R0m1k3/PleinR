@@ -45,34 +45,69 @@ charge des données de démonstration. Ensuite :
 > **Postgres déjà existant ?** Supprimez le service `postgres` de `docker-compose.yml`
 > et pointez `DATABASE_URL` vers votre instance.
 
-## Installation sur un VPS sans reverse proxy (domaine + HTTPS)
+## Installation sur un VPS sans reverse proxy
 
-Le `docker-compose.yml` suppose un Nginx Proxy Manager déjà en place. Sur un
-serveur nu, `docker-compose.caddy.yml` ajoute **Caddy** devant l'application :
-il écoute en 80 et 443, obtient et renouvelle seul le certificat Let's Encrypt
-et redirige HTTP vers HTTPS.
+Le `docker-compose.yml` suppose un Nginx Proxy Manager déjà en place (réseau
+externe `nginx_default`). Sur un serveur nu, deux surcouches couvrent les deux
+situations, sans jamais modifier le fichier de base :
 
-1. Faire pointer le DNS du domaine (enregistrement A / AAAA) vers l'IP du VPS et
-   ouvrir les ports 80 et 443 (`ufw allow 80,443/tcp`).
-2. Installer Docker : `curl -fsSL https://get.docker.com | sh`
-3. Cloner le dépôt, copier `.env.example` en `.env` et renseigner :
+| Surcouche | Sert sur | Pré-requis |
+|---|---|---|
+| `docker-compose.http.yml` | `http://IP_DU_SERVEUR` (port 80) | aucun |
+| `docker-compose.caddy.yml` | `https://votre-domaine.fr` (80 + 443) | DNS pointé sur le serveur |
+
+On choisit l'une ou l'autre avec la variable `COMPOSE_FILE` du `.env`. Passer
+de la première à la seconde ne demande que de changer cette ligne : les données,
+le compte administrateur et le secret de session vivent dans des volumes Docker
+et sont conservés.
+
+### Phase 1 — valider l'installation sans domaine (HTTP, port 80)
+
+1. Installer Docker : `curl -fsSL https://get.docker.com | sh`
+2. Cloner le dépôt, copier `.env.example` en `.env` et renseigner au minimum
+   `POSTGRES_PASSWORD`, `DATABASE_URL` et `SEED_ADMIN_EMAIL`, puis ajouter :
+
+   ```dotenv
+   COMPOSE_FILE=docker-compose.yml:docker-compose.http.yml
+   ```
+
+   Laisser `AUTH_URL` **vide** : Auth.js déduit alors l'URL des en-têtes de la
+   requête, ce qui évite de la corriger à la phase 2.
+3. Ouvrir le port : `sudo ufw allow 80/tcp`
+4. Lancer : `docker compose up -d --build`
+5. Relever le mot de passe administrateur, affiché une seule fois :
+   `docker logs pleinr-app 2>&1 | grep -i -A2 "mot de passe"`
+
+Le site répond sur `http://IP_DU_SERVEUR`. En HTTP sur une IP, la directive
+`upgrade-insecure-requests` de la CSP peut empêcher le navigateur de charger
+styles et scripts ; pour une vérification fidèle, passer par un tunnel SSH
+(`ssh -L 8080:localhost:80 utilisateur@IP`) et ouvrir `http://localhost:8080`.
+
+### Phase 2 — passer en HTTPS sur le nom de domaine
+
+`docker-compose.caddy.yml` ajoute **Caddy** devant l'application : il écoute en
+80 et 443, obtient et renouvelle seul le certificat Let's Encrypt et redirige
+HTTP vers HTTPS. Une fois l'enregistrement DNS A du domaine pointé sur le
+serveur :
+
+1. Ouvrir le port 443 : `sudo ufw allow 443/tcp`
+2. Arrêter la pile de la phase 1 : `docker compose down`
+3. Dans `.env`, remplacer la surcouche et déclarer le domaine :
 
    ```dotenv
    COMPOSE_FILE=docker-compose.yml:docker-compose.caddy.yml
-   SITE_DOMAIN=pleinr.example.fr
+   SITE_DOMAIN=votre-domaine.fr
    CADDY_EMAIL=vous@example.fr
-   AUTH_URL=https://pleinr.example.fr
-   POSTGRES_PASSWORD=un-vrai-mot-de-passe
-   SEED_ADMIN_EMAIL=vous@example.fr
    ```
 
-4. Lancer : `docker compose up -d --build`
-5. Récupérer le mot de passe administrateur généré au premier démarrage :
-   `docker logs pleinr-app 2>&1 | grep -i -A2 "mot de passe"`
+4. Relancer : `docker compose up -d --build`
 
-Le site est alors servi sur `https://pleinr.example.fr`. Le port 8413 n'est
-plus publié : tout passe par Caddy. Les certificats vivent dans le volume
-`caddy_data`. Mise à jour : `git pull && docker compose up -d --build`.
+Le site est alors servi sur `https://votre-domaine.fr`. Aucun port applicatif
+n'est plus publié : tout passe par Caddy. Les certificats vivent dans le volume
+`caddy_data` et se renouvellent seuls. Vérification :
+`docker logs pleinr-caddy 2>&1 | grep -i "certificate obtained"`.
+
+Mise à jour, dans les deux phases : `git pull && docker compose up -d --build`.
 
 ## Comptes de démonstration (seed)
 
