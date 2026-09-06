@@ -19,6 +19,38 @@ const NETWORK_LABELS: Record<SocialNetwork, string> = {
   linkedin: "LinkedIn",
 };
 
+/** Une ligne du récapitulatif de dates, à droite du formulaire. */
+function SummaryRow({
+  label,
+  value,
+  tone,
+  last = false,
+}: {
+  label: string;
+  value: string;
+  tone: "set" | "muted" | "error";
+  last?: boolean;
+}) {
+  const color = tone === "error" ? "#d8472b" : tone === "set" ? "#3c3322" : "#a99c82";
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "baseline",
+        justifyContent: "space-between",
+        gap: 14,
+        padding: "12px 0",
+        borderBottom: last ? "none" : "1px solid #f0e8d6",
+      }}
+    >
+      <span style={{ fontSize: 12.5, color: "#9a8d72", fontWeight: 700, whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ fontSize: 13, color, fontWeight: tone === "muted" ? 500 : 700, textAlign: "right" }}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 export function MemberSpaceForm({
   memberName,
   memberLogoUrl,
@@ -331,10 +363,31 @@ export function MemberSpaceForm({
 
       {/* LIVE PREVIEW */}
       <div>
+        {/* Récapitulatif des dates : quand l'offre paraît, combien de temps
+            elle reste. Deux informations que la carte ne montre pas. */}
+        <div style={{ fontSize: 12.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 700, marginBottom: 12 }}>
+          Dates de votre offre
+        </div>
+        <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 14, padding: "4px 16px", marginBottom: 26 }}>
+          <SummaryRow
+            label="Durée de validité"
+            value={badRange ? "Dates incohérentes" : validity ?? "Sans date limite"}
+            tone={badRange ? "error" : validity ? "set" : "muted"}
+          />
+          <SummaryRow
+            label="Publication"
+            value={scheduleHint ? `Programmée ${scheduleHint}` : "Dès la validation par l'association"}
+            tone={scheduleHint ? "set" : "muted"}
+            last
+          />
+        </div>
+
         <div style={{ fontSize: 12.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 700, marginBottom: 12 }}>
           Aperçu en direct
         </div>
-        <article style={{ background: "#fff", border: "1px solid #ece3d0", borderRadius: 18, overflow: "hidden", boxShadow: "0 18px 40px -26px rgba(40,30,15,0.5)" }}>
+        {/* Largeur bornée : la carte doit ressembler à celle du site, pas
+            occuper toute la colonne (le visuel carré la rendait démesurée). */}
+        <article style={{ maxWidth: 320, background: "#fff", border: "1px solid #ece3d0", borderRadius: 18, overflow: "hidden", boxShadow: "0 18px 40px -26px rgba(40,30,15,0.5)" }}>
           <div
             style={{
               position: "relative",
