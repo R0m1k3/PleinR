@@ -137,6 +137,14 @@ site sans traitement supplémentaire.
   `app/manifest.ts` et `app/opengraph-image.tsx` (vignette 1200×630 générée).
 - `/backend`, `/login`, `/inscription/*` et les fiches non actives sont en
   `NOINDEX` ; les pages publiques utilisent `<main>` et un seul `<h1>`.
+- **URLs de fiche** : `memberPath({ id, name, city })` donne
+  `/adherents/12-au-bon-pain-frouard`. L'identifiant en tête suffit
+  (`parseMemberParam`), toute autre écriture est redirigée en 301 vers la forme
+  canonique par la page : ne construisez jamais `/adherents/${id}` à la main.
+- **Pages métier** : `/annuaire/[categorie]` (slug de `categories`) rend une page
+  indexable par activité (titre, intro, grille `MemberCard`, `ItemList`) ;
+  sans adhérent elle passe en `NOINDEX` et sort du sitemap. L'annuaire et ces
+  pages listent les métiers via `CategoryLinks` pour le maillage interne.
 
 ## Roles
 

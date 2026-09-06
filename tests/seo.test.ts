@@ -8,6 +8,9 @@ import {
   STATIC_ROUTES,
   absoluteUrl,
   breadcrumbJsonLd,
+  categoryPath,
+  memberPath,
+  parseMemberParam,
   eventJsonLd,
   localBusinessJsonLd,
   memberListJsonLd,
@@ -28,6 +31,19 @@ describe("SEO — URLs et descriptions", () => {
     assert.equal(absoluteUrl(BASE), `${BASE}/`);
     assert.equal(absoluteUrl(`${BASE}//`, "/annuaire"), `${BASE}/annuaire`);
     assert.equal(absoluteUrl(BASE, "adherents/3"), `${BASE}/adherents/3`);
+  });
+
+  it("construit des URLs de fiche parlantes et les relit", () => {
+    assert.equal(memberPath({ id: 12, name: "Au Bon Pain", city: "Frouard" }), "/adherents/12-au-bon-pain-frouard");
+    assert.equal(memberPath({ id: 3, name: "Épicerie « Chez Léa »", city: null }), "/adherents/3-epicerie-chez-lea");
+    assert.equal(memberPath({ id: 7, name: "???" }), "/adherents/7");
+    for (const param of ["12-au-bon-pain-frouard", "12-ancien-nom", "12"]) {
+      assert.equal(parseMemberParam(param), 12, param);
+    }
+    for (const param of ["abc", "-12", "12abc", "0", ""]) {
+      assert.equal(parseMemberParam(param), null, param);
+    }
+    assert.equal(categoryPath("boulangerie"), "/annuaire/boulangerie");
   });
 
   it("borne la meta description sur un mot entier", () => {
@@ -116,7 +132,7 @@ describe("SEO — données structurées", () => {
     };
     const biz = localBusinessJsonLd(BASE, member, [], null) as Record<string, unknown>;
     assert.equal(biz["@type"], "LocalBusiness");
-    assert.equal(biz.url, `${BASE}/adherents/7`);
+    assert.equal(biz.url, `${BASE}/adherents/7-au-bon-pain-pompey`);
     assert.equal((biz.address as { addressLocality: string }).addressLocality, "Pompey");
     assert.equal(biz.keywords, "pain, viennoiseries");
     assert.ok(!("email" in biz));
@@ -124,7 +140,7 @@ describe("SEO — données structurées", () => {
 
     const withSite = localBusinessJsonLd(BASE, member, [], "https://aubonpain.fr") as Record<string, unknown>;
     assert.equal(withSite.url, "https://aubonpain.fr");
-    assert.equal(withSite.mainEntityOfPage, `${BASE}/adherents/7`);
+    assert.equal(withSite.mainEntityOfPage, `${BASE}/adherents/7-au-bon-pain-pompey`);
   });
 
   it("décrit une rencontre à venir avec ses places restantes", () => {
@@ -144,9 +160,9 @@ describe("SEO — données structurées", () => {
   });
 
   it("liste les adhérents de l'annuaire", () => {
-    const list = memberListJsonLd(BASE, "Annuaire", [{ id: 1, name: "A" }, { id: 2, name: "B" }]);
+    const list = memberListJsonLd(BASE, "Annuaire", [{ id: 1, name: "A" }, { id: 2, name: "Bar du Port", city: "Pompey" }]);
     assert.equal(list.numberOfItems, 2);
-    assert.equal(list.itemListElement[1].url, `${BASE}/adherents/2`);
+    assert.equal(list.itemListElement[1].url, `${BASE}/adherents/2-bar-du-port-pompey`);
   });
 });
 

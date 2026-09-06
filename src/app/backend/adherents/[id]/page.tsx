@@ -134,11 +134,19 @@ export default async function EditMemberPage({
         <div style={{ marginTop: 16 }}>
           <label className="field-label">Description (une ligne vide sépare les paragraphes)</label>
           <textarea name="description" rows={4} defaultValue={member.description ?? ""} className="field" style={{ resize: "vertical" }} />
+          <p className="field-hint">
+            Ce texte est lu par Google : indiquez votre métier, votre commune et vos spécialités en trois à cinq
+            phrases (ex. « Boulangerie artisanale à Frouard : pain au levain, viennoiseries, pâtisseries maison »).
+          </p>
         </div>
 
         <div style={{ marginTop: 16 }}>
           <label className="field-label">Tags / spécialités (séparés par des virgules)</label>
           <input name="tags" defaultValue={member.tags ?? ""} className="field" placeholder="Levain naturel, Produits locaux, Fait maison" />
+          <p className="field-hint">
+            Mots-clés que vos clients recherchent : produits, services, marques, quartier. Ils s&apos;affichent sur
+            votre fiche et sont transmis aux moteurs de recherche.
+          </p>
         </div>
 
         <div style={{ marginTop: 16 }}>

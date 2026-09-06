@@ -948,6 +948,13 @@ img {
   color: var(--muted);
   margin-bottom: 6px;
 }
+/* Conseil de rédaction sous un champ : discret, mais lu avant de saisir. */
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted-2);
+}
 
 /* ---- Studio e-mail Plein R ---- */
 .email-workbench {

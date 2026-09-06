@@ -10,6 +10,7 @@ import { signOut } from "@/auth";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { CATEGORY_PALETTE } from "@/db/categories";
+import { slugify } from "@/lib/slug";
 import {
   activityLog,
   categories,
@@ -45,15 +46,6 @@ import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
 
 
-function slugify(input: string): string {
-  return input
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 70);
-}
 
 async function logActivity(message: string, dot = "#2C6FB3") {
   // Le message agrège des saisies de tiers : on ne laisse passer que <strong>.
@@ -127,7 +119,7 @@ function revalidatePromoPaths(memberId?: number | null) {
   revalidatePath("/backend");
   revalidatePath("/");
   revalidatePath("/annuaire");
-  if (memberId) revalidatePath(`/adherents/${memberId}`);
+  if (memberId) revalidatePath("/adherents/[id]", "page");
 }
 
 /** Réseaux demandés pour une promo, dans l'ordre d'affichage. */
@@ -168,6 +160,7 @@ async function publishPromoShares(
       imageUrl: promotions.imageUrl,
       memberId: promotions.memberId,
       memberName: members.name,
+      memberCity: members.city,
     })
     .from(promotions)
     .leftJoin(members, eq(promotions.memberId, members.id))
@@ -550,7 +543,7 @@ export async function updateMember(formData: FormData) {
     .where(eq(members.id, id));
 
   revalidatePath("/backend/adherents");
-  revalidatePath(`/adherents/${id}`);
+  revalidatePath("/adherents/[id]", "page");
   revalidatePath("/");
 }
 
@@ -1104,7 +1097,7 @@ export async function updateOwnProfile(formData: FormData) {
     .where(eq(members.id, memberId));
 
   revalidatePath("/backend/espace");
-  revalidatePath(`/adherents/${memberId}`);
+  revalidatePath("/adherents/[id]", "page");
   revalidatePath("/annuaire");
   revalidatePath("/");
 }

@@ -69,6 +69,7 @@ export async function getLivePromotions(limit = 6) {
       validUntil: promotions.validUntil,
       memberId: promotions.memberId,
       memberName: members.name,
+      memberCity: members.city,
     })
     .from(promotions)
     .leftJoin(members, eq(promotions.memberId, members.id))
@@ -173,4 +174,45 @@ export async function getActiveMemberCount(): Promise<number> {
     .from(members)
     .where(eq(members.status, "active"));
   return Number(row?.total ?? 0);
+}
+
+/** Une catégorie par son slug d'URL, ou `null`. */
+export async function getCategoryBySlug(slug: string) {
+  const [row] = await db
+    .select({
+      id: categories.id,
+      slug: categories.slug,
+      label: categories.label,
+      accent: categories.accent,
+      tint: categories.tint,
+    })
+    .from(categories)
+    .where(eq(categories.slug, slug));
+  return row ?? null;
+}
+
+/** Adhérents actifs d'une catégorie, pour la page métier de l'annuaire. */
+export async function getActiveMembersByCategory(categoryId: number) {
+  return db
+    .select({
+      id: members.id,
+      name: members.name,
+      description: members.description,
+      city: members.city,
+      address: members.address,
+      coverUrl: members.coverUrl,
+      logoUrl: members.logoUrl,
+      categoryLabel: categories.label,
+      accent: categories.accent,
+    })
+    .from(members)
+    .leftJoin(categories, eq(members.categoryId, categories.id))
+    .where(and(eq(members.status, "active"), eq(members.categoryId, categoryId)))
+    .orderBy(asc(members.name));
+}
+
+/** Catégories ayant au moins un adhérent actif, avec leur effectif. */
+export async function getCategoriesInUse() {
+  const rows = await getCategoriesWithCounts(1000);
+  return rows.filter((c) => Number(c.memberCount) > 0);
 }

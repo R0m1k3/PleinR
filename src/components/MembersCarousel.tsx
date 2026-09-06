@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { VitrineImage } from "./VitrineImage";
+import { memberPath } from "@/lib/seo";
 
 export type CarouselMember = {
   id: number;
@@ -24,7 +25,7 @@ const FADE_MS = 450;
 function Card({ m, visible, index }: { m: CarouselMember; visible: boolean; index: number }) {
   return (
     <Link
-      href={`/adherents/${m.id}`}
+      href={memberPath(m)}
       className="lift-card"
       style={{
         background: "#fff",

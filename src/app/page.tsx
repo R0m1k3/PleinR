@@ -11,7 +11,7 @@ import { PromoImage } from "@/components/PromoImage";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import { getActiveMemberCount, getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
 import { getSiteSettings, socialLinks } from "@/lib/site-settings";
-import { SITE_DESCRIPTION, SITE_TITLE, pageMetadata } from "@/lib/seo";
+import { SITE_DESCRIPTION, SITE_TITLE, memberPath, pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -235,7 +235,7 @@ export default async function AccueilPage() {
             {promos.map((p) => (
               <Link
                 key={p.id}
-                href={p.memberId ? `/adherents/${p.memberId}` : "#"}
+                href={p.memberId ? memberPath({ id: p.memberId, name: p.memberName ?? "", city: p.memberCity }) : "#"}
                 className="lift-card"
                 style={{
                   textDecoration: "none",

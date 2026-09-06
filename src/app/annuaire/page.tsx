@@ -6,8 +6,10 @@ import { MembershipModalButton } from "@/components/MembershipModalButton";
 import {
   getActiveMembersWithCategory,
   getAllCategories,
+  getCategoriesInUse,
   getLiveBadgesByMember,
 } from "@/lib/queries";
+import { CategoryLinks } from "@/components/CategoryLinks";
 import { JsonLd } from "@/components/JsonLd";
 import { breadcrumbJsonLd, memberListJsonLd, pageMetadata } from "@/lib/seo";
 import { publicBaseUrl } from "@/lib/seo-server";
@@ -30,11 +32,12 @@ export default async function AnnuairePage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const [rawMembers, categories, badges, baseUrl] = await Promise.all([
+  const [rawMembers, categories, badges, baseUrl, categoriesInUse] = await Promise.all([
     getActiveMembersWithCategory(),
     getAllCategories(),
     getLiveBadgesByMember(),
     publicBaseUrl(),
+    getCategoriesInUse(),
   ]);
 
   const badgeByMember = new Map<number, string | null>();
@@ -97,6 +100,19 @@ export default async function AnnuairePage({
         </section>
 
         <AnnuaireClient members={members} categories={categories} initialQuery={q ?? ""} />
+
+        {/* Pages métier : une URL indexable par catégorie, en plus du filtre. */}
+        {categoriesInUse.length > 0 && (
+          <section style={{ marginTop: 34, background: "#fff", border: "1px solid #e6dcc6", borderRadius: 18, padding: "22px 24px" }}>
+            <h2 className="font-display" style={{ fontWeight: 700, fontSize: 19, margin: "0 0 6px", color: "#26201a" }}>
+              Parcourir par métier
+            </h2>
+            <p style={{ margin: "0 0 14px", fontSize: 14, color: "#6c6150" }}>
+              Tous les commerçants, artisans et entreprises du Bassin de Pompey, classés par activité.
+            </p>
+            <CategoryLinks categories={categoriesInUse} />
+          </section>
+        )}
 
         {/* join CTA */}
         <section

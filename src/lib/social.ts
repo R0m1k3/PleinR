@@ -15,6 +15,7 @@ import {
   siteUrl,
   type SocialNetwork,
 } from "./social-accounts";
+import { memberPath } from "./seo";
 
 export {
   configuredNetworks,
@@ -37,12 +38,15 @@ export type PromoForSharing = {
   imageUrl: string | null;
   memberId: number | null;
   memberName: string | null;
+  memberCity?: string | null;
 };
 
 export async function promoLink(promo: PromoForSharing): Promise<string | null> {
   const base = await siteUrl();
   if (!base) return null;
-  return promo.memberId ? `${base}/adherents/${promo.memberId}` : `${base}/#promotions`;
+  return promo.memberId
+    ? `${base}${memberPath({ id: promo.memberId, name: promo.memberName ?? "", city: promo.memberCity })}`
+    : `${base}/#promotions`;
 }
 
 /** Texte du post, commun aux deux réseaux. */

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { Sparkle } from "@/components/Sparkle";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -15,6 +15,7 @@ import {
   memberPath,
   metaDescription,
   pageMetadata,
+  parseMemberParam,
 } from "@/lib/seo";
 import { publicBaseUrl } from "@/lib/seo-server";
 import {
@@ -108,7 +109,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const memberId = Number(id);
+  const memberId = parseMemberParam(id);
   const member = memberId ? await getPublicMember(memberId) : null;
   if (!member || member.status !== "active") {
     return { title: "Adhérent introuvable", robots: NOINDEX };
@@ -119,7 +120,7 @@ export async function generateMetadata({
   return pageMetadata({
     title: memberTitle(member),
     description: metaDescription(member.description, fallback),
-    path: memberPath(member.id),
+    path: memberPath(member),
     ogType: "profile",
   });
 }
@@ -130,11 +131,16 @@ export default async function FicheAdherentPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const memberId = Number(id);
+  const memberId = parseMemberParam(id);
   if (!memberId) notFound();
 
   const member = await getPublicMember(memberId);
   if (!member || member.status !== "active") notFound();
+
+  // Une seule URL par fiche : l'ancienne forme `/adherents/12` et tout slug
+  // périmé (renommage, changement de commune) sont redirigés définitivement.
+  const canonical = memberPath(member);
+  if (`/adherents/${id}` !== canonical) permanentRedirect(canonical);
 
   const [promos, baseUrl] = await Promise.all([getMemberLivePromotions(memberId), publicBaseUrl()]);
   const accent = member.accent ?? "#E0A63C";
@@ -174,7 +180,7 @@ export default async function FicheAdherentPage({
           breadcrumbJsonLd(baseUrl, [
             { name: "Accueil", path: "/" },
             { name: "Annuaire", path: "/annuaire" },
-            { name: member.name, path: memberPath(member.id) },
+            { name: member.name, path: canonical },
           ]),
           localBusinessJsonLd(baseUrl, member, hours, normalizedWebsite),
         ]}

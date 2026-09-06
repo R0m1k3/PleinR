@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { DaySchedule, WeekDayKey } from "@/lib/member-profile";
 import type { SiteSettings, SocialLink } from "@/lib/site-settings";
+import { slugify } from "@/lib/slug";
 
 /**
  * Référencement : constantes, métadonnées et données structurées (JSON-LD).
@@ -83,9 +84,32 @@ export function absoluteUrl(baseUrl: string, path = "/"): string {
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-/** Chemin canonique d'une fiche adhérent. */
-export function memberPath(id: number): string {
-  return `/adherents/${id}`;
+export type MemberPathInput = { id: number; name: string; city?: string | null };
+
+/**
+ * Chemin canonique d'une fiche adhérent : `/adherents/12-au-bon-pain-frouard`.
+ *
+ * L'identifiant reste en tête : il suffit à retrouver la fiche, et le nom qui
+ * suit n'est là que pour les moteurs et les lecteurs. Toute autre écriture
+ * (`/adherents/12`, ancien nom…) est redirigée en 301 vers cette forme par la
+ * page, donc un renommage ne casse aucun lien.
+ */
+export function memberPath(member: MemberPathInput): string {
+  const slug = slugify([member.name, member.city ?? ""].filter(Boolean).join(" "));
+  return slug ? `/adherents/${member.id}-${slug}` : `/adherents/${member.id}`;
+}
+
+/** Identifiant numérique en tête du paramètre d'URL (`12-au-bon-pain` → 12), sinon `null`. */
+export function parseMemberParam(param: string): number | null {
+  const match = /^(\d+)(?:-|$)/.exec(param);
+  if (!match) return null;
+  const id = Number(match[1]);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+/** Chemin d'une page métier de l'annuaire. */
+export function categoryPath(slug: string): string {
+  return `/annuaire/${slug}`;
 }
 
 /**
@@ -259,7 +283,7 @@ export function localBusinessJsonLd(
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const url = absoluteUrl(baseUrl, memberPath(member.id));
+  const url = absoluteUrl(baseUrl, memberPath(member));
   return compact({
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
@@ -325,7 +349,7 @@ export function eventJsonLd(baseUrl: string, meeting: EventInput) {
   });
 }
 
-export type ItemListEntry = { id: number; name: string; description?: string | null };
+export type ItemListEntry = MemberPathInput;
 
 /** Liste d'adhérents (annuaire) : chaque entrée pointe vers sa fiche. */
 export function memberListJsonLd(baseUrl: string, name: string, members: ItemListEntry[]) {
@@ -337,7 +361,7 @@ export function memberListJsonLd(baseUrl: string, name: string, members: ItemLis
     itemListElement: members.map((m, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      url: absoluteUrl(baseUrl, memberPath(m.id)),
+      url: absoluteUrl(baseUrl, memberPath(m)),
       name: m.name,
     })),
   };
