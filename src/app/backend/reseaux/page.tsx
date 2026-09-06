@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { originFromHeaders } from "@/lib/site-url";
 import { redirect } from "next/navigation";
 import type { CSSProperties } from "react";
 import { getSession } from "@/lib/session";
@@ -61,10 +62,7 @@ export default async function ReseauxPage({
 
   // Adresse par laquelle l'administrateur consulte cette page : proposée par
   // défaut pour lui éviter de la recopier à la main.
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "";
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const detected = host ? `${protocol}://${host}` : "";
+  const detected = originFromHeaders(await headers());
 
   // Calculées ici : le rendu des cartes n'est pas asynchrone.
   const redirectUris = new Map<string, string>();
@@ -124,8 +122,9 @@ export default async function ReseauxPage({
         </form>
         {!base && detected && (
           <div style={{ marginTop: 10, fontSize: 12.5, color: "#9a6638" }}>
-            Adresse détectée depuis votre navigation : <strong>{detected}</strong>. Vérifiez-la puis
-            enregistrez.
+            Aucune adresse enregistrée : celle de votre navigation, <strong>{detected}</strong>, est
+            utilisée par défaut. Facebook et LinkedIn n&apos;acceptent qu&apos;une adresse de retour
+            en <code>https</code> sur un nom de domaine : vérifiez-la puis enregistrez.
           </div>
         )}
         {!base && !detected && (

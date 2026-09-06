@@ -87,12 +87,12 @@ vivent dans le volume `caddy_data` et se renouvellent seuls. Une fois le DNS
 posé, vérifier la délivrance avec
 `docker logs pleinr-caddy 2>&1 | grep -i "certificate obtained"`.
 
-> **Vérification par l'IP** : en HTTP sur une adresse IP, la directive
-> `upgrade-insecure-requests` de la CSP (`src/middleware.ts`) peut empêcher le
-> navigateur de charger styles et scripts. Pour un test fidèle avant le DNS,
-> passer par un tunnel SSH — `ssh -L 8080:localhost:80 utilisateur@IP` — puis
-> ouvrir `http://localhost:8080` : `localhost` est une origine de confiance, la
-> directive ne s'y applique pas.
+> **Vérification par l'IP** : la directive `upgrade-insecure-requests` de la
+> CSP (`src/middleware.ts`) n'est posée que sur les pages servies en HTTPS. Un
+> test en HTTP par l'IP ou par le port direct fonctionne donc sans tunnel. En
+> revanche, Facebook et LinkedIn n'acceptent qu'une adresse de retour OAuth en
+> HTTPS sur un nom de domaine : la connexion des réseaux sociaux ne peut être
+> validée qu'une fois le DNS posé.
 
 Mise à jour : `git pull && docker compose up -d --build`.
 

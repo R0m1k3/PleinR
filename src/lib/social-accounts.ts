@@ -1,7 +1,9 @@
 import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 import { db } from "@/db";
 import { siteSettings, socialAccounts, type SocialAccount, type SocialNetwork } from "@/db/schema";
 import { decryptSecret, encryptSecret } from "./crypto";
+import { originFromHeaders } from "./site-url";
 
 /**
  * Configuration des comptes Facebook / LinkedIn.
@@ -43,8 +45,29 @@ export async function siteUrl(): Promise<string> {
   return (stored || env("NEXT_PUBLIC_SITE_URL") || env("AUTH_URL")).replace(/\/+$/, "");
 }
 
+/**
+ * URL publique effective : le réglage s'il existe, sinon l'adresse par laquelle
+ * la requête en cours est arrivée (en-têtes du reverse proxy compris). Chaîne
+ * vide hors requête si rien n'est configuré.
+ */
+export async function publicBaseUrl(): Promise<string> {
+  const configured = await siteUrl().catch(() => "");
+  if (configured) return configured;
+  try {
+    return originFromHeaders(await headers());
+  } catch {
+    // Hors requête (génération de robots/sitemap au build par exemple).
+    return "";
+  }
+}
+
+/**
+ * Adresse de retour OAuth. Elle doit être identique au clic sur « Connecter »
+ * et au retour du réseau : les deux passent par le même hôte, la déduction
+ * depuis la requête est donc stable.
+ */
 export async function redirectUri(network: SocialNetwork): Promise<string> {
-  return `${await siteUrl()}/api/social/${network}/callback`;
+  return `${await publicBaseUrl()}/api/social/${network}/callback`;
 }
 
 // ---- Lecture ----

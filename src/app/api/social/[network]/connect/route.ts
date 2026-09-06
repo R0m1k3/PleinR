@@ -6,7 +6,7 @@ import {
   authorizeUrl,
   getDecryptedAppSecret,
   getSocialAccount,
-  siteUrl,
+  publicBaseUrl,
   SOCIAL_NETWORKS,
   type SocialNetwork,
 } from "@/lib/social-accounts";
@@ -34,11 +34,13 @@ export async function GET(
     return back(request, "Réseau inconnu.");
   }
 
-  const base = await siteUrl();
+  // Réglage enregistré, sinon l'adresse par laquelle l'administrateur est
+  // arrivé : c'est celle où le réseau nous renverra.
+  const base = await publicBaseUrl();
   if (!base) {
     return back(
       request,
-      "Renseignez d'abord l'URL publique du site : elle sert à construire l'adresse de retour."
+      "Impossible de déterminer l'adresse publique du site : renseignez-la dans la section « URL publique du site »."
     );
   }
 

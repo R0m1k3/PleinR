@@ -18,7 +18,7 @@ const { auth } = NextAuth(authConfig);
  * `style` et sur la feuille Google Fonts. C'est un compromis assumé — une
  * injection de style est sans commune mesure avec une injection de script.
  */
-function contentSecurityPolicy(nonce: string, isDev: boolean): string {
+function contentSecurityPolicy(nonce: string, isDev: boolean, isHttps: boolean): string {
   return [
     "default-src 'self'",
     "base-uri 'self'",
@@ -35,14 +35,21 @@ function contentSecurityPolicy(nonce: string, isDev: boolean): string {
     "connect-src 'self'",
     // Carte « Nous situer » de la fiche adhérent.
     "frame-src https://www.google.com https://maps.google.com",
-    "upgrade-insecure-requests",
-  ].join("; ");
+    // Uniquement quand la page est servie en HTTPS : sur une page HTTP (test
+    // par IP avant la pose du DNS, accès direct au port), le navigateur
+    // basculerait toutes les navigations vers un https:// inexistant.
+    isHttps ? "upgrade-insecure-requests" : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
 }
 
 export default auth((request: NextRequest) => {
   // `btoa` et non `Buffer` : le middleware tourne sur le runtime Edge.
   const nonce = btoa(crypto.randomUUID());
-  const csp = contentSecurityPolicy(nonce, process.env.NODE_ENV !== "production");
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const isHttps = forwardedProto ? forwardedProto === "https" : request.nextUrl.protocol === "https:";
+  const csp = contentSecurityPolicy(nonce, process.env.NODE_ENV !== "production", isHttps);
 
   // L'en-tête est posé sur la REQUÊTE : Next y lit le nonce pour l'appliquer à
   // ses balises <script>. Il est ensuite renvoyé sur la réponse au navigateur.

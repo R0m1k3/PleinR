@@ -87,6 +87,15 @@ site sans traitement supplémentaire.
   aussi le cycle suspension → remise en ligne.
 - `retryPromoShare` ne sert qu'au rattrapage d'un échec sur un réseau déjà
   choisi ; il ne peut pas élargir la diffusion.
+- L'URL publique du site : `siteUrl()` lit le réglage `site_public_url` puis
+  `NEXT_PUBLIC_SITE_URL` / `AUTH_URL` ; `publicBaseUrl()` y ajoute un repli sur
+  l'origine de la requête (`src/lib/site-url.ts`, en-têtes `X-Forwarded-*`).
+  L'adresse de retour OAuth et les liens des publications passent par
+  `publicBaseUrl()` : la connexion marche sans réglage tant que l'admin passe
+  par l'adresse publique.
+- La CSP (`src/middleware.ts`) ne pose `upgrade-insecure-requests` qu'en HTTPS,
+  sinon un test en HTTP par IP voit toutes ses navigations basculer vers un
+  `https://` inexistant.
 - Les URLs publiques des pages FB/LinkedIn sont des `site_settings`
   (`association_facebook`, `association_linkedin`), éditables dans Paramètres.
 

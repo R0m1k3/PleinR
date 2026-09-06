@@ -12,7 +12,7 @@
 import {
   refreshLinkedInIfNeeded,
   resolveCredentials,
-  siteUrl,
+  publicBaseUrl,
   type SocialNetwork,
 } from "./social-accounts";
 import { memberPath } from "./seo";
@@ -42,7 +42,7 @@ export type PromoForSharing = {
 };
 
 export async function promoLink(promo: PromoForSharing): Promise<string | null> {
-  const base = await siteUrl();
+  const base = await publicBaseUrl();
   if (!base) return null;
   return promo.memberId
     ? `${base}${memberPath({ id: promo.memberId, name: promo.memberName ?? "", city: promo.memberCity })}`
