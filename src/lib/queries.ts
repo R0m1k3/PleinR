@@ -67,6 +67,8 @@ export async function getLivePromotions(limit = 6) {
       badge: promotions.badge,
       imageUrl: promotions.imageUrl,
       validUntil: promotions.validUntil,
+      startsOn: promotions.startsOn,
+      endsOn: promotions.endsOn,
       memberId: promotions.memberId,
       memberName: members.name,
       memberCity: members.city,
@@ -119,6 +121,8 @@ export async function getMemberLivePromotions(memberId: number) {
       badge: promotions.badge,
       imageUrl: promotions.imageUrl,
       validUntil: promotions.validUntil,
+      startsOn: promotions.startsOn,
+      endsOn: promotions.endsOn,
     })
     .from(promotions)
     .where(and(eq(promotions.memberId, memberId), eq(promotions.status, "live")))

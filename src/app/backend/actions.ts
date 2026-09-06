@@ -43,6 +43,7 @@ import {
   selectTarget,
 } from "@/lib/social-accounts";
 import { normalizeWebsite } from "@/lib/member-profile";
+import { isRangeInvalid } from "@/lib/promo-validity";
 import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
 
@@ -114,6 +115,14 @@ function asImageDataUri(formData: FormData, key: string): string | null {
   return value;
 }
 
+/** Date `YYYY-MM-DD` facultative issue d'un `<input type="date">`. */
+function asOptionalDate(formData: FormData, key: string): string | null {
+  const value = asString(formData, key);
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error("Date invalide.");
+  return value;
+}
+
 function revalidatePromoPaths(memberId?: number | null) {
   revalidatePath("/backend/promotions");
   revalidatePath("/backend/espace");
@@ -159,6 +168,8 @@ async function publishPromoShares(
       text: promotions.text,
       badge: promotions.badge,
       validUntil: promotions.validUntil,
+      startsOn: promotions.startsOn,
+      endsOn: promotions.endsOn,
       imageUrl: promotions.imageUrl,
       memberId: promotions.memberId,
       memberName: members.name,
@@ -371,6 +382,11 @@ export async function publishPromo(formData: FormData) {
   const text = String(formData.get("text") ?? "").slice(0, 240);
   const category = String(formData.get("category") ?? "");
   const badge = String(formData.get("badge") ?? "").trim() || null;
+  const startsOn = asOptionalDate(formData, "startsOn");
+  const endsOn = asOptionalDate(formData, "endsOn");
+  if (isRangeInvalid({ startsOn, endsOn })) {
+    throw new Error("La date de fin doit être postérieure à la date de début.");
+  }
   const imageUrl = asImageDataUri(formData, "imageUrl");
 
   // Réseaux souhaités : rien n'est publié ici, la diffusion attend la validation.
@@ -382,6 +398,8 @@ export async function publishPromo(formData: FormData) {
     imageUrl,
     memberId: memberId ?? null,
     status: "pending",
+    startsOn,
+    endsOn,
     ...readShareTargets(formData),
   });
 

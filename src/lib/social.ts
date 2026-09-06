@@ -15,6 +15,7 @@ import {
   publicBaseUrl,
   type SocialNetwork,
 } from "./social-accounts";
+import { formatValidity } from "./promo-validity";
 import { memberPath } from "./seo";
 
 export {
@@ -35,6 +36,8 @@ export type PromoForSharing = {
   text: string | null;
   badge: string | null;
   validUntil: string | null;
+  startsOn?: string | null;
+  endsOn?: string | null;
   imageUrl: string | null;
   memberId: number | null;
   memberName: string | null;
@@ -55,7 +58,9 @@ export async function buildPromoMessage(promo: PromoForSharing): Promise<string>
   lines.push(promo.badge ? `${promo.badge} — ${promo.title}` : promo.title);
   if (promo.memberName) lines.push(`Chez ${promo.memberName}`);
   if (promo.text?.trim()) lines.push("", promo.text.trim());
-  if (promo.validUntil?.trim()) lines.push("", promo.validUntil.trim());
+  // « Valable du … au … » : la même phrase que sur la carte du site.
+  const validity = formatValidity(promo);
+  if (validity) lines.push("", validity);
   const link = await promoLink(promo);
   if (link) lines.push("", link);
   lines.push("", "#PleinR #BassinDePompey #CommerceLocal");

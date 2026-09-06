@@ -11,6 +11,7 @@ import { PromoImage } from "@/components/PromoImage";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import { getActiveMemberCount, getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
 import { getSiteSettings, socialLinks } from "@/lib/site-settings";
+import { formatValidity } from "@/lib/promo-validity";
 import { SITE_DESCRIPTION, SITE_TITLE, memberPath, pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -315,7 +316,9 @@ export default async function AccueilPage() {
                     }}
                   >
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#3c3322" }}>{p.memberName}</div>
-                    <div style={{ fontSize: 11.5, color: "#a99c82" }}>{p.validUntil}</div>
+                    {formatValidity(p) && (
+                      <div style={{ fontSize: 11.5, color: "#a99c82" }}>{formatValidity(p)}</div>
+                    )}
                   </div>
                 </div>
               </Link>

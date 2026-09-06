@@ -6,6 +6,7 @@ import {
   text,
   varchar,
   boolean,
+  date,
   timestamp,
   index,
   uniqueIndex,
@@ -107,6 +108,11 @@ export const promotions = pgTable("promotions", {
   imageUrl: text("image_url"),
   memberId: integer("member_id").references(() => members.id),
   status: promoStatusEnum("status").notNull().default("pending"),
+  // Période de validité. Les deux bornes sont facultatives et indépendantes :
+  // une offre peut n'avoir qu'une date de fin, qu'une date de début, ou aucune.
+  startsOn: date("starts_on"),
+  endsOn: date("ends_on"),
+  /** @deprecated Texte libre des anciennes promos ; sert de repli à l'affichage. */
   validUntil: varchar("valid_until", { length: 120 }),
   // Réseaux demandés à la soumission. Le choix reste modifiable tant que la
   // promo est « pending » ; la validation le fige ET déclenche la publication.

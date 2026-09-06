@@ -7,6 +7,7 @@ import { PromoImage } from "@/components/PromoImage";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import type { SocialNetwork } from "@/lib/social";
 import type { PromoCategoryGroup } from "@/lib/promo-categories";
+import { formatValidity, isRangeInvalid } from "@/lib/promo-validity";
 
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
@@ -36,6 +37,8 @@ export function MemberSpaceForm({
   const [text, setText] = useState("");
   const [cat, setCat] = useState(initialCategory);
   const [badge, setBadge] = useState("");
+  const [startsOn, setStartsOn] = useState("");
+  const [endsOn, setEndsOn] = useState("");
   const [imgData, setImgData] = useState("");
   const [shares, setShares] = useState<SocialNetwork[]>([]);
   const [submitted, setSubmitted] = useState(false);
@@ -62,6 +65,8 @@ export function MemberSpaceForm({
     setTitle("");
     setText("");
     setBadge("");
+    setStartsOn("");
+    setEndsOn("");
     setImgData("");
     setShares([]);
     setSubmitted(false);
@@ -76,6 +81,8 @@ export function MemberSpaceForm({
     fd.set("text", text);
     fd.set("category", cat);
     fd.set("badge", badge);
+    fd.set("startsOn", startsOn);
+    fd.set("endsOn", endsOn);
     fd.set("imageUrl", imgData);
     if (shares.includes("facebook")) fd.set("shareFacebook", "on");
     if (shares.includes("linkedin")) fd.set("shareLinkedin", "on");
@@ -89,6 +96,9 @@ export function MemberSpaceForm({
 
   const hasImg = !!imgData;
   const hasBadge = !!badge.trim();
+  const validity = formatValidity({ startsOn, endsOn });
+  // Bornes incohérentes : on le dit avant l'envoi plutôt qu'après un refus.
+  const badRange = isRangeInvalid({ startsOn, endsOn });
 
   return (
     <div className="grid grid-2" style={{ alignItems: "start" }}>
@@ -169,6 +179,40 @@ export function MemberSpaceForm({
           </div>
         </div>
 
+        <div style={{ marginBottom: 16 }}>
+          <label className="field-label">Durée de validité · facultatif</label>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 150px" }}>
+              <input
+                type="date"
+                value={startsOn}
+                onChange={(e) => { setStartsOn(e.target.value); setSubmitted(false); }}
+                className="field"
+                aria-label="Début de la promotion"
+              />
+              <div style={{ fontSize: 11.5, color: "#a99c82", marginTop: 4 }}>Début</div>
+            </div>
+            <div style={{ flex: "1 1 150px" }}>
+              <input
+                type="date"
+                value={endsOn}
+                min={startsOn || undefined}
+                onChange={(e) => { setEndsOn(e.target.value); setSubmitted(false); }}
+                className="field"
+                aria-label="Fin de la promotion"
+              />
+              <div style={{ fontSize: 11.5, color: "#a99c82", marginTop: 4 }}>Fin</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 12, color: badRange ? "#d8472b" : "#8c8068", marginTop: 8, lineHeight: 1.5 }}>
+            {badRange
+              ? "La date de fin est antérieure à la date de début."
+              : validity
+                ? `Affiché sur le site et dans la publication : « ${validity} »`
+                : "Laissez vide si votre offre n'a pas de date limite : rien ne sera affiché."}
+          </div>
+        </div>
+
         <label className="field-label">Texte de la promotion</label>
         <textarea
           value={text}
@@ -230,7 +274,7 @@ export function MemberSpaceForm({
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={submit}
-            disabled={pending}
+            disabled={pending || badRange}
             className="font-display"
             style={{ flex: 1, border: "none", background: "#9a6638", color: "#fff", fontWeight: 700, fontSize: 15, padding: 14, borderRadius: 11, cursor: pending ? "default" : "pointer", opacity: pending ? 0.7 : 1 }}
           >
@@ -293,6 +337,9 @@ export function MemberSpaceForm({
               {text.trim() ||
                 "Le texte de votre offre apparaîtra ici au fur et à mesure que vous le rédigez."}
             </p>
+            {validity && (
+              <div style={{ fontSize: 12, color: "#a99c82", marginBottom: 12 }}>{validity}</div>
+            )}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #f0e8d6", paddingTop: 12 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#3c3322" }}>{memberName}</div>
               <span style={{ color: "#2C6FB3", fontWeight: 700, fontSize: 13 }}>Voir l&apos;offre →</span>

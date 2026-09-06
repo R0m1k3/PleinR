@@ -26,6 +26,7 @@ import {
   parseMemberHours,
   websiteLabel,
 } from "@/lib/member-profile";
+import { formatValidity } from "@/lib/promo-validity";
 
 export const dynamic = "force-dynamic";
 
@@ -437,8 +438,8 @@ export default async function FicheAdherentPage({
                     <div style={{ padding: "14px 15px 15px" }}>
                       <h3 className="font-display" style={{ fontWeight: 700, fontSize: 16, margin: "0 0 5px", color: "#26201a" }}>{p.title}</h3>
                       <p style={{ margin: "0 0 11px", fontSize: 13, color: "#8c8068", lineHeight: 1.5 }}>{p.text}</p>
-                      {p.validUntil && (
-                        <div style={{ borderTop: "1px solid #f0e8d6", paddingTop: 10, fontSize: 12, color: "#a99c82" }}>{p.validUntil}</div>
+                      {formatValidity(p) && (
+                        <div style={{ borderTop: "1px solid #f0e8d6", paddingTop: 10, fontSize: 12, color: "#a99c82" }}>{formatValidity(p)}</div>
                       )}
                     </div>
                   </article>

@@ -8,6 +8,7 @@ import { configuredNetworks, SOCIAL_LABELS } from "@/lib/social";
 import { moderatePromo, retryPromoShare } from "../actions";
 import { PromoImage } from "@/components/PromoImage";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
+import { formatValidity } from "@/lib/promo-validity";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,9 @@ export default async function PromotionsPage() {
       text: promotions.text,
       category: promotions.category,
       status: promotions.status,
+      validUntil: promotions.validUntil,
+      startsOn: promotions.startsOn,
+      endsOn: promotions.endsOn,
       imageUrl: promotions.imageUrl,
       suspendedBy: promotions.suspendedBy,
       suspendedAt: promotions.suspendedAt,
@@ -175,6 +179,14 @@ export default async function PromotionsPage() {
                 <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "#8c8068", lineHeight: 1.45, flex: 1 }}>
                   {p.text}
                 </p>
+
+                {/* Le modérateur voit la période de validité avant de valider :
+                    c'est elle qui partira dans le message réseaux sociaux. */}
+                {formatValidity(p) && (
+                  <div style={{ fontSize: 12, color: "#9a8d72", fontWeight: 600, margin: "0 0 12px" }}>
+                    {formatValidity(p)}
+                  </div>
+                )}
 
                 {isSuspended && (
                   <div style={{ background: "#fbe9e6", border: "1px solid #f2d5cf", color: "#a8503c", borderRadius: 10, padding: "9px 11px", fontSize: 12, lineHeight: 1.45, marginBottom: 11 }}>

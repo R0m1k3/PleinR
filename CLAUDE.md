@@ -56,6 +56,17 @@ suspension par le staff ne peut être levée que par le staff. Les lectures
 publiques filtrent sur `status = 'live'`, donc une promo suspendue disparaît du
 site sans traitement supplémentaire.
 
+**Période de validité** : `promotions.starts_on` / `ends_on` (colonnes `date`,
+les deux facultatives et indépendantes). `src/lib/promo-validity.ts` est **pur**
+et verrouillé par `tests/promo-validity.test.ts` : `formatValidity()` rend
+« Valable du 1er au 15 mars 2027 » / « Valable jusqu'au … » / « Valable à partir
+du … », `formatValidityShort()` la variante sans « Valable » pour les lignes de
+méta, `isRangeInvalid()` garde le formulaire et l'action. Sans date, rien n'est
+affiché ; l'ancien texte libre `valid_until` (jamais écrit par l'application)
+ne sert plus que de repli d'affichage. La même phrase part dans le message
+Facebook / LinkedIn (`buildPromoMessage`) : un seul formateur pour le site,
+le backoffice et les réseaux.
+
 ## Réseaux sociaux
 
 - `src/lib/social.ts` publie une promo sur la page Facebook (Graph API) ou

@@ -7,6 +7,7 @@ import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import { configuredNetworks, SOCIAL_LABELS, type SocialNetwork } from "@/lib/social";
 import { PROMO_CATEGORY_GROUPS, defaultPromoCategory } from "@/lib/promo-categories";
 import { memberPath } from "@/lib/seo";
+import { formatValidityShort } from "@/lib/promo-validity";
 import { setOwnPromoShareTargets, setOwnPromoSuspension } from "../../actions";
 import { EspaceHeader } from "../EspaceHeader";
 import { MemberSpaceForm } from "../MemberSpaceForm";
@@ -28,6 +29,8 @@ type MyPromo = {
   category: string | null;
   badge: string | null;
   validUntil: string | null;
+  startsOn: string | null;
+  endsOn: string | null;
   createdAt: Date;
   imageUrl: string | null;
   suspendedBy: "member" | "staff" | null;
@@ -79,6 +82,8 @@ export default async function EspacePromotionsPage() {
         category: promotions.category,
         badge: promotions.badge,
         validUntil: promotions.validUntil,
+        startsOn: promotions.startsOn,
+        endsOn: promotions.endsOn,
         createdAt: promotions.createdAt,
         imageUrl: promotions.imageUrl,
         suspendedBy: promotions.suspendedBy,
@@ -237,7 +242,7 @@ function PromoSection({
 function PromoRow({ promo: mp, networks, lastShare }: { promo: MyPromo; networks: SocialNetwork[]; lastShare: ShareState }) {
   const st = PROMO_STATUS[mp.status] ?? PROMO_STATUS.expired;
   const suspendedByStaff = mp.status === "suspended" && mp.suspendedBy === "staff";
-  const meta = [mp.category, mp.badge, mp.validUntil].filter(Boolean).join(" · ");
+  const meta = [mp.category, mp.badge, formatValidityShort(mp)].filter(Boolean).join(" · ");
   return (
     <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 12, padding: "12px 14px", marginBottom: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 13, flexWrap: "wrap" }}>
