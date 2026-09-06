@@ -49,7 +49,7 @@ export async function promoLink(promo: PromoForSharing): Promise<string | null> 
   if (!base) return null;
   return promo.memberId
     ? `${base}${memberPath({ id: promo.memberId, name: promo.memberName ?? "", city: promo.memberCity })}`
-    : `${base}/#promotions`;
+    : `${base}/promotions`;
 }
 
 /** Texte du post, commun aux deux réseaux. */

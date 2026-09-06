@@ -68,6 +68,14 @@ ne sert plus que de repli d'affichage. La même phrase part dans le message
 Facebook / LinkedIn (`buildPromoMessage`) : un seul formateur pour le site,
 le backoffice et les réseaux.
 
+La liste publique vit sur **`/promotions`** (toutes les offres en cours) ;
+l'accueil n'en montre que les six dernières et renvoie vers elle. Les deux
+listes partagent `src/components/PromoCard.tsx` : un seul rendu, pas deux
+cartes à maintenir. `getLivePromotions(limit)` accepte `null` pour « tout »,
+la limite restant appliquée en SQL. Les liens « Promotions » de l'en-tête, du
+pied de page et des publications réseaux pointent sur cette page, plus sur
+l'ancre `/#promotions`.
+
 Une promotion n'est **affichée que pendant sa période** : les lectures de
 `src/lib/queries.ts` passent par `VISIBLE_PROMO` (statut `live` **et** fenêtre
 de dates, journée calculée en `Europe/Paris` — un conteneur en UTC retirerait

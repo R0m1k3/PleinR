@@ -71,6 +71,7 @@ export const PRIVATE_PATHS = ["/backend", "/api", "/login", "/inscription"];
 export const STATIC_ROUTES: { path: string; priority: number; changeFrequency: "daily" | "weekly" | "monthly" | "yearly" }[] = [
   { path: "/", priority: 1, changeFrequency: "daily" },
   { path: "/annuaire", priority: 0.9, changeFrequency: "daily" },
+  { path: "/promotions", priority: 0.9, changeFrequency: "daily" },
   { path: "/association", priority: 0.8, changeFrequency: "weekly" },
   { path: "/rencontres-passees", priority: 0.6, changeFrequency: "monthly" },
   { path: "/mentions-legales", priority: 0.2, changeFrequency: "yearly" },

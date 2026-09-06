@@ -32,7 +32,7 @@ export async function SiteFooter() {
             <div className="footer-title">Accès rapide</div>
             <div className="footer-links">
               <Link href="/annuaire">Annuaire</Link>
-              <Link href="/#promotions">Promotions</Link>
+              <Link href="/promotions">Promotions</Link>
               <Link href="/association">L&apos;association</Link>
               <Link href="/rencontres-passees">Rencontres passées</Link>
               <Link href="/login">Espace adhérent</Link>

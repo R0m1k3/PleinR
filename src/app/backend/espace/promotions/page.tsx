@@ -201,7 +201,7 @@ export default async function EspacePromotionsPage() {
 
       {myPromos.length > 0 && (
         <p style={{ fontSize: 13, color: "#8c8068", marginTop: 18 }}>
-          Les offres en ligne apparaissent sur <Link href="/#promotions" style={{ color: "#9a6638", fontWeight: 700 }}>la page d&apos;accueil</Link>
+          Les offres en ligne apparaissent sur <Link href="/promotions" style={{ color: "#9a6638", fontWeight: 700 }}>la page des promotions</Link>
           {publicPath ? (
             <>
               {" "}et sur <Link href={publicPath} style={{ color: "#9a6638", fontWeight: 700 }}>votre fiche</Link>

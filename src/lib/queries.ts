@@ -72,8 +72,14 @@ export async function getCategoriesWithCounts(limit = 6) {
   return rows;
 }
 
-export async function getLivePromotions(limit = 6) {
-  const rows = await db
+/**
+ * Promotions visibles, de la plus récente à la plus ancienne.
+ *
+ * `limit` à `null` : toutes les offres en cours (page `/promotions`) ; sinon
+ * les N dernières (accueil).
+ */
+export async function getLivePromotions(limit: number | null = 6) {
+  const query = db
     .select({
       id: promotions.id,
       title: promotions.title,
@@ -93,8 +99,10 @@ export async function getLivePromotions(limit = 6) {
     .leftJoin(members, eq(promotions.memberId, members.id))
     .where(VISIBLE_PROMO)
     .orderBy(desc(promotions.createdAt))
-    .limit(limit);
-  return rows;
+    .$dynamic();
+  // La limite reste dans le SQL : la page « toutes les promos » est la seule à
+  // tout demander, l'accueil ne rapatrie que ses six cartes.
+  return limit === null ? query : query.limit(limit);
 }
 
 export async function getPublicMember(id: number) {
