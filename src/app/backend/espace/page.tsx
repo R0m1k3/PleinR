@@ -8,6 +8,7 @@ import { configuredNetworks, SOCIAL_LABELS, type SocialNetwork } from "@/lib/soc
 import { ImageField } from "@/components/ImageField";
 import { ImageConsentForm } from "@/components/ImageConsentForm";
 import { HoursEditor } from "@/components/HoursEditor";
+import { TagsField } from "@/components/TagsField";
 import { communeOptions } from "@/lib/communes";
 import {
   saveImageConsent,
@@ -53,6 +54,7 @@ export default async function EspacePage() {
   let lastShare = new Map<string, { status: string; url: string | null; error: string | null }>();
   let myRegistrations: { meetingId: number; title: string; startsAt: Date; location: string | null; participants: number; confirmed: boolean }[] = [];
   let latestConsent: { decision: string; createdAt: Date } | null = null;
+  let profileCategory: { slug: string; label: string } | null = null;
 
   if (memberId) {
     const [m] = await db.select().from(members).where(eq(members.id, memberId));
@@ -60,8 +62,9 @@ export default async function EspacePage() {
       profile = m;
       memberName = m.name;
       const [cat] = m.categoryId
-        ? await db.select({ label: categories.label }).from(categories).where(eq(categories.id, m.categoryId))
+        ? await db.select({ slug: categories.slug, label: categories.label }).from(categories).where(eq(categories.id, m.categoryId))
         : [];
+      profileCategory = cat ?? null;
       subtitle = ["Espace adhérent", cat?.label, m.city].filter(Boolean).join(" · ");
     }
     myPromos = await db
@@ -239,11 +242,7 @@ export default async function EspacePage() {
 
           <div style={{ marginTop: 16 }}>
             <label className="field-label">Tags / spécialités (séparés par des virgules)</label>
-            <input name="tags" defaultValue={profile.tags ?? ""} className="field" placeholder="Levain naturel, Produits locaux, Fait maison" />
-            <p className="field-hint">
-              Mots-clés que vos clients recherchent : produits, services, marques, quartier. Ils s&apos;affichent sur
-              votre fiche et sont transmis aux moteurs de recherche.
-            </p>
+            <TagsField defaultValue={profile.tags} fixedCategory={profileCategory} />
           </div>
 
           <div style={{ marginTop: 16 }}>

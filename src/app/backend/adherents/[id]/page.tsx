@@ -7,6 +7,7 @@ import { categories, members, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
 import { ImageField } from "@/components/ImageField";
 import { HoursEditor } from "@/components/HoursEditor";
+import { TagsField } from "@/components/TagsField";
 import { communeOptions } from "@/lib/communes";
 import { deleteMember, updateMember } from "../../actions";
 import { ResetPasswordButton } from "../ResetPasswordButton";
@@ -31,7 +32,7 @@ export default async function EditMemberPage({
   if (!member) notFound();
 
   const cats = await db
-    .select({ id: categories.id, label: categories.label })
+    .select({ id: categories.id, slug: categories.slug, label: categories.label })
     .from(categories)
     .orderBy(asc(categories.sort));
 
@@ -142,11 +143,7 @@ export default async function EditMemberPage({
 
         <div style={{ marginTop: 16 }}>
           <label className="field-label">Tags / spécialités (séparés par des virgules)</label>
-          <input name="tags" defaultValue={member.tags ?? ""} className="field" placeholder="Levain naturel, Produits locaux, Fait maison" />
-          <p className="field-hint">
-            Mots-clés que vos clients recherchent : produits, services, marques, quartier. Ils s&apos;affichent sur
-            votre fiche et sont transmis aux moteurs de recherche.
-          </p>
+          <TagsField defaultValue={member.tags} categories={cats} />
         </div>
 
         <div style={{ marginTop: 16 }}>

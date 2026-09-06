@@ -11,6 +11,7 @@ import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { CATEGORY_PALETTE } from "@/db/categories";
 import { slugify } from "@/lib/slug";
+import { autoTags } from "@/lib/tags";
 import {
   activityLog,
   categories,
@@ -401,6 +402,28 @@ export type IssuedCredentials = { email: string; tempPassword: string };
 
 export type CreatedMemberAccount = IssuedCredentials & { memberId: number };
 
+/**
+ * Tags à enregistrer : la saisie si elle existe, sinon les suggestions déduites
+ * du métier, de la commune et de la description (`autoTags`).
+ */
+async function resolveMemberTags(
+  formTags: FormDataEntryValue | null,
+  input: { categoryId: number | null; city: string | null; description: string | null }
+): Promise<string | null> {
+  const [category] = input.categoryId
+    ? await db
+        .select({ slug: categories.slug, label: categories.label })
+        .from(categories)
+        .where(eq(categories.id, input.categoryId))
+    : [];
+  return autoTags(String(formTags ?? ""), {
+    categorySlug: category?.slug,
+    categoryLabel: category?.label,
+    city: input.city,
+    description: input.description,
+  });
+}
+
 export async function addMember(formData: FormData): Promise<CreatedMemberAccount | undefined> {
   const { role } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
@@ -419,9 +442,10 @@ export async function addMember(formData: FormData): Promise<CreatedMemberAccoun
     throw new Error("Un compte existe déjà avec cet e-mail.");
   }
 
+  const tags = await resolveMemberTags(null, { categoryId, city, description: null });
   const [newMember] = await db
     .insert(members)
-    .values({ name, email, categoryId, city, status })
+    .values({ name, email, categoryId, city, status, tags })
     .returning({ id: members.id });
 
   // Compte de connexion adhérent avec mot de passe temporaire à changer.
@@ -521,22 +545,27 @@ export async function updateMember(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
 
+  const categoryId = formData.get("categoryId") ? Number(formData.get("categoryId")) : null;
+  const city = String(formData.get("city") ?? "").trim() || null;
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const tags = await resolveMemberTags(formData.get("tags"), { categoryId, city, description });
+
   await db
     .update(members)
     .set({
       name: String(formData.get("name") ?? "").trim(),
       email: String(formData.get("email") ?? "").trim(),
-      categoryId: formData.get("categoryId") ? Number(formData.get("categoryId")) : null,
-      city: String(formData.get("city") ?? "").trim() || null,
+      categoryId,
+      city,
       address: String(formData.get("address") ?? "").trim() || null,
-      description: String(formData.get("description") ?? "").trim() || null,
+      description,
       postalCode: String(formData.get("postalCode") ?? "").trim() || null,
       phone: String(formData.get("phone") ?? "").trim() || null,
       website: normalizeWebsite(String(formData.get("website") ?? "")),
       memberSince: formData.get("memberSince") ? Number(formData.get("memberSince")) : null,
       coverUrl: String(formData.get("coverUrl") ?? "").trim() || null,
       logoUrl: String(formData.get("logoUrl") ?? "").trim() || null,
-      tags: String(formData.get("tags") ?? "").trim() || null,
+      tags,
       hours: String(formData.get("hours") ?? "").trim() || null,
       status: String(formData.get("status") ?? "pending") as "active" | "pending",
     })
@@ -1076,18 +1105,29 @@ export async function updateOwnProfile(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return;
 
+  // La catégorie n'est pas modifiable par l'adhérent : on la relit en base pour
+  // en déduire les tags si le champ est laissé vide.
+  const [current] = await db.select({ categoryId: members.categoryId }).from(members).where(eq(members.id, memberId));
+  const city = String(formData.get("city") ?? "").trim() || null;
+  const description = String(formData.get("description") ?? "").trim() || null;
+  const tags = await resolveMemberTags(formData.get("tags"), {
+    categoryId: current?.categoryId ?? null,
+    city,
+    description,
+  });
+
   await db
     .update(members)
     .set({
       name,
-      description: String(formData.get("description") ?? "").trim() || null,
+      description,
       address: String(formData.get("address") ?? "").trim() || null,
       postalCode: String(formData.get("postalCode") ?? "").trim() || null,
-      city: String(formData.get("city") ?? "").trim() || null,
+      city,
       phone: String(formData.get("phone") ?? "").trim() || null,
       website: normalizeWebsite(String(formData.get("website") ?? "")),
       hours: String(formData.get("hours") ?? "").trim() || null,
-      tags: String(formData.get("tags") ?? "").trim() || null,
+      tags,
       // Images restreintes aux data-URI : un adhérent ne peut pas faire pointer
       // sa fiche publique vers une ressource externe qu'il contrôle.
       coverUrl: asImageDataUri(formData, "coverUrl"),

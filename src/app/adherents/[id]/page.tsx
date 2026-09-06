@@ -18,6 +18,7 @@ import {
   parseMemberParam,
 } from "@/lib/seo";
 import { publicBaseUrl } from "@/lib/seo-server";
+import { autoTags, formatTags, parseTags } from "@/lib/tags";
 import {
   formatSlots,
   getOpenStatus,
@@ -152,7 +153,16 @@ export default async function FicheAdherentPage({
     [member.address, member.postalCode, member.city].filter(Boolean).join(", ")
   );
   const paragraphs = (member.description ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
-  const tags = (member.tags ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  // Fiche jamais ré-enregistrée depuis l'arrivée des tags automatiques : on
+  // affiche les suggestions du métier plutôt qu'une rubrique vide.
+  const tags = parseTags(
+    autoTags(member.tags, {
+      categorySlug: member.categorySlug,
+      categoryLabel: member.categoryLabel,
+      city: member.city,
+      description: member.description,
+    })
+  );
   const hours = parseMemberHours(member.hours);
   const openStatus = getOpenStatus(hours);
   const normalizedWebsite = normalizeWebsite(member.website);
@@ -182,7 +192,7 @@ export default async function FicheAdherentPage({
             { name: "Annuaire", path: "/annuaire" },
             { name: member.name, path: canonical },
           ]),
-          localBusinessJsonLd(baseUrl, member, hours, normalizedWebsite),
+          localBusinessJsonLd(baseUrl, { ...member, tags: formatTags(tags) }, hours, normalizedWebsite),
         ]}
       />
 

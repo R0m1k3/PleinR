@@ -98,6 +98,7 @@ export async function getPublicMember(id: number) {
       hours: members.hours,
       tags: members.tags,
       categoryLabel: categories.label,
+      categorySlug: categories.slug,
       accent: categories.accent,
       tint: categories.tint,
     })

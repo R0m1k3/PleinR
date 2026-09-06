@@ -948,6 +948,40 @@ img {
   color: var(--muted);
   margin-bottom: 6px;
 }
+/* Suggestions de tags : pastilles cliquables sous le champ. */
+.tag-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.tag-suggestions__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted-2);
+  margin-right: 2px;
+}
+.tag-suggestion {
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px dashed #d8cdb4;
+  background: #faf7ef;
+  color: var(--ink-soft);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.tag-suggestion:hover {
+  background: #f6efdc;
+  border-color: var(--gold);
+}
+.tag-suggestion--all {
+  border-style: solid;
+  color: var(--brown);
+}
 /* Conseil de rédaction sous un champ : discret, mais lu avant de saisir. */
 .field-hint {
   margin: 6px 0 0;

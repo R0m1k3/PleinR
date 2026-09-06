@@ -137,6 +137,14 @@ site sans traitement supplémentaire.
   `app/manifest.ts` et `app/opengraph-image.tsx` (vignette 1200×630 générée).
 - `/backend`, `/login`, `/inscription/*` et les fiches non actives sont en
   `NOINDEX` ; les pages publiques utilisent `<main>` et un seul `<h1>`.
+- **Tags adhérents** : `src/lib/tags.ts` (pur) porte un vocabulaire par métier
+  (`CATEGORY_TAGS`, un par slug du référentiel, vérifié par `tests/tags.test.ts`)
+  et un vocabulaire transversal détecté dans la description. `autoTags()` ne
+  remplit le champ qu'à vide : à l'enregistrement (`resolveMemberTags` dans
+  `backend/actions.ts`) et à l'affichage de la fiche publique. Le composant
+  `TagsField` propose les suggestions en pastilles cliquables dans les deux
+  formulaires. Un nouveau métier dans `categories.ts` exige son entrée dans
+  `CATEGORY_TAGS`.
 - **URLs de fiche** : `memberPath({ id, name, city })` donne
   `/adherents/12-au-bon-pain-frouard`. L'identifiant en tête suffit
   (`parseMemberParam`), toute autre écriture est redirigée en 301 vers la forme
