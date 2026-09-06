@@ -22,6 +22,10 @@ export const promoStatusEnum = pgEnum("promo_status", [
   "expired",
   "rejected",
   "suspended",
+  // Validée par l'association mais en attente de sa date de publication
+  // (`publish_at`). Invisible du site public tant que l'échéance n'est pas
+  // atteinte, et non encore diffusée sur les réseaux.
+  "scheduled",
 ]);
 // Qui a suspendu la promotion : son créateur (l'adhérent) ou l'association.
 // Une promotion suspendue par l'association ne peut être réactivée que par elle.
@@ -118,6 +122,8 @@ export const promotions = pgTable("promotions", {
   // promo est « pending » ; la validation le fige ET déclenche la publication.
   shareFacebook: boolean("share_facebook").notNull().default(false),
   shareLinkedin: boolean("share_linkedin").notNull().default(false),
+  // Programmation de la publication. Vide = mise en ligne dès la validation.
+  publishAt: timestamp("publish_at", { withTimezone: true }),
   suspendedBy: promoSuspendedByEnum("suspended_by"),
   suspendedById: integer("suspended_by_id").references(() => users.id, { onDelete: "set null" }),
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),

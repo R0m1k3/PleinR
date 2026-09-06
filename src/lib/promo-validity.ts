@@ -88,3 +88,30 @@ export function isRangeInvalid(promo: PromoValidity): boolean {
   if (!start || !end) return false;
   return Date.UTC(end.year, end.month, end.day) < Date.UTC(start.year, start.month, start.day);
 }
+
+/** `true` si la période n'a pas encore commencé. */
+export function isNotStarted(promo: PromoValidity, today = new Date()): boolean {
+  const start = parse(promo.startsOn);
+  if (!start) return false;
+  return today.getTime() < Date.UTC(start.year, start.month, start.day);
+}
+
+/**
+ * Pourquoi une promotion validée n'apparaît pas sur le site aujourd'hui.
+ *
+ * Les lectures publiques (`src/lib/queries.ts`) écartent les offres hors
+ * période ; ce message l'explique côté backoffice, pour qu'un adhérent ne
+ * cherche pas une offre « en ligne » qui n'est pas encore, ou plus, affichée.
+ * Renvoie `null` quand la promotion est bien visible.
+ */
+export function visibilityNote(promo: PromoValidity, today = new Date()): string | null {
+  const start = parse(promo.startsOn);
+  const end = parse(promo.endsOn);
+  if (start && isNotStarted(promo, today)) {
+    return `Pas encore affichée : elle apparaîtra sur le site le ${full(start)}.`;
+  }
+  if (end && isExpired(promo, today)) {
+    return `Période terminée le ${full(end)} : elle n'apparaît plus sur le site.`;
+  }
+  return null;
+}

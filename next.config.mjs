@@ -8,6 +8,20 @@ const nextConfig = {
     // Les images d'entête/logo sont envoyées en data-URL via server action.
     serverActions: { bodySizeLimit: "4mb" },
   },
+  // `instrumentation.ts` est compilé pour les deux runtimes dès qu'un
+  // middleware existe. Son chargement du libérateur de publications est déjà
+  // conditionné à `NEXT_RUNTIME === "nodejs"`, mais webpack suit quand même
+  // l'import et tente d'embarquer `pg` (donc `fs`, `path`, `stream`) dans le
+  // bundle edge, où ces modules n'existent pas. On coupe la branche à la
+  // source : côté edge, le module Node n'est tout simplement pas résolu.
+  webpack: (config, { nextRuntime, webpack }) => {
+    if (nextRuntime === "edge") {
+      config.plugins.push(
+        new webpack.IgnorePlugin({ resourceRegExp: /^\.\/instrumentation-node$/ })
+      );
+    }
+    return config;
+  },
   async headers() {
     return [
       {

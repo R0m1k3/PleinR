@@ -50,11 +50,12 @@ docker compose up --build   # full stack
 
 ## Promotions
 
-Statuts : `pending` → `live` → `suspended` ⇄ `live` (+ `rejected` / `expired`).
+Statuts : `pending` → (`scheduled` →) `live` → `suspended` ⇄ `live`
+(+ `rejected` / `expired`).
 `promotions.suspended_by` retient qui a suspendu (`member` ou `staff`) : une
 suspension par le staff ne peut être levée que par le staff. Les lectures
-publiques filtrent sur `status = 'live'`, donc une promo suspendue disparaît du
-site sans traitement supplémentaire.
+publiques filtrent sur le statut `live`, donc une promo suspendue — ou encore
+programmée — disparaît du site sans traitement supplémentaire.
 
 **Période de validité** : `promotions.starts_on` / `ends_on` (colonnes `date`,
 les deux facultatives et indépendantes). `src/lib/promo-validity.ts` est **pur**
@@ -66,6 +67,43 @@ affiché ; l'ancien texte libre `valid_until` (jamais écrit par l'application)
 ne sert plus que de repli d'affichage. La même phrase part dans le message
 Facebook / LinkedIn (`buildPromoMessage`) : un seul formateur pour le site,
 le backoffice et les réseaux.
+
+Une promotion n'est **affichée que pendant sa période** : les lectures de
+`src/lib/queries.ts` passent par `VISIBLE_PROMO` (statut `live` **et** fenêtre
+de dates, journée calculée en `Europe/Paris` — un conteneur en UTC retirerait
+sinon une offre deux heures trop tôt). Le statut n'est pas modifié : hors
+période, le backoffice affiche `visibilityNote()` (« pas encore affichée » /
+« période terminée »), et l'offre revient d'elle-même si les dates changent.
+
+**Publication programmée** : `promotions.publish_at` (`timestamptz`, vide =
+mise en ligne immédiate). L'adhérent propose une date dans son formulaire, le
+modérateur la garde, la déplace ou la vide dans « Valider » — comme les cases
+réseaux, c'est le dernier moment où elle est ajustable. Une promotion validée
+avec une échéance future passe au statut `scheduled` : invisible du site et
+**rien n'est diffusé**. `releaseDuePromotions()` (`src/lib/promo-publish.ts`)
+fait la bascule `scheduled → live` par un `UPDATE … RETURNING` filtré sur le
+statut — atomique, donc sans double publication même à plusieurs instances —
+puis appelle `publishPromoShares()`. Le bouton « Publier maintenant » de la
+modération court-circuite l'attente.
+
+`src/lib/promo-schedule.ts` est **pur** (`tests/promo-schedule.test.ts`) :
+il convertit la saisie `datetime-local` depuis/vers l'heure de l'association
+(`Europe/Paris`, changements d'heure compris) et refuse une saisie illisible
+plutôt que de la transformer en publication immédiate.
+
+Le déclencheur est `src/instrumentation.ts` : une boucle d'une minute démarrée
+avec le serveur, avec un premier passage au démarrage pour rattraper les
+échéances tombées pendant un redéploiement. `PROMO_SCHEDULER=off` la désactive.
+Le travail vit dans `src/instrumentation-node.ts` parce que Next compile aussi
+`instrumentation.ts` pour le runtime edge du middleware : `next.config.mjs`
+l'écarte de ce bundle (`IgnorePlugin`), sans quoi webpack tente d'y embarquer
+`pg` et ses dépendances Node.
+
+`src/lib/promo-publish.ts` porte `publishPromoShares()` — et non plus
+`backend/actions.ts` — parce qu'il a deux appelants : une action serveur et la
+boucle de libération, qui n'a pas de requête et ne peut donc pas appeler
+`revalidatePath()`. `src/lib/activity-log.ts` porte `logActivity()` pour la
+même raison.
 
 ## Réseaux sociaux
 
@@ -93,11 +131,12 @@ le backoffice et les réseaux.
 - Les images de promo sont stockées en data-URI : l'upload se fait donc en
   binaire (multipart pour Facebook, Images API en 3 étapes pour LinkedIn), pas
   par URL.
-- La diffusion est déclenchée **par la validation**, pas par un bouton :
+- La diffusion est déclenchée **par la validation** (ou par l'échéance d'une
+  publication programmée), pas par un bouton :
   `promotions.share_facebook` / `share_linkedin` sont choisis par l'adhérent,
   ajustables par le modérateur dans le formulaire « Valider », puis figés
   (`status !== 'pending'`).
-- `publishPromoShares()` dans `backend/actions.ts` est le seul point de
+- `publishPromoShares()` dans `src/lib/promo-publish.ts` est le seul point de
   publication. Elle ne lève jamais et ignore tout réseau ayant déjà une ligne
   `social_posts` en `posted` : c'est la garde anti-republication, qui couvre
   aussi le cycle suspension → remise en ligne.

@@ -1,6 +1,21 @@
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, members, promotions } from "@/db/schema";
+
+/**
+ * Promotion réellement visible par le public : validée **et** dans sa période
+ * de validité.
+ *
+ * Les deux bornes sont facultatives — une offre sans date reste affichée sans
+ * limite. La journée de référence est celle de l'association, pas celle du
+ * serveur : un conteneur en UTC retirerait sinon une offre « valable jusqu'au
+ * 30 juin » deux heures trop tôt.
+ */
+const VISIBLE_PROMO = and(
+  eq(promotions.status, "live"),
+  sql`(${promotions.startsOn} is null or ${promotions.startsOn} <= (current_timestamp at time zone 'Europe/Paris')::date)`,
+  sql`(${promotions.endsOn} is null or ${promotions.endsOn} >= (current_timestamp at time zone 'Europe/Paris')::date)`
+);
 
 export async function getActiveMembersWithCategory() {
   return db
@@ -32,7 +47,7 @@ export async function getLiveBadgesByMember() {
   return db
     .select({ memberId: promotions.memberId, badge: promotions.badge })
     .from(promotions)
-    .where(eq(promotions.status, "live"));
+    .where(VISIBLE_PROMO);
 }
 
 export async function getCategoriesWithCounts(limit = 6) {
@@ -75,7 +90,7 @@ export async function getLivePromotions(limit = 6) {
     })
     .from(promotions)
     .leftJoin(members, eq(promotions.memberId, members.id))
-    .where(eq(promotions.status, "live"))
+    .where(VISIBLE_PROMO)
     .orderBy(desc(promotions.createdAt))
     .limit(limit);
   return rows;
@@ -125,7 +140,7 @@ export async function getMemberLivePromotions(memberId: number) {
       endsOn: promotions.endsOn,
     })
     .from(promotions)
-    .where(and(eq(promotions.memberId, memberId), eq(promotions.status, "live")))
+    .where(and(eq(promotions.memberId, memberId), VISIBLE_PROMO))
     .orderBy(desc(promotions.createdAt));
 }
 
@@ -221,4 +236,10 @@ export async function getActiveMembersByCategory(categoryId: number) {
 export async function getCategoriesInUse() {
   const rows = await getCategoriesWithCounts(1000);
   return rows.filter((c) => Number(c.memberCount) > 0);
+}
+
+/** Promotions réellement affichées aujourd'hui — le chiffre du tableau de bord. */
+export async function countVisiblePromotions(): Promise<number> {
+  const [row] = await db.select({ n: count() }).from(promotions).where(VISIBLE_PROMO);
+  return row?.n ?? 0;
 }

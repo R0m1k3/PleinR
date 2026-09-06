@@ -8,6 +8,7 @@ import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import type { SocialNetwork } from "@/lib/social";
 import type { PromoCategoryGroup } from "@/lib/promo-categories";
 import { formatValidity, isRangeInvalid } from "@/lib/promo-validity";
+import { formatSchedule, parseScheduleInput } from "@/lib/promo-schedule";
 
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
@@ -39,6 +40,7 @@ export function MemberSpaceForm({
   const [badge, setBadge] = useState("");
   const [startsOn, setStartsOn] = useState("");
   const [endsOn, setEndsOn] = useState("");
+  const [publishAt, setPublishAt] = useState("");
   const [imgData, setImgData] = useState("");
   const [shares, setShares] = useState<SocialNetwork[]>([]);
   const [submitted, setSubmitted] = useState(false);
@@ -67,6 +69,7 @@ export function MemberSpaceForm({
     setBadge("");
     setStartsOn("");
     setEndsOn("");
+    setPublishAt("");
     setImgData("");
     setShares([]);
     setSubmitted(false);
@@ -83,6 +86,7 @@ export function MemberSpaceForm({
     fd.set("badge", badge);
     fd.set("startsOn", startsOn);
     fd.set("endsOn", endsOn);
+    fd.set("publishAt", publishAt);
     fd.set("imageUrl", imgData);
     if (shares.includes("facebook")) fd.set("shareFacebook", "on");
     if (shares.includes("linkedin")) fd.set("shareLinkedin", "on");
@@ -99,6 +103,14 @@ export function MemberSpaceForm({
   const validity = formatValidity({ startsOn, endsOn });
   // Bornes incohérentes : on le dit avant l'envoi plutôt qu'après un refus.
   const badRange = isRangeInvalid({ startsOn, endsOn });
+  // Aperçu de la programmation. Le champ donne une heure locale : on la relit
+  // avec le même formateur que le backoffice pour éviter toute surprise.
+  let scheduleHint: string | null = null;
+  try {
+    scheduleHint = formatSchedule(parseScheduleInput(publishAt));
+  } catch {
+    scheduleHint = null;
+  }
 
   return (
     <div className="grid grid-2" style={{ alignItems: "start" }}>
@@ -208,8 +220,24 @@ export function MemberSpaceForm({
             {badRange
               ? "La date de fin est antérieure à la date de début."
               : validity
-                ? `Affiché sur le site et dans la publication : « ${validity} »`
-                : "Laissez vide si votre offre n'a pas de date limite : rien ne sera affiché."}
+                ? `Affiché sur le site et dans la publication : « ${validity} ». L'offre n'apparaît que pendant cette période.`
+                : "Laissez vide si votre offre n'a pas de date limite : elle restera affichée sans échéance."}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label className="field-label">Programmer la publication · facultatif</label>
+          <input
+            type="datetime-local"
+            value={publishAt}
+            onChange={(e) => { setPublishAt(e.target.value); setSubmitted(false); }}
+            className="field"
+            aria-label="Date et heure de publication souhaitées"
+          />
+          <div style={{ fontSize: 12, color: "#8c8068", marginTop: 8, lineHeight: 1.5 }}>
+            {scheduleHint
+              ? `Mise en ligne demandée ${scheduleHint} — site et réseaux en même temps. L'association reste libre de la déplacer.`
+              : "Laissez vide pour une mise en ligne dès la validation par l'association."}
           </div>
         </div>
 

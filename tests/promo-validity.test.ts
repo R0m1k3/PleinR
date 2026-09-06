@@ -5,7 +5,9 @@ import {
   formatValidity,
   formatValidityShort,
   isExpired,
+  isNotStarted,
   isRangeInvalid,
+  visibilityNote,
 } from "../src/lib/promo-validity";
 
 describe("Période de validité d'une promotion", () => {
@@ -72,5 +74,27 @@ describe("Période de validité d'une promotion", () => {
     assert.equal(isRangeInvalid({ startsOn: "2027-06-10", endsOn: "2027-06-01" }), true);
     assert.equal(isRangeInvalid({ startsOn: "2027-06-01", endsOn: "2027-06-01" }), false);
     assert.equal(isRangeInvalid({ startsOn: "2027-06-01" }), false);
+  });
+});
+
+describe("Visibilité publique d'une promotion", () => {
+  it("distingue avant, pendant et après la période", () => {
+    const promo = { startsOn: "2027-03-01", endsOn: "2027-03-15" };
+    assert.equal(
+      visibilityNote(promo, new Date("2027-02-20T12:00:00Z")),
+      "Pas encore affichée : elle apparaîtra sur le site le 1er mars 2027."
+    );
+    assert.equal(visibilityNote(promo, new Date("2027-03-01T00:00:00Z")), null);
+    assert.equal(visibilityNote(promo, new Date("2027-03-15T23:00:00Z")), null);
+    assert.equal(
+      visibilityNote(promo, new Date("2027-03-16T08:00:00Z")),
+      "Période terminée le 15 mars 2027 : elle n'apparaît plus sur le site."
+    );
+  });
+
+  it("laisse visible une offre sans date", () => {
+    assert.equal(visibilityNote({ startsOn: null, endsOn: null }), null);
+    assert.equal(visibilityNote({ validUntil: "Ce week-end" }), null);
+    assert.equal(isNotStarted({ startsOn: null }), false);
   });
 });

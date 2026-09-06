@@ -7,7 +7,8 @@ import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import { configuredNetworks, SOCIAL_LABELS, type SocialNetwork } from "@/lib/social";
 import { PROMO_CATEGORY_GROUPS, defaultPromoCategory } from "@/lib/promo-categories";
 import { memberPath } from "@/lib/seo";
-import { formatValidityShort } from "@/lib/promo-validity";
+import { formatValidityShort, visibilityNote } from "@/lib/promo-validity";
+import { scheduleLabel } from "@/lib/promo-schedule";
 import { setOwnPromoShareTargets, setOwnPromoSuspension } from "../../actions";
 import { EspaceHeader } from "../EspaceHeader";
 import { MemberSpaceForm } from "../MemberSpaceForm";
@@ -20,6 +21,7 @@ const PROMO_STATUS: Record<string, { label: string; bg: string; color: string }>
   rejected: { label: "Refusée", bg: "#fbe9e6", color: "#d8472b" },
   suspended: { label: "Suspendue", bg: "#fbe9e6", color: "#d8472b" },
   expired: { label: "Expirée", bg: "#f1efe7", color: "#a99c82" },
+  scheduled: { label: "Programmée", bg: "#eaf0f6", color: "#2C6FB3" },
 };
 
 type MyPromo = {
@@ -29,6 +31,7 @@ type MyPromo = {
   category: string | null;
   badge: string | null;
   validUntil: string | null;
+  publishAt: Date | null;
   startsOn: string | null;
   endsOn: string | null;
   createdAt: Date;
@@ -82,6 +85,7 @@ export default async function EspacePromotionsPage() {
         category: promotions.category,
         badge: promotions.badge,
         validUntil: promotions.validUntil,
+        publishAt: promotions.publishAt,
         startsOn: promotions.startsOn,
         endsOn: promotions.endsOn,
         createdAt: promotions.createdAt,
@@ -116,7 +120,12 @@ export default async function EspacePromotionsPage() {
   const networks = await configuredNetworks();
   const live = myPromos.filter((p) => p.status === "live");
   const pending = myPromos.filter((p) => p.status === "pending");
-  const others = myPromos.filter((p) => p.status !== "live" && p.status !== "pending");
+  // Validées mais pas encore à leur date : elles n'ont rien à faire dans
+  // l'historique des offres terminées.
+  const scheduled = myPromos.filter((p) => p.status === "scheduled");
+  const others = myPromos.filter(
+    (p) => p.status !== "live" && p.status !== "pending" && p.status !== "scheduled"
+  );
 
   return (
     <div>
@@ -155,6 +164,16 @@ export default async function EspacePromotionsPage() {
         defaultCategory={defaultPromoCategory(categorySlug)}
         networks={networks}
       />
+
+      {scheduled.length > 0 && (
+        <PromoSection
+          title="Publications programmées"
+          intro="Validées par l'association : elles apparaîtront sur le site et sur les réseaux à la date prévue."
+          promos={scheduled}
+          networks={networks}
+          lastShare={lastShare}
+        />
+      )}
 
       {pending.length > 0 && (
         <PromoSection
@@ -286,6 +305,16 @@ function PromoRow({ promo: mp, networks, lastShare }: { promo: MyPromo; networks
           </form>
         )}
       </div>
+      {mp.status === "live" && visibilityNote(mp) && (
+        <div style={{ marginTop: 10, background: "#faf7ef", border: "1px solid #f0e8d6", color: "#9a8d72", borderRadius: 9, padding: "9px 11px", fontSize: 12.5, lineHeight: 1.5 }}>
+          {visibilityNote(mp)}
+        </div>
+      )}
+      {mp.status === "scheduled" && (
+        <div style={{ marginTop: 10, background: "#eaf0f6", border: "1px solid #d3e0ee", color: "#2C6FB3", borderRadius: 9, padding: "9px 11px", fontSize: 12.5, lineHeight: 1.5, fontWeight: 600 }}>
+          Validée par l&apos;association. {scheduleLabel(mp.publishAt)} — site et réseaux en même temps.
+        </div>
+      )}
       {suspendedByStaff && (
         <div style={{ marginTop: 10, background: "#fbe9e6", border: "1px solid #f2d5cf", color: "#a8503c", borderRadius: 9, padding: "9px 11px", fontSize: 12.5, lineHeight: 1.5 }}>
           Cette promotion a été suspendue par l&apos;association. Contactez-la pour la remettre en ligne.

@@ -13,7 +13,6 @@ import { CATEGORY_PALETTE } from "@/db/categories";
 import { slugify } from "@/lib/slug";
 import { autoTags } from "@/lib/tags";
 import {
-  activityLog,
   categories,
   contactMessages,
   imageConsents,
@@ -25,14 +24,10 @@ import {
   pastMeetings,
   promotions,
   siteSettings,
-  socialPosts,
   users,
 } from "@/db/schema";
-import { sanitizeActivityMessage } from "@/lib/activity";
 import { can, LABEL_TO_ROLE } from "@/lib/rbac";
 import {
-  isNetworkConfigured,
-  publishPromoToNetwork,
   SOCIAL_LABELS,
   SOCIAL_NETWORKS,
   type SocialNetwork,
@@ -44,15 +39,13 @@ import {
 } from "@/lib/social-accounts";
 import { normalizeWebsite } from "@/lib/member-profile";
 import { isRangeInvalid } from "@/lib/promo-validity";
+import { formatSchedule, isDue, parseScheduleInput } from "@/lib/promo-schedule";
+import { publishPromoShares, requestedNetworks } from "@/lib/promo-publish";
+import { logActivity } from "@/lib/activity-log";
 import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
 
 
-
-async function logActivity(message: string, dot = "#2C6FB3") {
-  // Le message agrège des saisies de tiers : on ne laisse passer que <strong>.
-  await db.insert(activityLog).values({ message: sanitizeActivityMessage(message), dot });
-}
 
 // Mot de passe temporaire lisible (sans caractères ambigus).
 // `randomInt` et non `Math.random()` : ce dernier n'est pas cryptographique et
@@ -133,98 +126,11 @@ function revalidatePromoPaths(memberId?: number | null) {
   if (memberId) revalidatePath("/adherents/[id]", "page");
 }
 
-/** Réseaux demandés pour une promo, dans l'ordre d'affichage. */
-function requestedNetworks(promo: { shareFacebook: boolean; shareLinkedin: boolean }): SocialNetwork[] {
-  return SOCIAL_NETWORKS.filter((n) =>
-    n === "facebook" ? promo.shareFacebook : promo.shareLinkedin
-  );
-}
-
 function readShareTargets(formData: FormData) {
   return {
     shareFacebook: formData.get("shareFacebook") === "on",
     shareLinkedin: formData.get("shareLinkedin") === "on",
   };
-}
-
-/**
- * Publie une promotion sur les réseaux demandés. Ne lève jamais : un réseau
- * indisponible ne doit pas faire échouer la mise en ligne, l'échec est
- * enregistré dans `social_posts` et rattrapable depuis le backoffice.
- *
- * Un réseau déjà publié avec succès est ignoré : c'est ce qui empêche toute
- * republication, y compris sur un cycle suspension → remise en ligne.
- */
-async function publishPromoShares(
-  promoId: number,
-  networks: SocialNetwork[],
-  userId: number | null
-) {
-  if (networks.length === 0) return;
-
-  const [promo] = await db
-    .select({
-      title: promotions.title,
-      text: promotions.text,
-      badge: promotions.badge,
-      validUntil: promotions.validUntil,
-      startsOn: promotions.startsOn,
-      endsOn: promotions.endsOn,
-      imageUrl: promotions.imageUrl,
-      memberId: promotions.memberId,
-      memberName: members.name,
-      memberCity: members.city,
-    })
-    .from(promotions)
-    .leftJoin(members, eq(promotions.memberId, members.id))
-    .where(eq(promotions.id, promoId));
-  if (!promo) return;
-
-  const done = await db
-    .select({ network: socialPosts.network })
-    .from(socialPosts)
-    .where(and(eq(socialPosts.promotionId, promoId), eq(socialPosts.status, "posted")));
-  const alreadyPosted = new Set(done.map((d) => d.network));
-
-  for (const network of networks) {
-    if (alreadyPosted.has(network)) continue;
-
-    if (!(await isNetworkConfigured(network))) {
-      await db.insert(socialPosts).values({
-        promotionId: promoId,
-        network,
-        status: "failed",
-        error: `${SOCIAL_LABELS[network]} n'est pas configuré sur ce serveur.`,
-        postedById: userId,
-      });
-      continue;
-    }
-
-    try {
-      const result = await publishPromoToNetwork(network, promo);
-      await db.insert(socialPosts).values({
-        promotionId: promoId,
-        network,
-        status: "posted",
-        externalId: result.externalId,
-        url: result.url,
-        postedById: userId,
-      });
-      await logActivity(
-        `Promotion « ${promo.title} » publiée sur ${SOCIAL_LABELS[network]}`,
-        "#2C6FB3"
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Erreur inconnue";
-      await db.insert(socialPosts).values({
-        promotionId: promoId,
-        network,
-        status: "failed",
-        error: message.slice(0, 2000),
-        postedById: userId,
-      });
-    }
-  }
 }
 
 // ---- Promotion moderation ----
@@ -243,20 +149,36 @@ export async function moderatePromo(formData: FormData) {
     // Le modérateur peut ajuster les réseaux demandés par l'adhérent, mais
     // uniquement ici : après validation le choix est figé.
     const targets = readShareTargets(formData);
+    // Le champ est pré-rempli avec la date demandée par l'adhérent : vidé, la
+    // promotion part tout de suite ; une échéance déjà passée aussi.
+    const publishAt = parseScheduleInput(String(formData.get("publishAt") ?? ""));
+    const immediate = isDue(publishAt);
+
     await db
       .update(promotions)
       .set({
-        status: "live",
+        status: immediate ? "live" : "scheduled",
+        publishAt: immediate ? null : publishAt,
         ...targets,
         suspendedBy: null,
         suspendedById: null,
         suspendedAt: null,
       })
       .where(eq(promotions.id, id));
-    await logActivity(`Promotion « ${promo.title} » validée et mise en ligne`, "#1f8a5b");
-    // Mise en ligne committée avant l'appel réseau : si un réseau répond mal,
-    // la promo est quand même publiée sur le site.
-    await publishPromoShares(id, requestedNetworks(targets), userId);
+
+    if (immediate) {
+      await logActivity(`Promotion « ${promo.title} » validée et mise en ligne`, "#1f8a5b");
+      // Mise en ligne committée avant l'appel réseau : si un réseau répond mal,
+      // la promo est quand même publiée sur le site.
+      await publishPromoShares(id, requestedNetworks(targets), userId);
+    } else {
+      // Rien n'est diffusé maintenant : `releaseDuePromotions()` s'en chargera
+      // à l'échéance, site et réseaux d'un seul coup.
+      await logActivity(
+        `Promotion « ${promo.title} » validée, publication programmée ${formatSchedule(publishAt)}`,
+        "#9a6638"
+      );
+    }
   } else if (action === "suspend") {
     // Suspension par l'association : la promotion sort du site public et
     // l'adhérent ne peut pas la remettre en ligne lui-même.
@@ -268,6 +190,15 @@ export async function moderatePromo(formData: FormData) {
       `Promotion « ${promo.title} » suspendue par <strong>${name}</strong>`,
       "#d8472b"
     );
+  } else if (action === "publish-now") {
+    // Raccourci sur une promo programmée : on n'attend pas l'échéance.
+    if (promo.status !== "scheduled") return;
+    await db
+      .update(promotions)
+      .set({ status: "live", publishAt: null })
+      .where(eq(promotions.id, id));
+    await logActivity(`Promotion « ${promo.title} » publiée avant l'heure programmée`, "#1f8a5b");
+    await publishPromoShares(id, requestedNetworks(promo), userId);
   } else if (action === "restore") {
     await db
       .update(promotions)
@@ -388,6 +319,9 @@ export async function publishPromo(formData: FormData) {
     throw new Error("La date de fin doit être postérieure à la date de début.");
   }
   const imageUrl = asImageDataUri(formData, "imageUrl");
+  // Date souhaitée de mise en ligne. Elle n'engage rien : le modérateur la voit
+  // et peut la garder, la déplacer ou la vider dans le formulaire « Valider ».
+  const publishAt = parseScheduleInput(String(formData.get("publishAt") ?? ""));
 
   // Réseaux souhaités : rien n'est publié ici, la diffusion attend la validation.
   await db.insert(promotions).values({
@@ -400,6 +334,7 @@ export async function publishPromo(formData: FormData) {
     status: "pending",
     startsOn,
     endsOn,
+    publishAt,
     ...readShareTargets(formData),
   });
 

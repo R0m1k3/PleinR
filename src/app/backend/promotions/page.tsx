@@ -8,7 +8,8 @@ import { configuredNetworks, SOCIAL_LABELS } from "@/lib/social";
 import { moderatePromo, retryPromoShare } from "../actions";
 import { PromoImage } from "@/components/PromoImage";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
-import { formatValidity } from "@/lib/promo-validity";
+import { formatValidity, visibilityNote } from "@/lib/promo-validity";
+import { formatSchedule, scheduleLabel, toScheduleInput } from "@/lib/promo-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ const STATUS_CHIP: Record<string, { label: string; bg: string; color: string }> 
   pending: { label: "En attente", bg: "#fbeede", color: "#9a6638" },
   live: { label: "En ligne", bg: "#e6f4ec", color: "#1f8a5b" },
   suspended: { label: "Suspendue", bg: "#fbe9e6", color: "#d8472b" },
+  scheduled: { label: "Programmée", bg: "#eaf0f6", color: "#2C6FB3" },
 };
 
 function fmtDate(d: Date) {
@@ -42,6 +44,7 @@ export default async function PromotionsPage() {
       text: promotions.text,
       category: promotions.category,
       status: promotions.status,
+      publishAt: promotions.publishAt,
       validUntil: promotions.validUntil,
       startsOn: promotions.startsOn,
       endsOn: promotions.endsOn,
@@ -54,14 +57,16 @@ export default async function PromotionsPage() {
     })
     .from(promotions)
     .leftJoin(members, eq(promotions.memberId, members.id))
-    .where(inArray(promotions.status, ["pending", "live", "suspended"]))
+    .where(inArray(promotions.status, ["pending", "live", "suspended", "scheduled"]))
     .orderBy(desc(promotions.createdAt));
 
   const pending = rows.filter((r) => r.status === "pending");
   const live = rows.filter((r) => r.status === "live");
   const suspended = rows.filter((r) => r.status === "suspended");
-  // En attente d'abord, puis en ligne, puis suspendues.
-  const ordered = [...pending, ...live, ...suspended];
+  const scheduled = rows.filter((r) => r.status === "scheduled");
+  // En attente d'abord, puis les programmées (elles attendent une décision de
+  // calendrier), puis les offres en ligne et enfin les suspendues.
+  const ordered = [...pending, ...scheduled, ...live, ...suspended];
 
   const shares = ordered.length
     ? await db
@@ -95,6 +100,9 @@ export default async function PromotionsPage() {
           En attente · {pending.length}
         </span>
         <span style={{ background: "#fff", border: "1px solid #e6dcc6", color: "#6c6150", fontSize: 13, fontWeight: 600, padding: "8px 16px", borderRadius: 999 }}>
+          Programmées · {scheduled.length}
+        </span>
+        <span style={{ background: "#fff", border: "1px solid #e6dcc6", color: "#6c6150", fontSize: 13, fontWeight: 600, padding: "8px 16px", borderRadius: 999 }}>
           En ligne · {live.length}
         </span>
         <span style={{ background: "#fff", border: "1px solid #e6dcc6", color: "#6c6150", fontSize: 13, fontWeight: 600, padding: "8px 16px", borderRadius: 999 }}>
@@ -119,6 +127,7 @@ export default async function PromotionsPage() {
         {ordered.map((p) => {
           const isPending = p.status === "pending";
           const isSuspended = p.status === "suspended";
+          const isScheduled = p.status === "scheduled";
           const chip = STATUS_CHIP[p.status] ?? STATUS_CHIP.pending;
           const chosenNetworks = networks.filter((n) =>
             n === "facebook" ? p.shareFacebook : p.shareLinkedin
@@ -188,6 +197,18 @@ export default async function PromotionsPage() {
                   </div>
                 )}
 
+                {p.status === "live" && visibilityNote(p) && (
+                  <div style={{ background: "#faf7ef", border: "1px solid #f0e8d6", color: "#9a8d72", borderRadius: 10, padding: "9px 11px", fontSize: 12, lineHeight: 1.45, marginBottom: 11 }}>
+                    {visibilityNote(p)}
+                  </div>
+                )}
+
+                {isScheduled && (
+                  <div style={{ background: "#eaf0f6", border: "1px solid #d3e0ee", color: "#2C6FB3", borderRadius: 10, padding: "9px 11px", fontSize: 12, lineHeight: 1.45, marginBottom: 11, fontWeight: 600 }}>
+                    {scheduleLabel(p.publishAt)}. Rien n&apos;est encore visible ni diffusé.
+                  </div>
+                )}
+
                 {isSuspended && (
                   <div style={{ background: "#fbe9e6", border: "1px solid #f2d5cf", color: "#a8503c", borderRadius: 10, padding: "9px 11px", fontSize: 12, lineHeight: 1.45, marginBottom: 11 }}>
                     Suspendue par {p.suspendedBy === "member" ? "l'adhérent" : "l'association"}
@@ -226,6 +247,24 @@ export default async function PromotionsPage() {
                           </div>
                         </div>
                       )}
+                      {/* Date demandée par l'adhérent, modifiable ici. Vidée,
+                          la promotion part immédiatement. */}
+                      <div style={{ background: "#faf7ef", border: "1px solid #f0e8d6", borderRadius: 10, padding: "10px 11px", marginBottom: 8 }}>
+                        <label style={{ display: "block", fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 800, marginBottom: 7 }}>
+                          Publication
+                        </label>
+                        <input
+                          type="datetime-local"
+                          name="publishAt"
+                          defaultValue={toScheduleInput(p.publishAt)}
+                          style={{ width: "100%", boxSizing: "border-box", border: "1px solid #e6dcc6", borderRadius: 8, padding: "7px 9px", fontSize: 12.5, fontFamily: "inherit", color: "#3c3322", background: "#fff" }}
+                        />
+                        <div style={{ fontSize: 11, color: "#a99c82", marginTop: 7, lineHeight: 1.45 }}>
+                          {p.publishAt
+                            ? `Demandé par l'adhérent ${formatSchedule(p.publishAt)}. Videz le champ pour publier tout de suite.`
+                            : "Vide : mise en ligne immédiate. Renseignez une date pour programmer."}
+                        </div>
+                      </div>
                       <button type="submit" style={{ width: "100%", border: "none", background: "#1f8a5b", color: "#fff", fontWeight: 700, fontSize: 13, padding: 10, borderRadius: 9, cursor: "pointer" }}>
                         Valider
                       </button>
@@ -240,6 +279,16 @@ export default async function PromotionsPage() {
                       </button>
                     </form>
                   </div>
+                )}
+
+                {isScheduled && (
+                  <form action={moderatePromo} style={{ marginBottom: 8 }}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <input type="hidden" name="action" value="publish-now" />
+                    <button type="submit" style={{ width: "100%", border: "none", background: "#2C6FB3", color: "#fff", fontWeight: 700, fontSize: 13, padding: 10, borderRadius: 9, cursor: "pointer" }}>
+                      Publier maintenant
+                    </button>
+                  </form>
                 )}
 
                 {!isPending && (

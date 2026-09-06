@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { activityLog, contactMessages, members, membershipRequests, promotions, socialPosts } from "@/db/schema";
 import { activityNodes } from "@/lib/activity";
 import { can, isStaff } from "@/lib/rbac";
+import { countVisiblePromotions } from "@/lib/queries";
 import {
   expiryStatus,
   getSocialAccounts,
@@ -48,7 +49,7 @@ export default async function DashboardPage() {
 
   const [activeMembers, livePromos, pendingPromos, requests, newMessages, activity] = await Promise.all([
     db.select({ id: members.id }).from(members).where(eq(members.status, "active")),
-    db.select({ id: promotions.id }).from(promotions).where(eq(promotions.status, "live")),
+    countVisiblePromotions(),
     db.select({ id: promotions.id }).from(promotions).where(eq(promotions.status, "pending")),
     db.select({ id: membershipRequests.id }).from(membershipRequests).where(eq(membershipRequests.status, "new")),
     db.select({ id: contactMessages.id }).from(contactMessages).where(eq(contactMessages.status, "new")),
@@ -142,7 +143,7 @@ export default async function DashboardPage() {
 
       <div className="grid grid-4" style={{ marginBottom: 26 }}>
         <StatCard label="Adhérents actifs" value={activeMembers.length} hint="sur le réseau" valueColor="#13324F" hintColor="#1f8a5b" />
-        <StatCard label="Promotions en ligne" value={livePromos.length} hint="visibles sur le site" />
+        <StatCard label="Promotions en ligne" value={livePromos} hint="visibles sur le site" />
         <StatCard label="À modérer" value={pendingCount} hint="en attente de validation" valueColor="#9a6638" hintColor="#9a6638" />
         <Link href="/backend/demandes" style={{ textDecoration: "none" }}>
           <StatCard
