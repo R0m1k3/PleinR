@@ -159,15 +159,11 @@ export default async function PromotionsPage() {
                 }}
               >
                 {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title ?? ""} />}
-                {/* Comme sur le site : logo de l'adhérent puis catégorie. */}
-                <div style={{ position: "absolute", top: 10, left: 10, display: "flex", alignItems: "center", gap: 7 }}>
-                  <MemberAvatar name={p.memberName ?? ""} logoUrl={p.memberLogoUrl} size={30} />
-                  {p.category && (
-                    <span style={{ background: "#9a6638", color: "#fff", borderRadius: 999, padding: "4px 11px", fontSize: 11, fontWeight: 700 }}>
-                      {p.category}
-                    </span>
-                  )}
-                </div>
+                {p.category && (
+                  <span style={{ position: "absolute", top: 10, left: 10, background: "#9a6638", color: "#fff", borderRadius: 999, padding: "4px 11px", fontSize: 11, fontWeight: 700 }}>
+                    {p.category}
+                  </span>
+                )}
                 <span
                   style={{
                     position: "absolute",
@@ -188,8 +184,9 @@ export default async function PromotionsPage() {
                 <h3 className="font-display" style={{ fontWeight: 700, fontSize: 15.5, margin: "0 0 4px", color: "#26201a" }}>
                   {p.title}
                 </h3>
-                <div style={{ fontSize: 12.5, color: "#9a6638", fontWeight: 600, marginBottom: 8 }}>
-                  {p.memberName}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <MemberAvatar name={p.memberName ?? ""} logoUrl={p.memberLogoUrl} size={24} />
+                  <span style={{ fontSize: 12.5, color: "#9a6638", fontWeight: 600 }}>{p.memberName}</span>
                 </div>
                 <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "#8c8068", lineHeight: 1.45, flex: 1 }}>
                   {p.text}

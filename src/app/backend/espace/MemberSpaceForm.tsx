@@ -357,13 +357,9 @@ export function MemberSpaceForm({
                 {badge}
               </span>
             )}
-            {/* Même composition que sur le site : logo puis catégorie. */}
-            <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 8 }}>
-              <MemberAvatar name={memberName} logoUrl={memberLogoUrl} size={34} />
-              <span style={{ background: "#9a6638", color: "#fff", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
-                {cat}
-              </span>
-            </div>
+            <span style={{ position: "absolute", top: 12, left: 12, background: "#9a6638", color: "#fff", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
+              {cat}
+            </span>
           </div>
           <div style={{ padding: "17px 18px 18px" }}>
             <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: "0 0 5px", color: "#26201a" }}>
@@ -377,7 +373,10 @@ export function MemberSpaceForm({
               <div style={{ fontSize: 12, color: "#a99c82", marginBottom: 12 }}>{validity}</div>
             )}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #f0e8d6", paddingTop: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#3c3322" }}>{memberName}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+                <MemberAvatar name={memberName} logoUrl={memberLogoUrl} size={28} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#3c3322" }}>{memberName}</span>
+              </div>
               <span style={{ color: "#2C6FB3", fontWeight: 700, fontSize: 13 }}>Voir l&apos;offre →</span>
             </div>
           </div>

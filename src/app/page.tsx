@@ -285,25 +285,23 @@ export default async function AccueilPage() {
                       {p.badge}
                     </span>
                   )}
-                  {/* Angle haut-gauche : le logo de l'adhérent d'abord, la
-                      catégorie ensuite — on identifie le commerce avant l'offre. */}
-                  <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                    <MemberAvatar name={p.memberName ?? ""} logoUrl={p.memberLogoUrl} size={34} />
-                    {p.category && (
-                      <span
-                        style={{
-                          background: "#9a6638",
-                          color: "#fff",
-                          borderRadius: 999,
-                          padding: "5px 12px",
-                          fontSize: 11,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {p.category}
-                      </span>
-                    )}
-                  </div>
+                  {p.category && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 12,
+                        left: 12,
+                        background: "#9a6638",
+                        color: "#fff",
+                        borderRadius: 999,
+                        padding: "5px 12px",
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {p.category}
+                    </span>
+                  )}
                 </div>
                 <div style={{ padding: "17px 18px 18px", display: "flex", flexDirection: "column", flex: 1 }}>
                   <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: "0 0 5px", color: "#26201a" }}>
@@ -318,10 +316,16 @@ export default async function AccueilPage() {
                       paddingTop: 12,
                     }}
                   >
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#3c3322" }}>{p.memberName}</div>
-                    {formatValidity(p) && (
-                      <div style={{ fontSize: 11.5, color: "#a99c82" }}>{formatValidity(p)}</div>
-                    )}
+                    {/* Le logo du commerce juste à gauche de son nom. */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <MemberAvatar name={p.memberName ?? ""} logoUrl={p.memberLogoUrl} size={28} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#3c3322" }}>{p.memberName}</div>
+                        {formatValidity(p) && (
+                          <div style={{ fontSize: 11.5, color: "#a99c82" }}>{formatValidity(p)}</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </Link>
