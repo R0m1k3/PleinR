@@ -6,6 +6,7 @@ import { publishPromo } from "../actions";
 import { PromoImage } from "@/components/PromoImage";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import type { SocialNetwork } from "@/lib/social";
+import type { PromoCategoryGroup } from "@/lib/promo-categories";
 
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
@@ -17,18 +18,23 @@ const NETWORK_LABELS: Record<SocialNetwork, string> = {
 
 export function MemberSpaceForm({
   memberName,
-  categories,
+  categoryGroups,
+  defaultCategory,
   networks = [],
 }: {
   memberName: string;
-  categories: string[];
+  /** Types de produits / services, groupés pour le `<select>`. */
+  categoryGroups: PromoCategoryGroup[];
+  /** Pré-sélection déduite du métier de l'adhérent. */
+  defaultCategory?: string;
   networks?: SocialNetwork[];
 }) {
-  const CATEGORIES = categories.length > 0 ? categories : ["Autre"];
+  const allCategories = categoryGroups.flatMap((g) => g.items);
+  const initialCategory = defaultCategory && allCategories.includes(defaultCategory) ? defaultCategory : allCategories[0] ?? "Autre";
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
-  const [cat, setCat] = useState(CATEGORIES[0]);
+  const [cat, setCat] = useState(initialCategory);
   const [badge, setBadge] = useState("");
   const [imgData, setImgData] = useState("");
   const [shares, setShares] = useState<SocialNetwork[]>([]);
@@ -144,10 +150,16 @@ export function MemberSpaceForm({
 
         <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
-            <label className="field-label">Catégorie</label>
+            <label className="field-label">Type de produit ou de service</label>
             <select value={cat} onChange={(e) => setCat(e.target.value)} className="field">
-              {CATEGORIES.map((c) => (
-                <option key={c}>{c}</option>
+              {categoryGroups.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.items.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

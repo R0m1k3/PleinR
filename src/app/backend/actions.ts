@@ -117,6 +117,7 @@ function asImageDataUri(formData: FormData, key: string): string | null {
 function revalidatePromoPaths(memberId?: number | null) {
   revalidatePath("/backend/promotions");
   revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/promotions");
   revalidatePath("/backend");
   revalidatePath("/");
   revalidatePath("/annuaire");
@@ -334,6 +335,7 @@ export async function retryPromoShare(formData: FormData) {
   await publishPromoShares(id, [network], userId);
   revalidatePath("/backend/promotions");
   revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/promotions");
 }
 
 // ---- Member space: choisir les réseaux tant que la promo est en attente ----
@@ -355,6 +357,7 @@ export async function setOwnPromoShareTargets(formData: FormData) {
 
   await db.update(promotions).set(readShareTargets(formData)).where(eq(promotions.id, id));
   revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/promotions");
   revalidatePath("/backend/promotions");
 }
 
@@ -385,6 +388,7 @@ export async function publishPromo(formData: FormData) {
   await logActivity(`<strong>${name}</strong> a soumis une promotion « ${title} »`, "#E0A63C");
 
   revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/promotions");
   revalidatePath("/backend");
   revalidatePath("/backend/promotions");
 }
@@ -555,6 +559,7 @@ export async function updateMember(formData: FormData) {
     .set({
       name: String(formData.get("name") ?? "").trim(),
       email: String(formData.get("email") ?? "").trim(),
+      contactEmail: String(formData.get("contactEmail") ?? "").trim().toLowerCase() || null,
       categoryId,
       city,
       address: String(formData.get("address") ?? "").trim() || null,
@@ -860,6 +865,7 @@ function revalidateMeetingPaths(meetingId?: number) {
   revalidatePath("/backend/inscriptions");
   revalidatePath("/backend/rencontres-passees");
   revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/promotions");
   revalidatePath("/rencontres-passees");
   if (meetingId) revalidatePath(`/inscription/${meetingId}`);
 }
@@ -1052,6 +1058,7 @@ export async function saveImageConsent(formData: FormData) {
 
   revalidatePath("/backend");
   revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/promotions");
   redirect("/backend/espace");
 }
 
@@ -1120,6 +1127,7 @@ export async function updateOwnProfile(formData: FormData) {
     .update(members)
     .set({
       name,
+      contactEmail: String(formData.get("contactEmail") ?? "").trim().toLowerCase() || null,
       description,
       address: String(formData.get("address") ?? "").trim() || null,
       postalCode: String(formData.get("postalCode") ?? "").trim() || null,
@@ -1137,6 +1145,7 @@ export async function updateOwnProfile(formData: FormData) {
     .where(eq(members.id, memberId));
 
   revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/promotions");
   revalidatePath("/adherents/[id]", "page");
   revalidatePath("/annuaire");
   revalidatePath("/");
@@ -1304,6 +1313,7 @@ export async function disconnectSocial(formData: FormData) {
   revalidatePath("/backend/reseaux");
   revalidatePath("/backend/promotions");
   revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/promotions");
 }
 
 // ---- Sign out ----

@@ -154,6 +154,25 @@ site sans traitement supplémentaire.
   sans adhérent elle passe en `NOINDEX` et sort du sitemap. L'annuaire et ces
   pages listent les métiers via `CategoryLinks` pour le maillage interne.
 
+## Adhérents
+
+- L'espace adhérent est en deux pages : `/backend/espace` (profil, inscriptions,
+  droit à l'image) et `/backend/espace/promotions` (dépôt et suivi des promos,
+  les offres **en ligne** en tête). `EspaceHeader` porte le bandeau et les
+  onglets ; toute action qui touche l'espace revalide les deux chemins.
+- La catégorie d'une promotion est un **type de produit ou de service**
+  (`src/lib/promo-categories.ts`, groupes pour `<optgroup>`), pas le métier de
+  l'adhérent ; `defaultPromoCategory(slug)` pré-sélectionne depuis le métier.
+
+- `members.email` est l'e-mail **administratif** (identifiant de connexion à la
+  création, échanges avec l'association) ; `members.contact_email` est l'e-mail
+  **public** de la fiche, saisi par l'adhérent ou le staff. La fiche et le
+  JSON-LD affichent `contact_email || email` : ne montrez jamais `email` seul.
+- `VitrineImage` rend la couverture en `cover`, sinon le logo en `contain`
+  (~60 % d'un cadre à hauteur fixe) sur un fond du logo flouté, sinon un
+  placeholder rayé. Ne pas l'entourer d'un conteneur sans hauteur : les
+  `max-height` en % ne seraient plus résolus et le logo déborderait.
+
 ## Roles
 
 `admin` > `moderator` > `editor` are staff; `member` is an adhérent linked to a

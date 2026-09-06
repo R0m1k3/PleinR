@@ -167,6 +167,8 @@ export default async function FicheAdherentPage({
   const openStatus = getOpenStatus(hours);
   const normalizedWebsite = normalizeWebsite(member.website);
   const shortWebsite = websiteLabel(member.website);
+  // E-mail public : celui saisi pour la fiche, sinon l'e-mail du compte.
+  const contactEmail = (member.contactEmail ?? "").trim() || member.email;
   const phoneHref = member.phone ? `tel:${member.phone.replace(/[^\d+]/g, "")}` : null;
 
   const sectionCard: React.CSSProperties = {
@@ -192,7 +194,7 @@ export default async function FicheAdherentPage({
             { name: "Annuaire", path: "/annuaire" },
             { name: member.name, path: canonical },
           ]),
-          localBusinessJsonLd(baseUrl, { ...member, tags: formatTags(tags) }, hours, normalizedWebsite),
+          localBusinessJsonLd(baseUrl, { ...member, email: contactEmail, tags: formatTags(tags) }, hours, normalizedWebsite),
         ]}
       />
 
@@ -362,8 +364,8 @@ export default async function FicheAdherentPage({
                     {phoneHref && member.phone && (
                       <ContactAction href={phoneHref} icon="phone" label="Appeler" detail={member.phone} />
                     )}
-                    {member.email && (
-                      <ContactAction href={`mailto:${member.email}`} icon="mail" label="Envoyer un e-mail" detail={member.email} />
+                    {contactEmail && (
+                      <ContactAction href={`mailto:${contactEmail}`} icon="mail" label="Envoyer un e-mail" detail={contactEmail} />
                     )}
                     {normalizedWebsite && shortWebsite && (
                       <ContactAction href={normalizedWebsite} icon="website" label="Visiter le site" detail={shortWebsite} external />
@@ -377,7 +379,7 @@ export default async function FicheAdherentPage({
                         external
                       />
                     )}
-                    {!phoneHref && !member.email && !normalizedWebsite && !fullAddress && (
+                    {!phoneHref && !contactEmail && !normalizedWebsite && !fullAddress && (
                       <div className="practical-empty">Coordonnées non communiquées.</div>
                     )}
                   </div>
@@ -445,18 +447,18 @@ export default async function FicheAdherentPage({
             </section>
 
             {/* contact CTA */}
-            {(member.email || phoneHref || normalizedWebsite) && (
+            {(contactEmail || phoneHref || normalizedWebsite) && (
               <section style={{ background: "linear-gradient(120deg,#13324F,#1d4a72)", borderRadius: 18, padding: 22, color: "#fff" }}>
                 <h3 className="font-display" style={{ fontWeight: 700, fontSize: 17, margin: "0 0 6px" }}>Une question pour ce commerçant ?</h3>
                 <p style={{ margin: "0 0 14px", fontSize: 13.5, color: "#bcd3e6" }}>Contactez {member.name} directement.</p>
                 <a
-                  href={member.email ? `mailto:${member.email}` : phoneHref ?? normalizedWebsite ?? undefined}
-                  target={!member.email && !phoneHref ? "_blank" : undefined}
-                  rel={!member.email && !phoneHref ? "noopener noreferrer" : undefined}
+                  href={contactEmail ? `mailto:${contactEmail}` : phoneHref ?? normalizedWebsite ?? undefined}
+                  target={!contactEmail && !phoneHref ? "_blank" : undefined}
+                  rel={!contactEmail && !phoneHref ? "noopener noreferrer" : undefined}
                   className="font-display"
                   style={{ textDecoration: "none", display: "block", textAlign: "center", background: "#E0A63C", color: "#33291D", fontWeight: 700, fontSize: 14.5, padding: 12, borderRadius: 11 }}
                 >
-                  {member.email ? "Envoyer un message" : phoneHref ? "Appeler maintenant" : "Visiter le site"}
+                  {contactEmail ? "Envoyer un message" : phoneHref ? "Appeler maintenant" : "Visiter le site"}
                 </a>
               </section>
             )}

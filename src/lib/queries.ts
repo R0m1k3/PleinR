@@ -85,6 +85,7 @@ export async function getPublicMember(id: number) {
       id: members.id,
       name: members.name,
       email: members.email,
+      contactEmail: members.contactEmail,
       description: members.description,
       city: members.city,
       address: members.address,

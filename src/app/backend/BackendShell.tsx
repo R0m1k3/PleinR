@@ -24,7 +24,8 @@ const TITLES: Record<string, [string, string]> = {
   "/backend/administrateurs": ["Administrateurs", "Gérer les accès à l'administration"],
   "/backend/categories": ["Catégories", "Gérer les métiers de l'annuaire"],
   "/backend/parametres": ["Paramètres du site", "Configurer l'association et les mentions légales"],
-  "/backend/espace": ["Mon espace adhérent", "Publiez et suivez vos promotions"],
+  "/backend/espace": ["Mon profil", "Votre fiche publique, vos inscriptions et votre droit à l'image"],
+  "/backend/espace/promotions": ["Mes promotions", "Proposez une offre et suivez celles en ligne"],
   "/backend/changer-mot-de-passe": ["Mot de passe", "Sécurisez votre compte"],
 };
 
@@ -85,7 +86,10 @@ const SECTIONS: NavSection[] = [
   },
   {
     label: "Côté adhérent",
-    items: [{ href: "/backend/espace", label: "Mon espace", icon: "space" }],
+    items: [
+      { href: "/backend/espace", label: "Mon profil", icon: "space" },
+      { href: "/backend/espace/promotions", label: "Mes promotions", icon: "promos" },
+    ],
   },
 ];
 

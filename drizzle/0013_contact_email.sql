@@ -1,0 +1,1 @@
+ALTER TABLE "members" ADD COLUMN "contact_email" varchar(200);

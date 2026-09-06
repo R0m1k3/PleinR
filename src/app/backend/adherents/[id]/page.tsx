@@ -73,8 +73,13 @@ export default async function EditMemberPage({
             <input name="name" required defaultValue={member.name} className="field" />
           </div>
           <div>
-            <label className="field-label">E-mail</label>
+            <label className="field-label">E-mail du compte (identifiant, échanges avec l&apos;association)</label>
             <input name="email" type="email" defaultValue={member.email} className="field" />
+          </div>
+          <div>
+            <label className="field-label">E-mail de contact (affiché sur la fiche)</label>
+            <input name="contactEmail" type="email" defaultValue={member.contactEmail ?? ""} className="field" placeholder={member.email} />
+            <p className="field-hint">Laissé vide, la fiche publique affiche l&apos;e-mail du compte.</p>
           </div>
           <div>
             <label className="field-label">Catégorie</label>

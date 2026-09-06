@@ -6,7 +6,9 @@ const STRIPE_WARM =
 /**
  * Zone d'image "vitrine" d'un adhérent.
  * - Photo de couverture présente -> affichée en plein cadre (cover).
- * - Sinon, le logo est affiché centré et réduit (contain ~80%), pas étiré.
+ * - Sinon, le logo est affiché centré et réduit (contain, ~60 % du cadre) sur
+ *   un fond fait du logo lui-même flouté : le cadre prend les couleurs de la
+ *   marque sans que le logo soit étiré ni ne déborde.
  * - Sinon, fond rayé + texte placeholder.
  */
 export function VitrineImage({
@@ -43,30 +45,43 @@ export function VitrineImage({
   }
 
   if (logoOnly) {
+    // `height` est fixe sur le cadre : les max-height en % du logo sont donc
+    // résolus, là où un conteneur intermédiaire sans hauteur les laissait sans
+    // effet et le logo débordait.
     return (
-      <div style={{ ...base, background: "linear-gradient(160deg,#fffdf8 0%,#f3ecdc 100%)", padding: "min(8%, 22px)" }}>
-        {/* Cadre thème autour du logo (évite le bloc blanc nu) */}
+      <div style={{ ...base, background: "linear-gradient(160deg,#fffdf8 0%,#f3ecdc 100%)" }}>
         <div
+          aria-hidden
           style={{
-            background: "#fff",
-            border: "1px solid #e6dcc6",
-            borderRadius: 14,
-            boxShadow: "0 14px 30px -20px rgba(40,30,15,0.35)",
-            padding: "min(6%, 18px) min(9%, 28px)",
-            maxWidth: "84%",
-            maxHeight: "84%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${logoOnly})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "blur(28px) saturate(1.25)",
+            transform: "scale(1.25)",
+            opacity: 0.32,
           }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={logoOnly}
-            alt=""
-            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }}
-          />
-        </div>
+        />
+        <div
+          aria-hidden
+          style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(255,253,248,0.35) 0%, rgba(246,242,232,0.6) 100%)" }}
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoOnly}
+          alt=""
+          style={{
+            position: "relative",
+            maxWidth: "62%",
+            maxHeight: "62%",
+            width: "auto",
+            height: "auto",
+            objectFit: "contain",
+            display: "block",
+            filter: "drop-shadow(0 12px 24px rgba(40,30,15,0.18))",
+          }}
+        />
         {children}
       </div>
     );
