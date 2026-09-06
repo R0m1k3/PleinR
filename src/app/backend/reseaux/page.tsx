@@ -23,7 +23,14 @@ export const dynamic = "force-dynamic";
 
 const HELP: Record<
   (typeof SOCIAL_NETWORKS)[number],
-  { portal: string; steps: string[]; caution?: string; tools?: { label: string; href: string }[] }
+  {
+    portal: string;
+    steps: string[];
+    caution?: string;
+    tools?: { label: string; href: string }[];
+    /** Les deux liens utiles au moment de renouveler un jeton. */
+    renew: { note: string; links: { label: string; hint: string; href: string }[] };
+  }
 > = {
   facebook: {
     portal: "https://developers.facebook.com/apps",
@@ -32,6 +39,23 @@ const HELP: Record<
       "Ajoutez le produit « Connexion Facebook » puis collez l'URL de redirection ci-dessous dans « URI de redirection OAuth valides ».",
       "Laissez l'application en mode développement et ajoutez le compte de l'association comme administrateur : publier sur votre propre page ne demande alors aucune revue Meta.",
     ],
+    renew: {
+      note:
+        "Le bouton refait tout l'échange : jeton court, puis jeton de longue durée, puis jeton de page. " +
+        "Vous n'avez aucun jeton à copier à la main — les deux liens ci-dessous ne servent qu'à vérifier.",
+      links: [
+        {
+          label: "Débogueur de jeton",
+          hint: "coller un jeton pour voir sa validité et sa date d'expiration",
+          href: "https://developers.facebook.com/tools/debug/accesstoken/",
+        },
+        {
+          label: "Outil de jetons d'accès",
+          hint: "lister les jetons de vos pages et en générer un de longue durée",
+          href: "https://developers.facebook.com/tools/accesstoken/",
+        },
+      ],
+    },
     tools: [
       { label: "Débogueur de jeton (vérifier un jeton et sa date d'expiration)", href: "https://developers.facebook.com/tools/debug/accesstoken/" },
       { label: "Outil de jetons d'accès (voir les jetons de vos pages)", href: "https://developers.facebook.com/tools/accesstoken/" },
@@ -47,7 +71,24 @@ const HELP: Record<
       "Onglet Produits : demandez « Community Management API », indispensable pour publier au nom de la page.",
     ],
     caution:
-      "LinkedIn soumet cette demande à une revue (page vérifiée, nom légal, adresse, politique de confidentialité) et ses jetons expirent au bout de 60 jours : il faudra recliquer sur Reconnecter environ tous les deux mois.",
+      "LinkedIn soumet cette demande à une revue (page vérifiée, nom légal, adresse, politique de confidentialité) et ses jetons expirent au bout de 60 jours : il faudra recliquer sur « Renouveler le jeton » environ tous les deux mois.",
+    renew: {
+      note:
+        "Les jetons LinkedIn expirent au bout de 60 jours : le bouton relance l'autorisation et " +
+        "repart pour deux mois. Les deux liens ci-dessous permettent de contrôler l'échéance.",
+      links: [
+        {
+          label: "Jetons de votre application",
+          hint: "voir la durée de validité restante des jetons émis",
+          href: "https://www.linkedin.com/developers/tools/oauth",
+        },
+        {
+          label: "Documentation : durée de vie des jetons",
+          hint: "règles de rafraîchissement et conditions d'accès",
+          href: "https://learn.microsoft.com/linkedin/shared/authentication/programmatic-refresh-tokens",
+        },
+      ],
+    },
     tools: [
       { label: "Jetons de votre application (durée de validité)", href: "https://www.linkedin.com/developers/tools/oauth" },
       { label: "Documentation : durée de vie et rafraîchissement des jetons", href: "https://learn.microsoft.com/linkedin/shared/authentication/programmatic-refresh-tokens" },
@@ -164,6 +205,9 @@ export default async function ReseauxPage({
         const candidates = targets.get(network) ?? [];
         const tokenHealth = health.get(network) ?? null;
         const broken = tokenHealth?.ok === false;
+        // Le bloc de renouvellement passe en ambre quand il y a urgence :
+        // jeton mort, expiré, ou sur le point de l'être.
+        const needsRenewal = broken || status === "expired" || status === "soon";
 
         return (
           <section key={network} style={panel}>
@@ -201,14 +245,14 @@ export default async function ReseauxPage({
                     ✓ Jeton vérifié à l&apos;instant auprès de {SOCIAL_LABELS[network]} : il fonctionne.{" "}
                   </span>
                 )}
-                Pour changer de page, relancez une connexion.
+                Pour changer de page ou renouveler l&apos;accès, utilisez le bouton ci-dessous.
               </div>
             )}
 
             {broken && (
               <Banner tone="error">
                 Le jeton {SOCIAL_LABELS[network]} ne fonctionne plus : les publications échoueront
-                tant que vous n&apos;aurez pas cliqué sur Reconnecter.
+                tant que vous n&apos;aurez pas cliqué sur « Renouveler le jeton ».
                 <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
                   Réponse de la plateforme : {tokenHealth.reason.slice(0, 220)}
                 </div>
@@ -218,8 +262,8 @@ export default async function ReseauxPage({
             {(status === "soon" || status === "expired") && isConnected && (
               <Banner tone={status === "expired" ? "error" : "warn"}>
                 {status === "expired"
-                  ? `Le jeton ${SOCIAL_LABELS[network]} a expiré : les publications échoueront tant que vous n'aurez pas reconnecté le compte.`
-                  : `Le jeton ${SOCIAL_LABELS[network]} expire bientôt. Un clic sur Reconnecter suffit à le renouveler.`}
+                  ? `Le jeton ${SOCIAL_LABELS[network]} a expiré : les publications échoueront tant que vous ne l'aurez pas renouvelé.`
+                  : `Le jeton ${SOCIAL_LABELS[network]} expire bientôt. Un clic sur « Renouveler le jeton » suffit.`}
               </Banner>
             )}
 
@@ -272,24 +316,91 @@ export default async function ReseauxPage({
               </button>
             </form>
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", borderTop: "1px solid #f0e8d6", paddingTop: 14 }}>
-              <a
-                href={`/api/social/${network}/connect`}
-                className="font-display"
+            {/* Renouvellement : l'action et ses deux liens de contrôle, visibles
+                sans avoir à déplier l'aide de configuration. */}
+            {isConnected && (
+              <div
                 style={{
-                  textDecoration: "none",
-                  border: "none",
-                  background: account?.appId ? SOCIAL_BRAND[network] : "#d8cdb4",
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  padding: "12px 20px",
-                  borderRadius: 10,
-                  pointerEvents: account?.appId ? undefined : "none",
+                  background: needsRenewal ? "#fbeede" : "#faf7ef",
+                  border: `1px solid ${needsRenewal ? "#ecd8b8" : "#f0e8d6"}`,
+                  borderRadius: 12,
+                  padding: 15,
+                  marginBottom: 16,
                 }}
               >
-                {isConnected ? "Reconnecter" : "Connecter"}
-              </a>
+                <div className="field-label" style={{ marginBottom: 4 }}>
+                  Renouveler le jeton
+                </div>
+                <div style={{ fontSize: 12.5, color: "#8c8068", lineHeight: 1.6, marginBottom: 12 }}>
+                  {help.renew.note}
+                </div>
+                <a
+                  href={`/api/social/${network}/connect`}
+                  className="font-display"
+                  style={{
+                    display: "inline-block",
+                    textDecoration: "none",
+                    background: SOCIAL_BRAND[network],
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 13.5,
+                    padding: "11px 18px",
+                    borderRadius: 10,
+                    marginBottom: 12,
+                  }}
+                >
+                  Renouveler le jeton {SOCIAL_LABELS[network]}
+                </a>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {help.renew.links.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: 8,
+                        textDecoration: "none",
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        color: "#2C6FB3",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {link.label} ↗
+                      <span style={{ color: "#8c8068", fontWeight: 500, fontSize: 12.5 }}>
+                        {link.hint}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", borderTop: "1px solid #f0e8d6", paddingTop: 14 }}>
+              {/* Une fois connecté, l'action vit dans le bloc de renouvellement
+                  ci-dessus : deux boutons identiques côte à côte n'aidaient personne. */}
+              {!isConnected && (
+                <a
+                  href={`/api/social/${network}/connect`}
+                  className="font-display"
+                  style={{
+                    textDecoration: "none",
+                    border: "none",
+                    background: account?.appId ? SOCIAL_BRAND[network] : "#d8cdb4",
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    padding: "12px 20px",
+                    borderRadius: 10,
+                    pointerEvents: account?.appId ? undefined : "none",
+                  }}
+                >
+                  Connecter
+                </a>
+              )}
               {isConnected && (
                 <form action={disconnectSocial}>
                   <input type="hidden" name="network" value={network} />
