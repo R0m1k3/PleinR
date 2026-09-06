@@ -52,6 +52,7 @@ export default async function EspacePromotionsPage() {
   const session = await getSession();
   const memberId = session?.user.memberId ?? null;
   let memberName = session?.user.name ?? "Adhérent";
+  let memberLogoUrl: string | null = null;
   let subtitle = "Espace adhérent · Promotions";
   let publicPath: string | null = null;
   let categorySlug: string | null = null;
@@ -65,6 +66,7 @@ export default async function EspacePromotionsPage() {
         name: members.name,
         city: members.city,
         status: members.status,
+        logoUrl: members.logoUrl,
         categorySlug: categories.slug,
         categoryLabel: categories.label,
       })
@@ -73,6 +75,7 @@ export default async function EspacePromotionsPage() {
       .where(eq(members.id, memberId));
     if (m) {
       memberName = m.name;
+      memberLogoUrl = m.logoUrl;
       categorySlug = m.categorySlug;
       subtitle = ["Espace adhérent", m.categoryLabel, m.city].filter(Boolean).join(" · ");
       publicPath = m.status === "active" ? memberPath(m) : null;
@@ -160,6 +163,7 @@ export default async function EspacePromotionsPage() {
 
       <MemberSpaceForm
         memberName={memberName}
+        memberLogoUrl={memberLogoUrl}
         categoryGroups={PROMO_CATEGORY_GROUPS}
         defaultCategory={defaultPromoCategory(categorySlug)}
         networks={networks}

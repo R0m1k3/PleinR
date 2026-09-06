@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { VitrineImage } from "@/components/VitrineImage";
 import { PromoImage } from "@/components/PromoImage";
+import { MemberAvatar } from "@/components/MemberAvatar";
 import { JsonLd } from "@/components/JsonLd";
 import { getMemberLivePromotions, getPublicMember } from "@/lib/queries";
 import {
@@ -431,6 +432,11 @@ export default async function FicheAdherentPage({
                     <div style={{ position: "relative", aspectRatio: "1 / 1", background: STRIPE_WARM, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title} />}
                       {!p.imageUrl && (<span style={{ fontSize: 10, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>photo de l&apos;offre</span>)}
+                      {/* Même repère que sur l'accueil : le logo du commerce
+                          dans l'angle haut-gauche de la carte. */}
+                      <span style={{ position: "absolute", top: 10, left: 10 }}>
+                        <MemberAvatar name={member.name} logoUrl={member.logoUrl} size={32} accent={accent} />
+                      </span>
                       {p.badge && (
                         <span className="font-display" style={{ position: "absolute", top: 0, right: 0, background: badgeColor(p.badge), color: "#fff", fontWeight: 800, fontSize: 16, padding: "6px 13px", borderRadius: "0 0 0 14px" }}>{p.badge}</span>
                       )}

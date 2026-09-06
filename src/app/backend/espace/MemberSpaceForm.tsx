@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { publishPromo } from "../actions";
 import { PromoImage } from "@/components/PromoImage";
+import { MemberAvatar } from "@/components/MemberAvatar";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import type { SocialNetwork } from "@/lib/social";
 import type { PromoCategoryGroup } from "@/lib/promo-categories";
@@ -20,11 +21,14 @@ const NETWORK_LABELS: Record<SocialNetwork, string> = {
 
 export function MemberSpaceForm({
   memberName,
+  memberLogoUrl,
   categoryGroups,
   defaultCategory,
   networks = [],
 }: {
   memberName: string;
+  /** Logo de l'adhérent, affiché dans l'angle de l'aperçu comme sur le site. */
+  memberLogoUrl?: string | null;
   /** Types de produits / services, groupés pour le `<select>`. */
   categoryGroups: PromoCategoryGroup[];
   /** Pré-sélection déduite du métier de l'adhérent. */
@@ -353,9 +357,13 @@ export function MemberSpaceForm({
                 {badge}
               </span>
             )}
-            <span style={{ position: "absolute", top: 12, left: 12, background: "#9a6638", color: "#fff", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
-              {cat}
-            </span>
+            {/* Même composition que sur le site : logo puis catégorie. */}
+            <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 8 }}>
+              <MemberAvatar name={memberName} logoUrl={memberLogoUrl} size={34} />
+              <span style={{ background: "#9a6638", color: "#fff", borderRadius: 999, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
+                {cat}
+              </span>
+            </div>
           </div>
           <div style={{ padding: "17px 18px 18px" }}>
             <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: "0 0 5px", color: "#26201a" }}>

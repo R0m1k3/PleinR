@@ -87,6 +87,7 @@ export async function getLivePromotions(limit = 6) {
       memberId: promotions.memberId,
       memberName: members.name,
       memberCity: members.city,
+      memberLogoUrl: members.logoUrl,
     })
     .from(promotions)
     .leftJoin(members, eq(promotions.memberId, members.id))

@@ -7,6 +7,7 @@ import { can } from "@/lib/rbac";
 import { configuredNetworks, SOCIAL_LABELS } from "@/lib/social";
 import { moderatePromo, retryPromoShare } from "../actions";
 import { PromoImage } from "@/components/PromoImage";
+import { MemberAvatar } from "@/components/MemberAvatar";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import { formatValidity, visibilityNote } from "@/lib/promo-validity";
 import { formatSchedule, scheduleLabel, toScheduleInput } from "@/lib/promo-schedule";
@@ -54,6 +55,7 @@ export default async function PromotionsPage() {
       shareFacebook: promotions.shareFacebook,
       shareLinkedin: promotions.shareLinkedin,
       memberName: members.name,
+      memberLogoUrl: members.logoUrl,
     })
     .from(promotions)
     .leftJoin(members, eq(promotions.memberId, members.id))
@@ -157,11 +159,15 @@ export default async function PromotionsPage() {
                 }}
               >
                 {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title ?? ""} />}
-                {p.category && (
-                  <span style={{ position: "absolute", top: 10, left: 10, background: "#9a6638", color: "#fff", borderRadius: 999, padding: "4px 11px", fontSize: 11, fontWeight: 700 }}>
-                    {p.category}
-                  </span>
-                )}
+                {/* Comme sur le site : logo de l'adhérent puis catégorie. */}
+                <div style={{ position: "absolute", top: 10, left: 10, display: "flex", alignItems: "center", gap: 7 }}>
+                  <MemberAvatar name={p.memberName ?? ""} logoUrl={p.memberLogoUrl} size={30} />
+                  {p.category && (
+                    <span style={{ background: "#9a6638", color: "#fff", borderRadius: 999, padding: "4px 11px", fontSize: 11, fontWeight: 700 }}>
+                      {p.category}
+                    </span>
+                  )}
+                </div>
                 <span
                   style={{
                     position: "absolute",

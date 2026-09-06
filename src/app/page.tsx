@@ -8,6 +8,7 @@ import { MembershipModalButton } from "@/components/MembershipModalButton";
 import { MembersCarousel } from "@/components/MembersCarousel";
 import { StarField } from "@/components/StarField";
 import { PromoImage } from "@/components/PromoImage";
+import { MemberAvatar } from "@/components/MemberAvatar";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import { getActiveMemberCount, getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
 import { getSiteSettings, socialLinks } from "@/lib/site-settings";
@@ -284,23 +285,25 @@ export default async function AccueilPage() {
                       {p.badge}
                     </span>
                   )}
-                  {p.category && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: 12,
-                        left: 12,
-                        background: "#9a6638",
-                        color: "#fff",
-                        borderRadius: 999,
-                        padding: "5px 12px",
-                        fontSize: 11,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {p.category}
-                    </span>
-                  )}
+                  {/* Angle haut-gauche : le logo de l'adhérent d'abord, la
+                      catégorie ensuite — on identifie le commerce avant l'offre. */}
+                  <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                    <MemberAvatar name={p.memberName ?? ""} logoUrl={p.memberLogoUrl} size={34} />
+                    {p.category && (
+                      <span
+                        style={{
+                          background: "#9a6638",
+                          color: "#fff",
+                          borderRadius: 999,
+                          padding: "5px 12px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {p.category}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ padding: "17px 18px 18px", display: "flex", flexDirection: "column", flex: 1 }}>
                   <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: "0 0 5px", color: "#26201a" }}>
