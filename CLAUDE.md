@@ -74,6 +74,11 @@ site sans traitement supplémentaire.
   anti-CSRF passe par un cookie httpOnly ; aucun jeton ne transite par une URL.
 - Facebook : le jeton de page n'expire pas. LinkedIn : 60 jours, rafraîchissement
   programmatique réservé à certains partenaires, d'où le bandeau de reconnexion.
+- « N'expire pas » ≠ « ne meurt jamais » : `checkTokenHealth()` interroge la
+  plateforme et persiste le verdict dans `social_accounts.last_check_*`.
+  L'écran Réseaux contrôle à chaque affichage ; le tableau de bord passe par
+  `tokenHealthCached()` (6 h) et croise le résultat avec la dernière tentative
+  de publication en échec. Une date d'expiration seule ne suffit pas à alerter.
 - Les images de promo sont stockées en data-URI : l'upload se fait donc en
   binaire (multipart pour Facebook, Images API en 3 étapes pour LinkedIn), pas
   par URL.

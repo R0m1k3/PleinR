@@ -3,10 +3,16 @@ import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { activityLog, contactMessages, members, membershipRequests, promotions } from "@/db/schema";
+import { activityLog, contactMessages, members, membershipRequests, promotions, socialPosts } from "@/db/schema";
 import { activityNodes } from "@/lib/activity";
 import { can, isStaff } from "@/lib/rbac";
-import { expiryStatus, getSocialAccounts, SOCIAL_LABELS } from "@/lib/social-accounts";
+import {
+  expiryStatus,
+  getSocialAccounts,
+  SOCIAL_LABELS,
+  tokenHealthCached,
+  type SocialNetwork,
+} from "@/lib/social-accounts";
 
 export const dynamic = "force-dynamic";
 
@@ -51,14 +57,47 @@ export default async function DashboardPage() {
 
   const pendingCount = pendingPromos.length;
 
-  // Jetons réseaux à renouveler : sans alerte, on ne découvre l'expiration
-  // qu'au moment où une publication échoue.
-  const expiringNetworks = can(session?.user.role, "manageSettings")
-    ? (await getSocialAccounts())
-        .filter((a) => a.accessToken && a.targetId)
-        .map((a) => ({ network: a.network, status: expiryStatus(a.expiresAt) }))
-        .filter((a) => a.status === "soon" || a.status === "expired")
-    : [];
+  // Jetons réseaux à renouveler. Deux signaux, car une date d'expiration ne
+  // suffit pas : un jeton de page Facebook n'expire jamais mais peut être
+  // révoqué, et cela ne se voit qu'à la première publication en échec.
+  const expiringNetworks: { network: SocialNetwork; status: string }[] = [];
+  if (can(session?.user.role, "manageSettings")) {
+    const connected = (await getSocialAccounts()).filter((a) => a.accessToken && a.targetId);
+
+    // Dernière tentative de publication par réseau : une erreur d'autorisation
+    // signale un jeton mort, sans avoir à interroger la plateforme ici.
+    const attempts = connected.length
+      ? await db
+          .select({
+            network: socialPosts.network,
+            status: socialPosts.status,
+            error: socialPosts.error,
+          })
+          .from(socialPosts)
+          .orderBy(desc(socialPosts.createdAt))
+          .limit(40)
+      : [];
+    const lastAttempt = new Map<string, (typeof attempts)[number]>();
+    for (const a of attempts) if (!lastAttempt.has(a.network)) lastAttempt.set(a.network, a);
+
+    for (const account of connected) {
+      const last = lastAttempt.get(account.network);
+      const authFailure =
+        last?.status === "failed" &&
+        /oauth|token|401|expired|invalid|permission/i.test(last.error ?? "");
+      // Contrôle direct, mis en cache 6 h : c'est ce qui permet de prévenir
+      // avant la première publication en échec, sans appeler la plateforme à
+      // chaque affichage du tableau de bord.
+      const probe = authFailure ? null : await tokenHealthCached(account.network);
+      const expiry = expiryStatus(account.expiresAt);
+
+      if (authFailure || probe?.ok === false) {
+        expiringNetworks.push({ network: account.network, status: "broken" });
+      } else if (expiry === "soon" || expiry === "expired") {
+        expiringNetworks.push({ network: account.network, status: expiry });
+      }
+    }
+  }
 
   function timeAgo(date: Date) {
     const diff = Date.now() - new Date(date).getTime();
@@ -90,9 +129,11 @@ export default async function DashboardPage() {
           {expiringNetworks.map((n) => (
             <div key={n.network}>
               <strong>{SOCIAL_LABELS[n.network]}</strong>{" "}
-              {n.status === "expired"
-                ? "— le jeton a expiré, les publications échoueront."
-                : "— le jeton expire dans moins de 7 jours."}{" "}
+              {n.status === "broken"
+                ? "— la dernière publication a été refusée : le jeton ne fonctionne plus."
+                : n.status === "expired"
+                  ? "— le jeton a expiré, les publications échoueront."
+                  : "— le jeton expire dans moins de 7 jours."}{" "}
               Reconnecter le compte →
             </div>
           ))}

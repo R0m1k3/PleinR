@@ -6,6 +6,7 @@ import { getSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
 import {
+  checkTokenHealth,
   expiryStatus,
   getSocialAccounts,
   listStoredTargets,
@@ -14,6 +15,7 @@ import {
   SOCIAL_LABELS,
   SOCIAL_NETWORKS,
   type SocialTarget,
+  type TokenHealth,
 } from "@/lib/social-accounts";
 import { disconnectSocial, saveSitePublicUrl, saveSocialApp, selectSocialTarget } from "../actions";
 
@@ -21,7 +23,7 @@ export const dynamic = "force-dynamic";
 
 const HELP: Record<
   (typeof SOCIAL_NETWORKS)[number],
-  { portal: string; steps: string[]; caution?: string }
+  { portal: string; steps: string[]; caution?: string; tools?: { label: string; href: string }[] }
 > = {
   facebook: {
     portal: "https://developers.facebook.com/apps",
@@ -29,6 +31,12 @@ const HELP: Record<
       "Créez une application de type « Business » et relevez l'identifiant et la clé secrète (Paramètres › Général).",
       "Ajoutez le produit « Connexion Facebook » puis collez l'URL de redirection ci-dessous dans « URI de redirection OAuth valides ».",
       "Laissez l'application en mode développement et ajoutez le compte de l'association comme administrateur : publier sur votre propre page ne demande alors aucune revue Meta.",
+    ],
+    tools: [
+      { label: "Débogueur de jeton (vérifier un jeton et sa date d'expiration)", href: "https://developers.facebook.com/tools/debug/accesstoken/" },
+      { label: "Outil de jetons d'accès (voir les jetons de vos pages)", href: "https://developers.facebook.com/tools/accesstoken/" },
+      { label: "Explorateur d'API Graph (tester un appel à la main)", href: "https://developers.facebook.com/tools/explorer/" },
+      { label: "Documentation : jetons de longue durée", href: "https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived" },
     ],
   },
   linkedin: {
@@ -40,6 +48,10 @@ const HELP: Record<
     ],
     caution:
       "LinkedIn soumet cette demande à une revue (page vérifiée, nom légal, adresse, politique de confidentialité) et ses jetons expirent au bout de 60 jours : il faudra recliquer sur Reconnecter environ tous les deux mois.",
+    tools: [
+      { label: "Jetons de votre application (durée de validité)", href: "https://www.linkedin.com/developers/tools/oauth" },
+      { label: "Documentation : durée de vie et rafraîchissement des jetons", href: "https://learn.microsoft.com/linkedin/shared/authentication/programmatic-refresh-tokens" },
+    ],
   },
 };
 
@@ -68,6 +80,16 @@ export default async function ReseauxPage({
   const redirectUris = new Map<string, string>();
   for (const network of SOCIAL_NETWORKS) {
     redirectUris.set(network, await redirectUri(network));
+  }
+
+  // État réel du jeton, demandé à la plateforme à chaque affichage : c'est le
+  // seul moyen de savoir qu'un jeton « sans expiration » a été révoqué.
+  const health = new Map<string, TokenHealth | null>();
+  for (const network of SOCIAL_NETWORKS) {
+    const account = byNetwork.get(network);
+    if (account?.accessToken && account.targetId) {
+      health.set(network, await checkTokenHealth(network));
+    }
   }
 
   // Cibles à proposer quand le compte administre plusieurs pages.
@@ -140,6 +162,8 @@ export default async function ReseauxPage({
         const status = expiryStatus(account?.expiresAt);
         const isConnected = !!account?.accessToken && !!account.targetId;
         const candidates = targets.get(network) ?? [];
+        const tokenHealth = health.get(network) ?? null;
+        const broken = tokenHealth?.ok === false;
 
         return (
           <section key={network} style={panel}>
@@ -162,7 +186,7 @@ export default async function ReseauxPage({
               <h2 className="font-display" style={{ ...title, margin: 0, flex: 1 }}>
                 {SOCIAL_LABELS[network]}
               </h2>
-              <StatusChip connected={isConnected} status={status} />
+              <StatusChip connected={isConnected} status={broken ? "expired" : status} />
             </div>
 
             {isConnected && (
@@ -172,8 +196,23 @@ export default async function ReseauxPage({
                 {account?.expiresAt && status !== "never" && ` Jeton valable jusqu'au ${fmtDate(account.expiresAt)}.`}
                 {account?.connectedAt && ` Connecté le ${fmtDate(account.connectedAt)}.`}
                 <br />
+                {tokenHealth?.ok && (
+                  <span style={{ color: "#1f8a5b", fontWeight: 600 }}>
+                    ✓ Jeton vérifié à l&apos;instant auprès de {SOCIAL_LABELS[network]} : il fonctionne.{" "}
+                  </span>
+                )}
                 Pour changer de page, relancez une connexion.
               </div>
+            )}
+
+            {broken && (
+              <Banner tone="error">
+                Le jeton {SOCIAL_LABELS[network]} ne fonctionne plus : les publications échoueront
+                tant que vous n&apos;aurez pas cliqué sur Reconnecter.
+                <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
+                  Réponse de la plateforme : {tokenHealth.reason.slice(0, 220)}
+                </div>
+              </Banner>
             )}
 
             {(status === "soon" || status === "expired") && isConnected && (
@@ -276,7 +315,28 @@ export default async function ReseauxPage({
                   {help.portal}
                 </a>
               </div>
-              <div style={{ marginTop: 10 }}>
+              {help.tools && (
+                <div style={{ marginTop: 14 }}>
+                  <div className="field-label">Outils pour inspecter un jeton</div>
+                  <ul style={{ margin: "6px 0 0", paddingLeft: 20, fontSize: 13, lineHeight: 1.8 }}>
+                    {help.tools.map((tool) => (
+                      <li key={tool.href}>
+                        <a href={tool.href} target="_blank" rel="noopener noreferrer" style={{ color: "#2C6FB3", fontWeight: 600 }}>
+                          {tool.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ marginTop: 8, fontSize: 12.5, color: "#8c8068", lineHeight: 1.6 }}>
+                    Ces outils servent à contrôler ou dépanner : le bouton
+                    <strong> Connecter</strong> fait déjà l&apos;échange complet — jeton court,
+                    puis jeton de longue durée, puis jeton de page — vous n&apos;avez aucun jeton à
+                    copier à la main.
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: 14 }}>
                 <div className="field-label">URL de redirection à déclarer</div>
                 <code style={{ display: "block", background: "#faf7ef", border: "1px solid #f0e8d6", borderRadius: 9, padding: "10px 12px", fontSize: 12.5, color: "#3c3322", overflowWrap: "anywhere" }}>
                   {base ? redirectUris.get(network) : "— renseignez d'abord l'URL publique du site ci-dessus —"}

@@ -141,6 +141,92 @@ export function expiryStatus(expiresAt: Date | null | undefined): ExpiryStatus {
   return remainingMs <= EXPIRY_WARNING_DAYS * 86_400_000 ? "soon" : "ok";
 }
 
+/**
+ * Vérifie que le jeton fonctionne encore, en interrogeant la plateforme.
+ *
+ * « N'expire pas » ne veut pas dire « ne meurt jamais » : un jeton de page
+ * Facebook est invalidé si le mot de passe du compte connecté change, si ce
+ * compte perd son rôle d'administrateur de la page, si l'autorisation est
+ * retirée, ou si Meta le révoque. Sans cette vérification, on ne l'apprend
+ * qu'au moment où une publication échoue.
+ */
+export type TokenHealth =
+  | { ok: true; detail: string }
+  | { ok: false; reason: string };
+
+export async function checkTokenHealth(network: SocialNetwork): Promise<TokenHealth | null> {
+  const health = await probeToken(network);
+  if (health) await rememberCheck(network, health);
+  return health;
+}
+
+/** Contrôle mis en cache : évite un appel réseau à chaque affichage. */
+export async function tokenHealthCached(
+  network: SocialNetwork,
+  maxAgeMs = 6 * 3_600_000
+): Promise<TokenHealth | null> {
+  const account = await getSocialAccount(network);
+  if (!account?.accessToken || !account.targetId) return null;
+
+  const fresh =
+    account.lastCheckAt && Date.now() - new Date(account.lastCheckAt).getTime() < maxAgeMs;
+  if (fresh && account.lastCheckOk !== null) {
+    return account.lastCheckOk
+      ? { ok: true, detail: "Vérifié récemment" }
+      : { ok: false, reason: account.lastCheckError ?? "Jeton refusé" };
+  }
+  return checkTokenHealth(network);
+}
+
+async function rememberCheck(network: SocialNetwork, health: TokenHealth) {
+  await db
+    .update(socialAccounts)
+    .set({
+      lastCheckAt: new Date(),
+      lastCheckOk: health.ok,
+      lastCheckError: health.ok ? null : health.reason.slice(0, 2000),
+    })
+    .where(eq(socialAccounts.network, network));
+}
+
+async function probeToken(network: SocialNetwork): Promise<TokenHealth | null> {
+  const credentials = await resolveCredentials(network);
+  if (!credentials) return null;
+
+  try {
+    if (network === "facebook") {
+      // Un jeton de page répond `/me` avec la page elle-même.
+      const res = await fetch(
+        `https://graph.facebook.com/${FACEBOOK_GRAPH_VERSION}/me?${new URLSearchParams({
+          fields: "id,name",
+          access_token: credentials.accessToken,
+        })}`
+      );
+      if (!res.ok) return { ok: false, reason: await readError(res) };
+      const page = (await res.json()) as { id?: string; name?: string };
+      if (page.id && credentials.targetId && page.id !== credentials.targetId) {
+        return {
+          ok: false,
+          reason: `Le jeton ne pointe plus vers la bonne page (${page.name ?? page.id}).`,
+        };
+      }
+      return { ok: true, detail: page.name ?? "Page accessible" };
+    }
+
+    const res = await fetch(
+      "https://api.linkedin.com/rest/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED&count=1",
+      { headers: linkedinHeaders(credentials.accessToken) }
+    );
+    if (!res.ok) return { ok: false, reason: await readError(res) };
+    return { ok: true, detail: "Accès à la page confirmé" };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : "Plateforme injoignable",
+    };
+  }
+}
+
 // ---- OAuth ----
 
 export class SocialAuthError extends Error {}

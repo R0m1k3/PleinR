@@ -155,6 +155,11 @@ export const socialAccounts = pgTable("social_accounts", {
   targetName: varchar("target_name", { length: 200 }),
   connectedById: integer("connected_by_id").references(() => users.id, { onDelete: "set null" }),
   connectedAt: timestamp("connected_at", { withTimezone: true }),
+  // Dernier contrôle de validité auprès de la plateforme : permet au tableau de
+  // bord d'alerter sans refaire un appel réseau à chaque affichage.
+  lastCheckAt: timestamp("last_check_at", { withTimezone: true }),
+  lastCheckOk: boolean("last_check_ok"),
+  lastCheckError: text("last_check_error"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
