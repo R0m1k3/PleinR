@@ -165,3 +165,12 @@ export async function getHighlightedMembers(limit = 3) {
     .limit(limit);
   return rows;
 }
+
+/** Nombre d'adhérents validés (statut `active`) : affiché sur l'accueil. */
+export async function getActiveMemberCount(): Promise<number> {
+  const [row] = await db
+    .select({ total: count(members.id) })
+    .from(members)
+    .where(eq(members.status, "active"));
+  return Number(row?.total ?? 0);
+}

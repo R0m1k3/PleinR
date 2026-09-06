@@ -9,7 +9,7 @@ import { MembersCarousel } from "@/components/MembersCarousel";
 import { StarField } from "@/components/StarField";
 import { PromoImage } from "@/components/PromoImage";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
-import { getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
+import { getActiveMemberCount, getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
 import { getSiteSettings, socialLinks } from "@/lib/site-settings";
 import { SITE_DESCRIPTION, SITE_TITLE, pageMetadata } from "@/lib/seo";
 
@@ -35,10 +35,11 @@ function badgeColor(badge: string | null) {
 }
 
 export default async function AccueilPage() {
-  const [promos, rotatingMembers, settings] = await Promise.all([
+  const [promos, rotatingMembers, settings, memberCount] = await Promise.all([
     getLivePromotions(6),
     getRotatingActiveMembers(),
     getSiteSettings(),
+    getActiveMemberCount(),
   ]);
   const socials = socialLinks(settings);
 
@@ -450,8 +451,9 @@ export default async function AccueilPage() {
               Faites partie de l&apos;aventure Plein R
             </h2>
             <p style={{ margin: "0 auto 22px", fontSize: 15.5, color: "#f4e6d3", maxWidth: 480 }}>
-              Rejoignez plus de 120 commerçants et entreprises qui font réseau, se rencontrent et réussissent
-              ensemble.
+              {memberCount > 0
+                ? `Rejoignez les ${memberCount} commerçants et entreprises adhérents qui font réseau, se rencontrent et réussissent ensemble.`
+                : "Rejoignez les commerçants et entreprises qui font réseau, se rencontrent et réussissent ensemble."}
             </p>
             <MembershipModalButton
               label="Devenir adhérent"

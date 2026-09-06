@@ -61,7 +61,7 @@ export async function SiteFooter() {
                       rel="noopener noreferrer"
                       aria-label={`Plein R sur ${s.label}`}
                     >
-                      <span style={{ color: SOCIAL_BRAND[s.network], display: "inline-flex" }}>
+                      <span style={{ color: SOCIAL_BRAND[s.network], display: "inline-flex", width: 17, flexShrink: 0 }}>
                         <SocialIcon network={s.network} size={17} />
                       </span>
                       {s.label}

@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 import { signOut } from "@/auth";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
+import { CATEGORY_PALETTE } from "@/db/categories";
 import {
   activityLog,
   categories,
@@ -43,16 +44,6 @@ import { normalizeWebsite } from "@/lib/member-profile";
 import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
 
-const CATEGORY_PALETTE = [
-  { accent: "#E0A63C", tint: "#f6efdc" },
-  { accent: "#6FB0C6", tint: "#e7f0f3" },
-  { accent: "#9a6638", tint: "#f4ebda" },
-  { accent: "#2C6FB3", tint: "#eaf0f6" },
-  { accent: "#5a7a5a", tint: "#eef0ec" },
-  { accent: "#7a6f9c", tint: "#efe9f3" },
-  { accent: "#c98a2e", tint: "#f7efe0" },
-  { accent: "#3f8aa3", tint: "#e6eff2" },
-];
 
 function slugify(input: string): string {
   return input

@@ -379,15 +379,15 @@ button {
 /* Boutons sociaux libellés : plus lisibles que deux icônes isolées, et ils
    donnent enfin du contenu à la quatrième colonne. */
 .footer-social {
-  display: flex;
-  flex-direction: column;
-  /* Sans cela les boutons s'étirent sur toute la colonne et deviennent des
-     pavés vides. */
-  align-items: flex-start;
+  /* Grille à une colonne dimensionnée sur son contenu : tous les boutons
+     prennent la largeur du plus long au lieu de s'étirer sur la colonne ou de
+     former un escalier. */
+  display: inline-grid;
+  grid-template-columns: minmax(150px, max-content);
   gap: 9px;
 }
 .footer-social a {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 10px;
   padding: 9px 13px;

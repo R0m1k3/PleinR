@@ -41,6 +41,12 @@ docker compose up --build   # full stack
 - **Data reads** for the public site live in `src/lib/queries.ts`.
 - After changing `src/db/schema.ts`, run `npm run db:generate` and commit the new
   file under `drizzle/`.
+- **Catégories** : le référentiel vit dans `src/db/categories.ts` (slugs stables,
+  jamais renommés). Il est inséré par la migration `0012_referentiel_categories`
+  (`ON CONFLICT (slug)` : seul `sort` est réaligné, un libellé renommé depuis le
+  backend est conservé) et rejoué par le seed. Pour ajouter une catégorie, on
+  l'ajoute au référentiel **et** on génère une nouvelle migration `--custom`
+  du même modèle ; `tests/categories.test.ts` vérifie la cohérence.
 
 ## Promotions
 
