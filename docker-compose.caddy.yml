@@ -1,0 +1,50 @@
+# Plein R — variante « VPS sans reverse proxy existant ».
+#
+# Ajoute Caddy devant l'application : il écoute en 80 et 443, obtient et
+# renouvelle tout seul le certificat Let's Encrypt pour SITE_DOMAIN, et
+# redirige automatiquement HTTP vers HTTPS.
+#
+# Utilisation : dans .env, poser
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.caddy.yml
+#   SITE_DOMAIN=pleinr.example.fr
+#   CADDY_EMAIL=vous@example.fr
+#   AUTH_URL=https://pleinr.example.fr
+# puis `docker compose up -d --build` comme d'habitude.
+#
+# Pré-requis : le DNS du domaine pointe vers le VPS et les ports 80/443 sont
+# ouverts dans le pare-feu.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: pleinr-caddy
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?SITE_DOMAIN manquant dans .env}
+      CADDY_EMAIL: ${CADDY_EMAIL:?CADDY_EMAIL manquant dans .env (alertes d expiration Let's Encrypt)}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - proxy
+
+  app:
+    # L'application n'est plus publiée directement sur l'hôte : tout passe
+    # par Caddy (sinon http://IP:8413 contournerait le HTTPS).
+    ports: !reset []
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  # Sans Nginx Proxy Manager, personne ne crée ce réseau : Compose s'en charge.
+  proxy:
+    external: false
