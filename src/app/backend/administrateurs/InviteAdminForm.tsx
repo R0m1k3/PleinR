@@ -25,11 +25,16 @@ export function InviteAdminForm() {
           setError(null);
           try {
             const result = await inviteAdmin(fd);
+            if (result && "error" in result) {
+              setError(result.error);
+              return;
+            }
             setIssued(result ?? null);
             router.refresh();
           } catch {
-            // Next masque le détail des erreurs serveur en production.
-            setError("Impossible de créer ce compte : vérifiez que l'e-mail n'est pas déjà utilisé.");
+            // Filet pour l'imprévu : les échecs de saisie, eux, sont renvoyés
+            // par l'action et affichés tels quels ci-dessus.
+            setError("Impossible de créer ce compte. Réessayez dans un instant.");
           } finally {
             setPending(false);
           }

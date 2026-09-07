@@ -14,6 +14,11 @@ export function AddMemberPanel({
 }) {
   const [open, setOpen] = useState(false);
   const [created, setCreated] = useState<CreatedMemberAccount | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // React vide un formulaire non contrôlé après chaque action : sur un refus,
+  // on réinjecte la saisie plutôt que de la faire retaper.
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [attempt, setAttempt] = useState(0);
   const router = useRouter();
 
   return (
@@ -38,8 +43,18 @@ export function AddMemberPanel({
 
       {open && (
         <form
+          key={attempt}
           action={async (fd) => {
+            setError(null);
             const result = await addMember(fd);
+            // Échec de saisie : le formulaire reste ouvert avec la raison.
+            if (result && "error" in result) {
+              setDraft(Object.fromEntries([...fd.entries()].map(([k, v]) => [k, String(v)])));
+              setAttempt((n) => n + 1);
+              setError(result.error);
+              return;
+            }
+            setDraft({});
             setOpen(false);
             // On reste sur la page : le mot de passe temporaire n'est affiché
             // qu'ici, une seule fois, et n'est conservé nulle part.
@@ -48,18 +63,23 @@ export function AddMemberPanel({
           }}
           style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 22, marginTop: 14 }}
         >
+          {error && (
+            <div role="alert" style={{ background: "#fdecea", border: "1px solid #f1c4bd", borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#a3372e", marginBottom: 16 }}>
+              {error}
+            </div>
+          )}
           <div className="grid grid-2" style={{ gap: 16 }}>
             <div>
               <label className="field-label">Nom de l&apos;adhérent</label>
-              <input name="name" required placeholder="ex : Au Bon Pain" className="field" />
+              <input name="name" required placeholder="ex : Au Bon Pain" className="field" defaultValue={draft.name ?? ""} />
             </div>
             <div>
               <label className="field-label">E-mail (identifiant de connexion)</label>
-              <input name="email" type="email" required placeholder="contact@exemple.fr" className="field" />
+              <input name="email" type="email" required placeholder="contact@exemple.fr" className="field" defaultValue={draft.email ?? ""} />
             </div>
             <div>
               <label className="field-label">Catégorie</label>
-              <select name="categoryId" className="field" defaultValue="">
+              <select name="categoryId" className="field" defaultValue={draft.categoryId ?? ""}>
                 <option value="">—</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -70,7 +90,7 @@ export function AddMemberPanel({
             </div>
             <div>
               <label className="field-label">Commune</label>
-              <select name="city" className="field" defaultValue="">
+              <select name="city" className="field" defaultValue={draft.city ?? ""}>
                 <option value="">—</option>
                 {BASSIN_POMPEY_COMMUNES.map((c) => (
                   <option key={c} value={c}>
@@ -81,7 +101,7 @@ export function AddMemberPanel({
             </div>
             <div>
               <label className="field-label">Statut</label>
-              <select name="status" className="field" defaultValue="pending">
+              <select name="status" className="field" defaultValue={draft.status ?? "pending"}>
                 <option value="pending">En attente</option>
                 <option value="active">Actif</option>
               </select>

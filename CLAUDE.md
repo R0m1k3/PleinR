@@ -164,6 +164,12 @@ même raison.
 
 ## Sécurité
 
+- **Erreurs des server actions** : un `throw` dans une action est masqué par
+  Next en production (message remplacé par un digest) et fait tomber la page
+  sur « Application error ». Les échecs **attendus** — e-mail déjà pris, champ
+  manquant — sont donc **renvoyés** (`ActionError = { error: string }`) et
+  affichés par le formulaire, qui conserve la saisie. Le `throw` reste réservé
+  aux violations d'accès, qui n'ont pas à s'expliquer à l'utilisateur.
 - Le journal d'activité agrège des saisies de tiers, dont le formulaire de
   contact **public** : il est filtré à l'écriture (`sanitizeActivityMessage`) et
   rendu en éléments React (`activityNodes`), jamais en HTML brut.

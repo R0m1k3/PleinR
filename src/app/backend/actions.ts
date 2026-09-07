@@ -360,6 +360,16 @@ export type IssuedCredentials = { email: string; tempPassword: string };
 export type CreatedMemberAccount = IssuedCredentials & { memberId: number };
 
 /**
+ * Échec **attendu** d'une action : e-mail déjà pris, champ manquant…
+ *
+ * Il est renvoyé et non `throw` : une exception levée dans une server action
+ * est masquée par Next en production (message remplacé par un digest) et fait
+ * tomber la page entière sur « Application error ». Le `throw` reste réservé
+ * aux violations d'accès, qui ne doivent pas s'expliquer à l'utilisateur.
+ */
+export type ActionError = { error: string };
+
+/**
  * Tags à enregistrer : la saisie si elle existe, sinon les suggestions déduites
  * du métier, de la commune et de la description (`autoTags`).
  */
@@ -381,14 +391,16 @@ async function resolveMemberTags(
   });
 }
 
-export async function addMember(formData: FormData): Promise<CreatedMemberAccount | undefined> {
+export async function addMember(
+  formData: FormData
+): Promise<CreatedMemberAccount | ActionError | undefined> {
   const { role } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return undefined;
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  if (!email) throw new Error("L'e-mail est requis pour créer le compte de l'adhérent.");
+  if (!email) return { error: "L'e-mail est requis pour créer le compte de l'adhérent." };
   const categoryId = formData.get("categoryId") ? Number(formData.get("categoryId")) : null;
   const city = String(formData.get("city") ?? "").trim() || null;
   const status = (String(formData.get("status") ?? "pending") as "active" | "pending");
@@ -396,7 +408,7 @@ export async function addMember(formData: FormData): Promise<CreatedMemberAccoun
   // Un seul compte par e-mail.
   const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
   if (existing.length > 0) {
-    throw new Error("Un compte existe déjà avec cet e-mail.");
+    return { error: `Un compte existe déjà avec l'e-mail ${email}.` };
   }
 
   const tags = await resolveMemberTags(null, { categoryId, city, description: null });
@@ -551,7 +563,9 @@ export async function deleteMember(formData: FormData) {
 }
 
 // ---- Admins ----
-export async function inviteAdmin(formData: FormData): Promise<IssuedCredentials | undefined> {
+export async function inviteAdmin(
+  formData: FormData
+): Promise<IssuedCredentials | ActionError | undefined> {
   const { role } = await requireRole();
   if (!can(role, "manageAdmins")) throw new Error("Accès refusé");
 
@@ -563,7 +577,7 @@ export async function inviteAdmin(formData: FormData): Promise<IssuedCredentials
   const newRole: AppRole = LABEL_TO_ROLE[roleLabel] ?? "editor";
 
   const existing = await db.select().from(users).where(eq(users.email, email));
-  if (existing.length > 0) throw new Error("Un compte existe déjà avec cet e-mail.");
+  if (existing.length > 0) return { error: `Un compte existe déjà avec l'e-mail ${email}.` };
 
   // Mot de passe temporaire montré une seule fois à l'inviteur, à changer à
   // la première connexion. Auparavant il n'était ni conservé ni affiché :
@@ -1107,7 +1121,9 @@ export async function updateOwnProfile(formData: FormData) {
 // Approuve une demande d'adhésion ET crée directement l'adhérent + son compte
 // de connexion. Renvoie l'id du nouvel adhérent et ses identifiants, à
 // afficher une seule fois.
-export async function approveMembershipRequest(formData: FormData): Promise<CreatedMemberAccount | undefined> {
+export async function approveMembershipRequest(
+  formData: FormData
+): Promise<CreatedMemberAccount | ActionError | undefined> {
   const { role } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
@@ -1119,12 +1135,15 @@ export async function approveMembershipRequest(formData: FormData): Promise<Crea
 
   const email = (req.email ?? "").trim().toLowerCase();
   if (!email) {
-    throw new Error("Cette demande n'a pas d'e-mail : impossible de créer le compte. Créez l'adhérent manuellement.");
+    return {
+      error:
+        "Cette demande n'a pas d'e-mail : impossible de créer le compte. Créez l'adhérent manuellement.",
+    };
   }
 
   const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
   if (existing.length > 0) {
-    throw new Error("Un compte existe déjà avec cet e-mail.");
+    return { error: `Un compte existe déjà avec l'e-mail ${email}.` };
   }
 
   const [newMember] = await db
