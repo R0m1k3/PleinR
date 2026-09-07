@@ -1132,6 +1132,9 @@ export async function approveMembershipRequest(
 
   const [req] = await db.select().from(membershipRequests).where(eq(membershipRequests.id, id));
   if (!req) throw new Error("Demande introuvable.");
+  // Garde serveur : un double clic ou un onglet resté ouvert ne doit jamais
+  // créer un second compte pour la même demande.
+  if (req.status === "approved") throw new Error("Cette demande a déjà été approuvée : l'adhérent existe.");
 
   const email = (req.email ?? "").trim().toLowerCase();
   if (!email) {
@@ -1178,6 +1181,9 @@ export async function setRequestStatus(formData: FormData) {
   const id = Number(formData.get("id"));
   const status = String(formData.get("status") ?? "");
   if (!id || !["new", "approved", "rejected"].includes(status)) return;
+  // Une demande approuvée a produit un adhérent : son statut ne se réécrit plus.
+  const [current] = await db.select({ status: membershipRequests.status }).from(membershipRequests).where(eq(membershipRequests.id, id));
+  if (!current || current.status === "approved") return;
   await db
     .update(membershipRequests)
     .set({ status: status as "new" | "approved" | "rejected" })

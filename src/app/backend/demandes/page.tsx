@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { desc } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { contactMessages, membershipRequests } from "@/db/schema";
+import { contactMessages, members, membershipRequests } from "@/db/schema";
 import { can } from "@/lib/rbac";
 import { setContactStatus, setRequestStatus } from "../actions";
 import { ApproveRequestForm } from "./ApproveRequestForm";
@@ -52,6 +53,21 @@ export default async function DemandesPage() {
     db.select().from(contactMessages).orderBy(desc(contactMessages.createdAt)),
   ]);
 
+  // Demandes approuvées : on retrouve la fiche créée par son e-mail, pour
+  // proposer un lien vers l'adhérent plutôt que des boutons déjà consommés.
+  const approvedEmails = requests
+    .filter((r) => r.status === "approved" && r.email)
+    .map((r) => (r.email ?? "").trim().toLowerCase())
+    .filter(Boolean);
+  const memberByEmail = new Map<string, number>();
+  if (approvedEmails.length > 0) {
+    const rows = await db
+      .select({ id: members.id, email: members.email })
+      .from(members)
+      .where(inArray(members.email, approvedEmails));
+    for (const row of rows) memberByEmail.set(row.email.trim().toLowerCase(), row.id);
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
       {/* ---- Demandes d'adhésion ---- */}
@@ -72,13 +88,32 @@ export default async function DemandesPage() {
                 </div>
               </div>
               <StatusPill map={REQ_STATUS} status={r.status} />
-              <div style={{ display: "flex", gap: 8 }}>
-                <ApproveRequestForm requestId={r.id} />
-                <form action={setRequestStatus}>
-                  <input type="hidden" name="id" value={r.id} />
-                  <input type="hidden" name="status" value="rejected" />
-                  <ActionBtn color="#d8472b">Rejeter</ActionBtn>
-                </form>
+              {/* Les actions dépendent du statut : une demande approuvée a déjà
+                  produit son adhérent, on ne propose plus que d'ouvrir sa fiche. */}
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {r.status === "approved" ? (
+                  (() => {
+                    const memberId = memberByEmail.get((r.email ?? "").trim().toLowerCase());
+                    return memberId ? (
+                      <Link href={`/backend/adherents/${memberId}`} style={{ color: "#2C6FB3", fontWeight: 700, fontSize: 12.5, textDecoration: "none", whiteSpace: "nowrap" }}>
+                        Ouvrir la fiche adhérent →
+                      </Link>
+                    ) : (
+                      <span style={{ fontSize: 12.5, color: "#a99c82" }}>Adhérent créé</span>
+                    );
+                  })()
+                ) : (
+                  <>
+                    <ApproveRequestForm requestId={r.id} />
+                    {r.status === "new" && (
+                      <form action={setRequestStatus}>
+                        <input type="hidden" name="id" value={r.id} />
+                        <input type="hidden" name="status" value="rejected" />
+                        <ActionBtn color="#d8472b">Rejeter</ActionBtn>
+                      </form>
+                    )}
+                  </>
+                )}
               </div>
             </div>
             {r.message && (
