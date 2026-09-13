@@ -72,13 +72,25 @@ export default async function DemandesPage() {
                 </div>
               </div>
               <StatusPill map={REQ_STATUS} status={r.status} />
+              {/* Une demande traitée ne garde que la sortie qui a du sens :
+                  « Rejeter » disparaît une fois l'adhérent créé, et un rejet
+                  reste réversible tant qu'aucun compte n'existe. */}
               <div style={{ display: "flex", gap: 8 }}>
-                <ApproveRequestForm requestId={r.id} />
-                <form action={setRequestStatus}>
-                  <input type="hidden" name="id" value={r.id} />
-                  <input type="hidden" name="status" value="rejected" />
-                  <ActionBtn color="#d8472b">Rejeter</ActionBtn>
-                </form>
+                <ApproveRequestForm requestId={r.id} status={r.status} />
+                {r.status === "new" && (
+                  <form action={setRequestStatus}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="status" value="rejected" />
+                    <ActionBtn color="#d8472b">Rejeter</ActionBtn>
+                  </form>
+                )}
+                {r.status === "rejected" && (
+                  <form action={setRequestStatus}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="status" value="new" />
+                    <ActionBtn color="#6c6150">Rouvrir</ActionBtn>
+                  </form>
+                )}
               </div>
             </div>
             {r.message && (
@@ -109,17 +121,30 @@ export default async function DemandesPage() {
                 </div>
               </div>
               <StatusPill map={MSG_STATUS} status={m.status} />
+              {/* Chaque bouton fait avancer le message d'un cran : on ne
+                  propose plus « Marquer lu » sur un message déjà lu ni
+                  « Archiver » sur un message archivé. */}
               <div style={{ display: "flex", gap: 8 }}>
-                <form action={setContactStatus}>
-                  <input type="hidden" name="id" value={m.id} />
-                  <input type="hidden" name="status" value="read" />
-                  <ActionBtn color="#2C6FB3">Marquer lu</ActionBtn>
-                </form>
-                <form action={setContactStatus}>
-                  <input type="hidden" name="id" value={m.id} />
-                  <input type="hidden" name="status" value="archived" />
-                  <ActionBtn color="#a99c82">Archiver</ActionBtn>
-                </form>
+                {m.status === "new" && (
+                  <form action={setContactStatus}>
+                    <input type="hidden" name="id" value={m.id} />
+                    <input type="hidden" name="status" value="read" />
+                    <ActionBtn color="#2C6FB3">Marquer lu</ActionBtn>
+                  </form>
+                )}
+                {m.status !== "archived" ? (
+                  <form action={setContactStatus}>
+                    <input type="hidden" name="id" value={m.id} />
+                    <input type="hidden" name="status" value="archived" />
+                    <ActionBtn color="#a99c82">Archiver</ActionBtn>
+                  </form>
+                ) : (
+                  <form action={setContactStatus}>
+                    <input type="hidden" name="id" value={m.id} />
+                    <input type="hidden" name="status" value="read" />
+                    <ActionBtn color="#6c6150">Désarchiver</ActionBtn>
+                  </form>
+                )}
               </div>
             </div>
             <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "#5a5040", whiteSpace: "pre-wrap" }}>{m.message}</p>

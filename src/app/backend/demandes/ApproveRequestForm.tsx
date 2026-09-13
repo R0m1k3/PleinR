@@ -10,8 +10,19 @@ import { approveMembershipRequest, type CreatedMemberAccount } from "../actions"
  * Approuve une demande et affiche une seule fois les identifiants du compte
  * créé. On reste sur la page : une redirection ferait perdre le mot de passe,
  * qui n'est conservé nulle part.
+ *
+ * Le bouton ne s'affiche que pour une demande encore à traiter, mais c'est ce
+ * composant — et non la page — qui en décide : après l'approbation,
+ * `router.refresh()` renvoie la demande en « approuvée », et un masquage côté
+ * serveur démonterait le bloc d'identifiants avant qu'il ait été lu.
  */
-export function ApproveRequestForm({ requestId }: { requestId: number }) {
+export function ApproveRequestForm({
+  requestId,
+  status,
+}: {
+  requestId: number;
+  status: string;
+}) {
   const [created, setCreated] = useState<CreatedMemberAccount | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +38,8 @@ export function ApproveRequestForm({ requestId }: { requestId: number }) {
       </div>
     );
   }
+
+  if (status !== "new") return null;
 
   return (
     <form

@@ -4,7 +4,7 @@ import { randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { signOut } from "@/auth";
 import { getSession } from "@/lib/session";
@@ -1133,6 +1133,17 @@ export async function approveMembershipRequest(
   const [req] = await db.select().from(membershipRequests).where(eq(membershipRequests.id, id));
   if (!req) throw new Error("Demande introuvable.");
 
+  // Le bouton disparaît dès qu'une demande est traitée, mais un onglet resté
+  // ouvert peut encore poster : on refuse ici plutôt que de créer un doublon.
+  if (req.status !== "new") {
+    return {
+      error:
+        req.status === "approved"
+          ? "Cette demande a déjà été approuvée."
+          : "Cette demande a été rejetée : rouvrez-la avant de l'approuver.",
+    };
+  }
+
   const email = (req.email ?? "").trim().toLowerCase();
   if (!email) {
     return {
@@ -1178,10 +1189,12 @@ export async function setRequestStatus(formData: FormData) {
   const id = Number(formData.get("id"));
   const status = String(formData.get("status") ?? "");
   if (!id || !["new", "approved", "rejected"].includes(status)) return;
+  // Une demande approuvée a créé un compte : elle ne se rejoue pas depuis un
+  // onglet resté ouvert sur l'ancien état.
   await db
     .update(membershipRequests)
     .set({ status: status as "new" | "approved" | "rejected" })
-    .where(eq(membershipRequests.id, id));
+    .where(and(eq(membershipRequests.id, id), ne(membershipRequests.status, "approved")));
   revalidatePath("/backend/demandes");
   revalidatePath("/backend");
 }
