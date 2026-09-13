@@ -22,10 +22,31 @@ const STRIPE_COOL =
   "repeating-linear-gradient(45deg,#eef0ec,#eef0ec 12px,#e2e8e6 12px,#e2e8e6 24px)";
 
 /**
+ * Hauteurs figées des deux blocs de texte : une description longue ne doit pas
+ * étirer la carte (donc toute la rangée de la grille). Titre et description
+ * sont tronqués en fin de ligne et occupent toujours la même place, ce qui
+ * aligne les cartes entre elles quel que soit le texte saisi par l'adhérent.
+ */
+const TITLE_LINE = 1.25;
+const TITLE_LINES = 2;
+const DESC_FONT = 13;
+const DESC_LINE = 1.5;
+const DESC_LINES = 4;
+
+const clampLines = (lines: number) =>
+  ({
+    display: "-webkit-box",
+    WebkitLineClamp: lines,
+    WebkitBoxOrient: "vertical" as const,
+    overflow: "hidden",
+  }) as const;
+
+/**
  * Carte d'un adhérent dans une grille (annuaire, page métier). Composant sans
  * état : il se rend aussi bien côté serveur que dans le filtre client.
  */
 export function MemberCard({ m, index = 0 }: { m: MemberCardData; index?: number }) {
+  const location = [m.address, m.city].filter(Boolean).join(" · ");
   return (
     <Link
       href={memberPath(m)}
@@ -50,15 +71,21 @@ export function MemberCard({ m, index = 0 }: { m: MemberCardData; index?: number
         )}
       </VitrineImage>
       <div style={{ padding: "16px 18px 18px", display: "flex", flexDirection: "column", flex: 1 }}>
-        <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: 0, color: "#26201a" }}>
+        <h3
+          className="font-display"
+          style={{ fontWeight: 700, fontSize: 18, lineHeight: TITLE_LINE, margin: 0, color: "#26201a", minHeight: 18 * TITLE_LINE * TITLE_LINES, ...clampLines(TITLE_LINES) }}
+        >
           {m.name}
         </h3>
-        <p style={{ margin: "6px 0 12px", fontSize: 13, color: "#8c8068", lineHeight: 1.5, flex: 1 }}>
+        <p
+          style={{ margin: "6px 0 12px", fontSize: DESC_FONT, color: "#8c8068", lineHeight: DESC_LINE, height: DESC_FONT * DESC_LINE * DESC_LINES, ...clampLines(DESC_LINES) }}
+        >
           {m.description}
         </p>
+        <div style={{ flex: 1 }} />
         <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "#6c6150", borderTop: "1px solid #f0e8d6", paddingTop: 11 }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: m.accent ?? "#E0A63C" }} />
-          {[m.address, m.city].filter(Boolean).join(" · ")}
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: m.accent ?? "#E0A63C", flex: "0 0 auto" }} />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{location}</span>
         </div>
       </div>
     </Link>
