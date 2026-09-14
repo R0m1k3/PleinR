@@ -246,7 +246,9 @@ export default async function PromotionsPage() {
                             ))}
                           </div>
                           <div style={{ fontSize: 11, color: "#a99c82", marginTop: 7, lineHeight: 1.45 }}>
-                            Publié dès la validation. Ce choix n&apos;est plus modifiable ensuite.
+                            Diffusé en même temps que la mise en ligne : tout de suite si le
+                            champ Publication est vide, à la date indiquée sinon. Ce choix
+                            n&apos;est plus modifiable ensuite.
                           </div>
                         </div>
                       )}
