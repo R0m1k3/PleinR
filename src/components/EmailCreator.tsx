@@ -3,9 +3,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { copyRichEmail, downloadHtml, downloadOutlookDraft } from "@/lib/email-client";
 import { buildGeneralEmail, type EmailBrand, type GeneralEmailContent } from "@/lib/email-templates";
+import {
+  MailRecipientPicker,
+  audienceCount,
+  audienceFrom,
+  type AudienceState,
+  type RecipientChoices,
+} from "@/components/MailRecipientPicker";
+import { sendSelfTest, sendStudioEmail } from "@/app/backend/actions";
 
-export function EmailCreator({ brand }: { brand: EmailBrand }) {
-  const [baseUrl, setBaseUrl] = useState("");
+export function EmailCreator({
+  brand,
+  choices,
+  mailReady,
+  siteUrl,
+}: {
+  brand: EmailBrand;
+  choices: RecipientChoices;
+  /** Faux si aucune boîte n'expédie : l'envoi réel est alors désactivé. */
+  mailReady: boolean;
+  /** Adresse publique enregistrée, utilisée par l'aperçu comme par l'envoi. */
+  siteUrl: string;
+}) {
+  const [baseUrl, setBaseUrl] = useState(siteUrl);
+  const [audience, setAudience] = useState<AudienceState>({ kind: "all", categoryId: "" });
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
   const [form, setForm] = useState<GeneralEmailContent>({
     subject: `Actualités de ${brand.associationName}`,
     kicker: brand.associationName,
@@ -19,14 +42,34 @@ export function EmailCreator({ brand }: { brand: EmailBrand }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setBaseUrl(window.location.origin);
-    setForm((current) => ({ ...current, buttonUrl: `${window.location.origin}/association` }));
-  }, []);
+    // L'adresse enregistrée prime : c'est elle que verront les destinataires,
+    // et non celle par laquelle l'administrateur est arrivé.
+    const origin = siteUrl || window.location.origin;
+    setBaseUrl(origin);
+    setForm((current) => ({ ...current, buttonUrl: `${origin}/association` }));
+  }, [siteUrl]);
 
   const email = useMemo(
     () => (baseUrl ? buildGeneralEmail(form, baseUrl, brand) : null),
     [baseUrl, brand, form],
   );
+
+  const recipientCount = audienceCount(audience, choices);
+
+  async function deliver(task: () => Promise<{ queued: number; audience: string } | { error: string }>) {
+    setSending(true);
+    setError("");
+    setSent(null);
+    try {
+      const result = await task();
+      if ("error" in result) setError(result.error);
+      else setSent(`✓ ${result.queued} message(s) mis en file pour ${result.audience}.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Envoi impossible.");
+    } finally {
+      setSending(false);
+    }
+  }
 
   function change(name: keyof GeneralEmailContent, value: string) {
     setForm((current) => ({ ...current, [name]: value }));
@@ -69,8 +112,37 @@ export function EmailCreator({ brand }: { brand: EmailBrand }) {
           <EmailArea label="Signature" value={form.signature} rows={3} onChange={(value) => change("signature", value)} />
         </div>
 
+        <div style={{ marginTop: 20, borderTop: "1px solid #f0e8d6", paddingTop: 16 }}>
+          <MailRecipientPicker choices={choices} value={audience} onChange={setAudience} />
+          <div style={{ display: "grid", gap: 9, marginTop: 14 }}>
+            <button
+              type="button"
+              className="email-primary-button"
+              disabled={!email || sending || !mailReady || recipientCount === 0}
+              onClick={() => email && deliver(() => sendStudioEmail({ content: form, audience: audienceFrom(audience) }))}
+            >
+              {sending ? "Envoi en cours…" : `Envoyer à ${recipientCount} adhérent${recipientCount > 1 ? "s" : ""}`}
+            </button>
+            <button
+              type="button"
+              className="email-secondary-button"
+              disabled={!email || sending || !mailReady}
+              onClick={() => email && deliver(() => sendSelfTest({ subject: email.subject, html: email.html, text: form.body }))}
+            >
+              M&apos;envoyer un test
+            </button>
+            {sent && <div style={{ color: "#1f8a5b", fontSize: 13, fontWeight: 700 }}>{sent}</div>}
+            {!mailReady && (
+              <p style={{ margin: 0, color: "#9a8d72", fontSize: 11.5, lineHeight: 1.55 }}>
+                Aucune boîte mail n&apos;expédie pour l&apos;instant : branchez-la dans Configuration › Boîte mail.
+                Les boutons ci-dessous restent utilisables.
+              </p>
+            )}
+          </div>
+        </div>
+
         {error && <div style={{ marginTop: 13, color: "#d8472b", fontSize: 13, fontWeight: 700 }}>{error}</div>}
-        <div style={{ display: "grid", gap: 9, marginTop: 20 }}>
+        <div style={{ display: "grid", gap: 9, marginTop: 20, borderTop: "1px solid #f0e8d6", paddingTop: 16 }}>
           <button type="button" className="email-primary-button" disabled={!email} onClick={() => email && action("outlook", () => downloadOutlookDraft(email.subject, email.html))}>
             {flash === "outlook" ? "✓ Brouillon téléchargé" : "Télécharger le brouillon Outlook"}
           </button>
@@ -87,7 +159,8 @@ export function EmailCreator({ brand }: { brand: EmailBrand }) {
           </div>
         </div>
         <p style={{ margin: "13px 0 0", color: "#9a8d72", fontSize: 11.5, lineHeight: 1.55 }}>
-          Ouvrez fichier .eml pour obtenir un brouillon Outlook prêt à compléter avec destinataires.
+          Ces trois boutons restent là pour les cas particuliers : le .eml donne un brouillon Outlook
+          à compléter à la main.
         </p>
       </section>
 

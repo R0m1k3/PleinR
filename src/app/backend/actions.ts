@@ -51,12 +51,20 @@ import {
   saveOAuthApp,
   saveSmtpAccount,
   setActiveMailProvider,
+  isMailConfigured,
 } from "@/lib/mail-accounts";
 import type { MailProvider } from "@/db/schema";
 import { sendNow } from "@/lib/mailer";
 import { cancelMailMessage, logSentMail, queueMails, retryMailMessage } from "@/lib/mail-outbox";
-import { activeMemberRecipients, selfRecipient } from "@/lib/mail-recipients";
-import { buildCredentialsEmail, buildGeneralEmail, buildInformationEmail } from "@/lib/email-templates";
+import { activeMemberRecipients, resolveAudience, selfRecipient, type Audience } from "@/lib/mail-recipients";
+import {
+  buildCredentialsEmail,
+  buildGeneralEmail,
+  buildInformationEmail,
+  buildMeetingEmail,
+  type GeneralEmailContent,
+  type MeetingEmailTexts,
+} from "@/lib/email-templates";
 import { richTextToPlain } from "@/lib/rich-text";
 import { emailBrand, getSiteSettings } from "@/lib/site-settings";
 import { siteUrl } from "@/lib/social-accounts";
@@ -1773,4 +1781,147 @@ export async function cancelMail(formData: FormData) {
   const id = Number(formData.get("id") ?? 0);
   if (id) await cancelMailMessage(id);
   revalidatePath("/backend/boite-mail");
+}
+
+// ---- Envois groupés ----
+
+async function requireEmails() {
+  const access = await requireRole();
+  if (!can(access.role, "manageEmails")) throw new Error("Accès refusé");
+  return access;
+}
+
+export type QueuedBroadcast = { queued: number; audience: string };
+
+/**
+ * Prépare un envoi groupé.
+ *
+ * Le message est construit **une seule fois** puis recopié par destinataire :
+ * une ligne chacun, jamais de copie partagée. Rien ne part dans la requête —
+ * la file est vidée par la boucle de fond, sinon la page attendrait autant
+ * d'allers-retours que d'adhérents.
+ */
+async function queueBroadcast(
+  message: { subject: string; html: string; text?: string | null },
+  audience: Audience,
+  meta: { kind: "studio" | "meeting"; meetingId?: number | null; userId: number | null }
+): Promise<QueuedBroadcast | ActionError> {
+  const recipients = await resolveAudience(audience);
+  if (recipients.length === 0) {
+    return { error: "Aucun destinataire n'a d'adresse e-mail utilisable pour cette sélection." };
+  }
+  if (!(await isMailConfigured())) {
+    return { error: "Aucune boîte mail n'est configurée : voir Configuration › Boîte mail." };
+  }
+
+  const settings = await getSiteSettings();
+  await queueMails(
+    recipients.map((recipient) => ({
+      kind: meta.kind,
+      toAddress: recipient.email,
+      toName: recipient.name,
+      subject: message.subject,
+      html: message.html,
+      text: message.text ?? null,
+      replyTo: settings.association_email || null,
+      meetingId: meta.meetingId ?? null,
+      memberId: recipient.memberId,
+      createdById: meta.userId,
+    }))
+  );
+
+  revalidatePath("/backend/boite-mail");
+  return { queued: recipients.length, audience: describeAudience(audience) };
+}
+
+function describeAudience(audience: Audience): string {
+  if (audience.kind === "category") return "une catégorie de métier";
+  if (audience.kind === "members") return "une sélection d'adhérents";
+  if (audience.kind === "meeting") return "les inscrits à la rencontre";
+  return "tous les adhérents actifs";
+}
+
+/** Envoi de contrôle vers sa propre adresse : direct, pour un verdict immédiat. */
+export async function sendSelfTest(
+  message: { subject: string; html: string; text?: string | null }
+): Promise<QueuedBroadcast | ActionError> {
+  const { userId } = await requireEmails();
+  const recipient = userId ? await selfRecipient(userId) : null;
+  if (!recipient) return { error: "Votre compte n'a pas d'adresse e-mail utilisable." };
+
+  const settings = await getSiteSettings();
+  const result = await sendNow({
+    to: recipient.email,
+    toName: recipient.name,
+    subject: message.subject,
+    html: message.html,
+    text: message.text ?? null,
+    replyTo: settings.association_email || null,
+  });
+  await logSentMail({
+    kind: "test",
+    toAddress: recipient.email,
+    subject: message.subject,
+    createdById: userId,
+    result: result.ok ? { ok: true } : { ok: false, reason: result.reason },
+  });
+  if (!result.ok) return { error: result.reason };
+  return { queued: 1, audience: `votre adresse (${recipient.email})` };
+}
+
+export async function sendStudioEmail(input: {
+  content: GeneralEmailContent;
+  audience: Audience;
+}): Promise<QueuedBroadcast | ActionError> {
+  const { userId } = await requireEmails();
+  const settings = await getSiteSettings();
+  const base = await siteUrl();
+  if (!base) {
+    return { error: "Renseignez d'abord l'adresse publique du site (Backend › Réseaux sociaux)." };
+  }
+
+  const { subject, html } = buildGeneralEmail(input.content, base, emailBrand(settings));
+  return queueBroadcast({ subject, html, text: input.content.body }, input.audience, { kind: "studio", userId });
+}
+
+export async function sendMeetingInvitations(input: {
+  meetingId: number;
+  texts: MeetingEmailTexts;
+  audience: Audience;
+}): Promise<QueuedBroadcast | ActionError> {
+  const { userId } = await requireEmails();
+  const settings = await getSiteSettings();
+  const base = await siteUrl();
+  if (!base) {
+    return { error: "Renseignez d'abord l'adresse publique du site (Backend › Réseaux sociaux)." };
+  }
+
+  const [meeting] = await db.select().from(meetings).where(eq(meetings.id, input.meetingId));
+  if (!meeting) return { error: "Cette rencontre n'existe plus." };
+
+  const [count] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(meetingRegistrations)
+    .where(eq(meetingRegistrations.meetingId, meeting.id));
+
+  const { subject, html, registrationUrl } = buildMeetingEmail(
+    {
+      id: meeting.id,
+      title: meeting.title,
+      startsAt: meeting.startsAt.toISOString(),
+      location: meeting.location,
+      description: meeting.description,
+      capacity: meeting.capacity,
+      registered: count?.total ?? 0,
+    },
+    input.texts,
+    base,
+    emailBrand(settings)
+  );
+
+  return queueBroadcast(
+    { subject, html, text: `${input.texts.intro}\n\n${registrationUrl}` },
+    input.audience,
+    { kind: "meeting", meetingId: meeting.id, userId }
+  );
 }

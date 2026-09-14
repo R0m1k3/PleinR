@@ -8,7 +8,10 @@ import { meetingRegistrations, meetings } from "@/db/schema";
 import { ImageField } from "@/components/ImageField";
 import { MeetingEmailComposer } from "@/components/MeetingEmailComposer";
 import { can } from "@/lib/rbac";
-import { getSiteSettings } from "@/lib/site-settings";
+import { emailBrand, getSiteSettings } from "@/lib/site-settings";
+import { audienceOptions } from "@/lib/mail-recipients";
+import { isMailConfigured } from "@/lib/mail-accounts";
+import { siteUrl } from "@/lib/social-accounts";
 import { createMeeting, deleteMeeting, updateMeeting } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +26,8 @@ export default async function RencontresAdminPage() {
   const session = await getSession();
   if (!can(session?.user.role, "manageMeetings")) redirect("/backend");
 
-  const [rows, settings] = await Promise.all([
+  const canSend = can(session?.user.role, "manageEmails");
+  const [rows, settings, choices, mailReady, base] = await Promise.all([
     db
       .select({
         id: meetings.id,
@@ -41,14 +45,11 @@ export default async function RencontresAdminPage() {
       .groupBy(meetings.id)
       .orderBy(desc(meetings.startsAt)),
     getSiteSettings(),
+    audienceOptions(),
+    isMailConfigured(),
+    siteUrl(),
   ]);
-  const emailBrand = {
-    associationName: settings.association_name,
-    address: settings.association_address,
-    email: settings.association_email,
-    phone: settings.association_phone,
-    siret: settings.association_siret,
-  };
+  const brand = emailBrand(settings);
 
   return (
     <div style={{ display: "grid", gap: 28 }}>
@@ -139,7 +140,15 @@ export default async function RencontresAdminPage() {
                   capacity: meeting.capacity,
                   registered: Number(meeting.registered),
                 }}
-                brand={emailBrand}
+                brand={brand}
+                choices={{
+                  ...choices,
+                  meeting: { id: meeting.id, title: meeting.title, count: Number(meeting.registered) },
+                }}
+                // Un modérateur gère les rencontres mais n'écrit pas à tous les
+                // adhérents : l'envoi reste réservé au studio d'e-mails.
+                mailReady={canSend && mailReady}
+                siteUrl={base}
               />
               <form action={deleteMeeting} style={{ marginTop: 8 }}>
                 <input type="hidden" name="id" value={meeting.id} />
