@@ -10,6 +10,7 @@ import type { SocialNetwork } from "@/lib/social";
 import type { PromoCategoryGroup } from "@/lib/promo-categories";
 import { formatValidity, isRangeInvalid } from "@/lib/promo-validity";
 import { formatSchedule, parseScheduleInput } from "@/lib/promo-schedule";
+import { imageNotes, imageSummary, type ImageInfo } from "@/lib/image-info";
 
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
@@ -51,6 +52,41 @@ function SummaryRow({
   );
 }
 
+/**
+ * Taille, format et poids de l'image déposée, avec ce que les réseaux en
+ * feront. Purement informatif : aucune remarque n'empêche l'envoi.
+ */
+function ImageReport({ info }: { info: ImageInfo }) {
+  const notes = imageNotes(info);
+  return (
+    <div
+      style={{
+        marginTop: -8,
+        marginBottom: 18,
+        background: "#faf7ef",
+        border: "1px solid #f0e8d6",
+        borderRadius: 12,
+        padding: "10px 12px",
+      }}
+    >
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: "#6c6150" }}>{imageSummary(info)}</div>
+      {notes.map((note, i) => (
+        <div
+          key={i}
+          style={{
+            fontSize: 11.5,
+            lineHeight: 1.45,
+            marginTop: 5,
+            color: note.tone === "warn" ? "#a8503c" : "#1f8a5b",
+          }}
+        >
+          {note.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function MemberSpaceForm({
   memberName,
   memberLogoUrl,
@@ -78,6 +114,10 @@ export function MemberSpaceForm({
   const [endsOn, setEndsOn] = useState("");
   const [publishAt, setPublishAt] = useState("");
   const [imgData, setImgData] = useState("");
+  // Dimensions et poids du fichier déposé : rien n'est retouché à l'envoi, donc
+  // c'est ici — dernier moment où l'adhérent peut changer de visuel — qu'on lui
+  // dit ce que les réseaux feront d'un format inattendu.
+  const [imgInfo, setImgInfo] = useState<ImageInfo | null>(null);
   const [shares, setShares] = useState<SocialNetwork[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
@@ -91,10 +131,20 @@ export function MemberSpaceForm({
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    const bytes = f.size;
+    setImgInfo(null);
     const reader = new FileReader();
     reader.onload = () => {
-      setImgData(String(reader.result));
+      const dataUrl = String(reader.result);
+      setImgData(dataUrl);
       setSubmitted(false);
+      // Les dimensions ne sont lisibles qu'une fois l'image décodée par le
+      // navigateur. Un échec de décodage laisse simplement le résumé vide :
+      // l'information est un confort, elle ne conditionne pas le dépôt.
+      const probe = new Image();
+      probe.onload = () => setImgInfo({ width: probe.naturalWidth, height: probe.naturalHeight, bytes });
+      probe.onerror = () => setImgInfo(null);
+      probe.src = dataUrl;
     };
     reader.readAsDataURL(f);
   }
@@ -107,6 +157,7 @@ export function MemberSpaceForm({
     setEndsOn("");
     setPublishAt("");
     setImgData("");
+    setImgInfo(null);
     setShares([]);
     setSubmitted(false);
     if (fileRef.current) fileRef.current.value = "";
@@ -193,6 +244,8 @@ export function MemberSpaceForm({
           </div>
           <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} />
         </label>
+
+        {imgInfo && <ImageReport info={imgInfo} />}
 
         <label className="field-label">Titre de la promotion</label>
         <input

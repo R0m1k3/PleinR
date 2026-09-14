@@ -139,6 +139,12 @@ même raison.
 - Les images de promo sont stockées en data-URI : l'upload se fait donc en
   binaire (multipart pour Facebook, Images API en 3 étapes pour LinkedIn), pas
   par URL.
+- L'image part **telle quelle** : aucun recadrage ni redimensionnement côté
+  application. Un visuel non carré est donc recadré — ou entouré de bandes de
+  couleur — par la plateforme. `src/lib/image-info.ts` (pur, verrouillé par
+  `tests/image-info.test.ts`) décrit le fichier déposé (dimensions, format,
+  poids) et `MemberSpaceForm` l'affiche sous l'aperçu : on informe, on ne
+  bloque pas.
 - La diffusion est déclenchée **par la validation** (ou par l'échéance d'une
   publication programmée), pas par un bouton :
   `promotions.share_facebook` / `share_linkedin` sont choisis par l'adhérent,
