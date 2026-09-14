@@ -58,7 +58,7 @@ export default async function AccueilPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/assets/logo.png"
-              alt="Plein R — Association des commerçants et entreprises du Bassin de Pompey"
+              alt="Plein R — Association des commerçants et entreprises de service du Bassin de Pompey"
               className="floatlogo"
               style={{
                 width: "100%",
@@ -107,10 +107,10 @@ export default async function AccueilPage() {
               className="font-display"
               style={{ fontWeight: 600, fontSize: 17, color: "#9a6638", margin: "0 0 16px" }}
             >
-              Association des commerçants &amp; entreprises du Bassin de Pompey
+              Association des commerçants &amp; entreprises de service du Bassin de Pompey
             </div>
             <p style={{ fontSize: 17, lineHeight: 1.6, color: "#6c6150", margin: "0 0 24px", maxWidth: 520 }}>
-              Boulangers, artisans, restaurateurs, entreprises… retrouvez tous nos adhérents, profitez de
+              Boulangers, artisans, restaurateurs, entreprises de service… retrouvez tous nos adhérents, profitez de
               leurs bons plans et faites vivre le commerce de proximité.
             </p>
             <form
@@ -359,8 +359,8 @@ export default async function AccueilPage() {
             </h2>
             <p style={{ margin: "0 auto 22px", fontSize: 15.5, color: "#f4e6d3", maxWidth: 480 }}>
               {memberCount > 0
-                ? `Rejoignez les ${memberCount} commerçants et entreprises adhérents qui font réseau, se rencontrent et réussissent ensemble.`
-                : "Rejoignez les commerçants et entreprises qui font réseau, se rencontrent et réussissent ensemble."}
+                ? `Rejoignez les ${memberCount} commerçants et entreprises de service adhérents qui font réseau, se rencontrent et réussissent ensemble.`
+                : "Rejoignez les commerçants et entreprises de service qui font réseau, se rencontrent et réussissent ensemble."}
             </p>
             <MembershipModalButton
               label="Devenir adhérent"
