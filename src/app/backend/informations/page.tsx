@@ -5,6 +5,8 @@ import { getSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { countMemberAccounts, getAdminInformations, getInformation } from "@/lib/informations";
 import { richTextExcerpt } from "@/lib/rich-text";
+import { isMailConfigured } from "@/lib/mail-accounts";
+import { mailCountsFor } from "@/lib/mail-outbox";
 import { InformationForm } from "./InformationForm";
 import {
   deleteInformation,
@@ -34,21 +36,44 @@ function formatDay(value: Date) {
 export default async function InformationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ modifier?: string }>;
+  searchParams: Promise<{ modifier?: string; error?: string; ok?: string }>;
 }) {
   const session = await getSession();
   if (!can(session?.user.role, "manageInformations")) redirect("/backend");
+  // Un modérateur publie ; écrire à tous les adhérents reste réservé à qui
+  // tient déjà le studio d'e-mails.
+  const canBroadcast = can(session?.user.role, "manageEmails");
+  const mailReady = canBroadcast && (await isMailConfigured());
 
-  const { modifier } = await searchParams;
+  const { modifier, error, ok } = await searchParams;
   const editId = Number(modifier ?? 0) || null;
   const editing = editId ? await getInformation(editId) : null;
 
   const [items, memberCount] = await Promise.all([getAdminInformations(), countMemberAccounts()]);
   const published = items.filter((item) => item.status === "published");
   const drafts = items.filter((item) => item.status === "draft");
+  const mailCounts = Object.fromEntries(
+    await Promise.all(
+      published
+        .filter((item) => item.emailSentAt)
+        .map(async (item) => [item.id, await mailCountsFor(item.id)] as const)
+    )
+  );
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(0, 1fr)", gap: 18, alignItems: "start" }} className="informations-split">
+    <div>
+      {error && (
+        <div role="status" style={{ background: "#fbe9e6", border: "1px solid #f2d5cf", color: "#a8503c", borderRadius: 10, padding: "11px 15px", fontSize: 13.5, marginBottom: 14 }}>
+          {error}
+        </div>
+      )}
+      {ok && (
+        <div role="status" style={{ background: "#e6f4ec", border: "1px solid #c4e2d1", color: "#1f8a5b", borderRadius: 10, padding: "11px 15px", fontSize: 13.5, marginBottom: 14 }}>
+          {ok}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.5fr) minmax(0, 1fr)", gap: 18, alignItems: "start" }} className="informations-split">
       <InformationForm
         key={editing?.id ?? "nouvelle"}
         draft={{
@@ -82,6 +107,13 @@ export default async function InformationsPage({
                   {item.authorName ? ` · ${item.authorName}` : ""}
                 </div>
                 <div style={{ color: "#8c8068", fontSize: 12.5, marginTop: 5 }}>{richTextExcerpt(item.body, 110)}</div>
+                {item.emailSentAt && (
+                  <div style={{ color: "#1f8a5b", fontSize: 12, marginTop: 5, fontWeight: 700 }}>
+                    Diffusée par e-mail · {mailCounts[item.id]?.sent ?? 0} remis
+                    {mailCounts[item.id]?.queued ? ` · ${mailCounts[item.id].queued} en file` : ""}
+                    {mailCounts[item.id]?.failed ? ` · ${mailCounts[item.id].failed} en échec` : ""}
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 7, marginTop: 9, flexWrap: "wrap" }}>
                   <Link href={`/backend/informations?modifier=${item.id}`} style={{ ...rowButton, textDecoration: "none" }}>
                     Modifier
@@ -116,11 +148,24 @@ export default async function InformationsPage({
                 </div>
                 <div style={{ color: "#8c8068", fontSize: 12.5, marginTop: 5 }}>{richTextExcerpt(item.body, 110)}</div>
                 <div style={{ display: "flex", gap: 7, marginTop: 9, flexWrap: "wrap" }}>
-                  <form action={publishInformation}>
+                  <form action={publishInformation} style={{ display: "grid", gap: 7 }}>
                     <input type="hidden" name="id" value={item.id} />
+                    {canBroadcast && (
+                      <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: "#6c6150", cursor: mailReady ? "pointer" : "not-allowed" }}>
+                        <input type="checkbox" name="sendEmail" disabled={!mailReady} style={{ marginTop: 2 }} />
+                        <span>
+                          Envoyer aussi par e-mail <strong>aux {memberCount} adhérent(s)</strong>
+                          {!mailReady && (
+                            <span style={{ display: "block", color: "#a99c82", fontSize: 11.5 }}>
+                              Aucune boîte mail configurée — voir Configuration › Boîte mail.
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    )}
                     <button
                       type="submit"
-                      style={{ ...rowButton, border: "none", background: "#13324F", color: "#fff", fontWeight: 800 }}
+                      style={{ ...rowButton, border: "none", background: "#13324F", color: "#fff", fontWeight: 800, justifySelf: "start" }}
                     >
                       Publier
                     </button>
@@ -139,6 +184,7 @@ export default async function InformationsPage({
             ))}
           </div>
         </section>
+        </div>
       </div>
     </div>
   );

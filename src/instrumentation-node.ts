@@ -35,8 +35,10 @@ async function mailTick() {
 
 // Un premier passage au démarrage rattrape les échéances tombées pendant un
 // redéploiement ou une coupure.
-void promoTick();
-setInterval(promoTick, PROMO_INTERVAL_MS).unref();
+if (process.env.PROMO_SCHEDULER !== "off") {
+  void promoTick();
+  setInterval(promoTick, PROMO_INTERVAL_MS).unref();
+}
 
 if (process.env.MAIL_WORKER !== "off") {
   void mailTick();

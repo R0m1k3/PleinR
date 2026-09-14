@@ -1,5 +1,5 @@
 /**
- * Démarrage du serveur : libérateur des publications programmées.
+ * Démarrage du serveur : boucles de fond.
  *
  * Le déploiement est un conteneur unique et permanent (`docker-compose`), il
  * n'y a donc ni cron ni file d'attente. Une boucle minute suffit : elle relit
@@ -16,6 +16,9 @@ export async function register() {
   // ni `setInterval` durable : le module Node est chargé à la demande pour ne
   // pas entrer dans ce bundle.
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  if (process.env.PROMO_SCHEDULER === "off") return;
+  // Chaque boucle a son propre interrupteur, appliqué à l'intérieur du module :
+  // couper le libérateur de promotions ici couperait aussi l'envoi des
+  // e-mails, qui n'a rien à voir avec lui.
+  if (process.env.PROMO_SCHEDULER === "off" && process.env.MAIL_WORKER === "off") return;
   await import("./instrumentation-node");
 }

@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { mailMessages } from "@/db/schema";
-import type { MailKind, MailMessage } from "@/db/schema";
+import type { MailKind } from "@/db/schema";
 import { sendNow } from "@/lib/mailer";
 
 /**
@@ -93,6 +93,29 @@ export async function logSentMail(entry: {
   });
 }
 
+type ClaimedMail = {
+  id: number;
+  toAddress: string;
+  toName: string | null;
+  subject: string;
+  html: string;
+  text: string | null;
+  replyTo: string | null;
+  attempts: number;
+};
+
+/** Ligne telle que la renvoie le pilote : noms de colonnes bruts. */
+type ClaimedRow = {
+  id: number;
+  to_address: string;
+  to_name: string | null;
+  subject: string;
+  html: string;
+  text: string | null;
+  reply_to: string | null;
+  attempts: number;
+};
+
 /**
  * Réclame un lot de messages à envoyer.
  *
@@ -101,7 +124,7 @@ export async function logSentMail(entry: {
  * passe parce que la transition de statut y fait office de verrou ; ici le
  * passage en `sending` doit être exclusif avant l'appel réseau.
  */
-async function claimDueMails(limit: number): Promise<MailMessage[]> {
+async function claimDueMails(limit: number): Promise<ClaimedMail[]> {
   const stale = new Date(Date.now() - STALE_LOCK_MS);
   // Un conteneur arrêté en plein envoi laisse des lignes en `sending` :
   // on les remet en file avant de servir le lot suivant.
@@ -110,7 +133,7 @@ async function claimDueMails(limit: number): Promise<MailMessage[]> {
     .set({ status: "queued", lockedAt: null })
     .where(and(eq(mailMessages.status, "sending"), sql`${mailMessages.lockedAt} < ${stale}`));
 
-  const { rows } = await db.execute<MailMessage>(sql`
+  const { rows } = await db.execute<ClaimedRow>(sql`
     update ${mailMessages}
        set status = 'sending', locked_at = now()
      where id in (
@@ -120,9 +143,22 @@ async function claimDueMails(limit: number): Promise<MailMessage[]> {
         limit ${limit}
         for update skip locked
      )
-    returning *
+    returning id, to_address, to_name, subject, html, text, reply_to, attempts
   `);
-  return rows;
+
+  // `db.execute` rend les colonnes telles quelles : contrairement au
+  // constructeur de requêtes, il ne rebaptise pas `to_address` en `toAddress`.
+  // Sans cette conversion le destinataire arrivait vide chez nodemailer.
+  return rows.map((row) => ({
+    id: row.id,
+    toAddress: row.to_address,
+    toName: row.to_name,
+    subject: row.subject,
+    html: row.html,
+    text: row.text,
+    replyTo: row.reply_to,
+    attempts: Number(row.attempts),
+  }));
 }
 
 export type OutboxReport = { sent: number; failed: number };
@@ -130,7 +166,7 @@ export type OutboxReport = { sent: number; failed: number };
 /** Vide un lot de la file. Ne lève jamais : c'est une boucle de fond. */
 export async function processOutbox(limit = DEFAULT_BATCH): Promise<OutboxReport> {
   const report: OutboxReport = { sent: 0, failed: 0 };
-  let claimed: MailMessage[] = [];
+  let claimed: ClaimedMail[] = [];
   try {
     claimed = await claimDueMails(limit);
   } catch (error) {

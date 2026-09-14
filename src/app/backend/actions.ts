@@ -54,9 +54,10 @@ import {
 } from "@/lib/mail-accounts";
 import type { MailProvider } from "@/db/schema";
 import { sendNow } from "@/lib/mailer";
-import { cancelMailMessage, logSentMail, retryMailMessage } from "@/lib/mail-outbox";
-import { selfRecipient } from "@/lib/mail-recipients";
-import { buildCredentialsEmail, buildGeneralEmail } from "@/lib/email-templates";
+import { cancelMailMessage, logSentMail, queueMails, retryMailMessage } from "@/lib/mail-outbox";
+import { activeMemberRecipients, selfRecipient } from "@/lib/mail-recipients";
+import { buildCredentialsEmail, buildGeneralEmail, buildInformationEmail } from "@/lib/email-templates";
+import { richTextToPlain } from "@/lib/rich-text";
 import { emailBrand, getSiteSettings } from "@/lib/site-settings";
 import { siteUrl } from "@/lib/social-accounts";
 import { markInformationsRead as markRead } from "@/lib/informations";
@@ -1477,8 +1478,18 @@ export async function saveInformation(
   return { id: created.id };
 }
 
+/**
+ * Les refus de diffusion passent par une redirection avec message plutôt que
+ * par un retour : le bouton « Publier » est un `<form action>` de composant
+ * serveur, qui ne peut rien renvoyer au navigateur. Même idiome que
+ * `saveSitePublicUrl`.
+ */
+function informationRedirect(message: string, tone: "error" | "ok"): never {
+  redirect(`/backend/informations?${tone}=${encodeURIComponent(message)}`);
+}
+
 export async function publishInformation(formData: FormData) {
-  await requireInformations();
+  const { role, userId } = await requireInformations();
   const id = Number(formData.get("id") ?? 0);
   if (!id) return;
 
@@ -1486,11 +1497,74 @@ export async function publishInformation(formData: FormData) {
     .update(informations)
     .set({ status: "published", publishedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(informations.id, id), eq(informations.status, "draft")))
-    .returning({ id: informations.id, title: informations.title });
+    .returning({
+      id: informations.id,
+      title: informations.title,
+      body: informations.body,
+      imageUrl: informations.imageUrl,
+      emailSentAt: informations.emailSentAt,
+    });
   if (!published) return;
 
   await logActivity(`Information publiée : <strong>${published.title}</strong>`, "#1F8A5B");
   revalidateInformationPaths();
+
+  // La diffusion est un choix, pas une conséquence de la publication. Elle est
+  // en outre réservée à qui peut déjà écrire aux adhérents : un modérateur
+  // publie, il ne diffuse pas.
+  if (formData.get("sendEmail") !== "on" || !can(role, "manageEmails")) return;
+  // Garde anti-double-diffusion, sur le modèle de `publishPromoShares` : une
+  // information dépubliée puis republiée ne repart pas une seconde fois.
+  if (published.emailSentAt) return;
+
+  const base = await siteUrl();
+  if (!base) {
+    // Sans adresse publique, le logo et tous les liens du message seraient
+    // cassés : mieux vaut ne rien envoyer et le dire.
+    informationRedirect(
+      "Information publiée, mais non diffusée : l'adresse publique du site n'est pas renseignée (Backend › Réseaux sociaux).",
+      "error"
+    );
+  }
+
+  const settings = await getSiteSettings();
+  const { subject, html } = buildInformationEmail(
+    { id: published.id, title: published.title, body: published.body, hasImage: Boolean(published.imageUrl) },
+    base,
+    emailBrand(settings)
+  );
+  const text = `${published.title}\n\n${richTextToPlain(published.body)}\n\n${base}/backend/espace/informations`;
+
+  const recipients = await activeMemberRecipients();
+  if (recipients.length === 0) {
+    informationRedirect("Information publiée, mais aucun adhérent actif n'a d'adresse e-mail utilisable.", "error");
+  }
+
+  // Une ligne par destinataire : aucune adresse n'est visible des autres.
+  await queueMails(
+    recipients.map((recipient) => ({
+      kind: "information" as const,
+      toAddress: recipient.email,
+      toName: recipient.name,
+      subject,
+      html,
+      text,
+      replyTo: settings.association_email || null,
+      informationId: published.id,
+      memberId: recipient.memberId,
+      createdById: userId,
+    }))
+  );
+  await db.update(informations).set({ emailSentAt: new Date() }).where(eq(informations.id, published.id));
+  await logActivity(
+    `Information <strong>${published.title}</strong> diffusée à ${recipients.length} adhérent(s)`,
+    "#2C6FB3"
+  );
+  revalidateInformationPaths();
+  informationRedirect(
+    `Information publiée et mise en file pour ${recipients.length} adhérent(s).`,
+    "ok"
+  );
 }
 
 export async function unpublishInformation(formData: FormData) {

@@ -1,4 +1,4 @@
-import { safeHttpUrl } from "@/lib/rich-text";
+import { richTextToEmailHtml, safeHttpUrl } from "@/lib/rich-text";
 
 export type EmailBrand = {
   associationName: string;
@@ -203,5 +203,46 @@ export function buildCredentialsEmail(data: CredentialsEmailData, baseUrl: strin
     l'association.
   </td></tr>
   <tr><td style="padding:0 40px 24px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#8C8068;">Si le bouton ne fonctionne pas, copiez ce lien :<br><a href="${esc(loginUrl)}" style="color:#2C6FB3;word-break:break-all;">${esc(loginUrl)}</a></td></tr>`;
+  return { subject, html: emailShell({ title: subject, content: body, baseUrl, brand }) };
+}
+
+export type InformationEmailData = {
+  id: number;
+  title: string;
+  /** Texte balisé, analysé par `src/lib/rich-text.ts`. */
+  body: string;
+  hasImage: boolean;
+};
+
+/**
+ * Une information de l'association, mise en e-mail.
+ *
+ * Un constructeur à part plutôt qu'un élargissement de `GeneralEmailContent` :
+ * le contrat du studio de composition reste intact.
+ *
+ * L'image de couverture part par **URL** (`/api/informations/<id>/image`) et
+ * non en data-URI : Gmail et Outlook suppriment les `<img src="data:">`, et
+ * l'incorporer gonflerait chaque ligne de la file d'attente à plusieurs méga-octets.
+ */
+export function buildInformationEmail(data: InformationEmailData, baseUrl: string, brand: EmailBrand) {
+  const base = baseUrl.replace(/\/$/, "");
+  const spaceUrl = `${base}/backend/espace/informations`;
+  const subject = `${brand.associationName} — ${data.title}`;
+  const body = `
+  <tr><td style="padding:42px 40px 8px;">
+    <div style="padding-bottom:15px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:14px;letter-spacing:2.2px;text-transform:uppercase;color:#9A6638;font-weight:bold;">Information &middot; ${esc(brand.associationName)}</div>
+    <div style="padding-bottom:20px;font-family:Georgia,'Times New Roman',serif;font-size:29px;line-height:36px;color:#26201A;">${esc(data.title)}</div>
+  </td></tr>
+  ${
+    data.hasImage
+      ? `<tr><td style="padding:0 40px 18px;"><img src="${esc(`${base}/api/informations/${data.id}/image`)}" alt="" width="540" style="display:block;width:100%;max-width:540px;height:auto;border:1px solid #E6DCC6;"></td></tr>`
+      : ""
+  }
+  <tr><td style="padding:0 40px 10px;">${richTextToEmailHtml(data.body)}</td></tr>
+  <tr><td align="center" style="padding:18px 40px 10px;">${cta(spaceUrl, "Lire dans mon espace")}</td></tr>
+  <tr><td style="padding:14px 40px 34px;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:18px;color:#8C8068;">
+    Vous recevez ce message en tant qu'adhérent de ${esc(brand.associationName)}.<br>
+    Si le bouton ne fonctionne pas, copiez ce lien : <a href="${esc(spaceUrl)}" style="color:#2C6FB3;word-break:break-all;">${esc(spaceUrl)}</a>
+  </td></tr>`;
   return { subject, html: emailShell({ title: subject, content: body, baseUrl, brand }) };
 }
