@@ -114,8 +114,10 @@ Mise à jour : `git pull && docker compose up -d --build`.
 | Adhérents (CRUD) | ✅ | ✅ | ✅ | — |
 | Modération des promotions | ✅ | ✅ | — | — |
 | Publication réseaux sociaux | ✅ | ✅ | — | — |
+| Informations adhérents | ✅ | ✅ | — | — |
+| E-mails & boîte mail | ✅ | — | — | — |
 | Administrateurs | ✅ | — | — | — |
-| Mon espace (publier une promo) | — | — | — | ✅ |
+| Mon espace (promos, informations) | — | — | — | ✅ |
 
 `/backend` est protégé par le middleware ; chaque vue affine l'accès selon le rôle.
 
@@ -217,7 +219,7 @@ npm run dev           # http://localhost:3000
 | `npm run db:generate` | Génère les migrations Drizzle |
 | `npm run db:migrate` | Applique les migrations |
 | `npm run db:seed` | Insère les données de démonstration |
-| `npm test` | Tests de sécurité (filtre XSS, limitation de connexion, chiffrement) |
+| `npm test` | Tests unitaires et de sécurité (XSS, chiffrement, MIME, file d'envoi) |
 
 ## Variables d'environnement
 
@@ -230,9 +232,50 @@ Voir [`.env.example`](./.env.example). Les principales :
 - `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_NAME` — premier admin
 - `NEXT_PUBLIC_SITE_URL` — repli pour l'URL publique du site ; elle se règle
   normalement dans **Backend › Réseaux sociaux**, aucune variable n'est requise.
-- `SOCIAL_TOKEN_KEY` — clé de chiffrement des jetons réseaux (défaut : `AUTH_SECRET`)
+- `SOCIAL_TOKEN_KEY` — clé de chiffrement des jetons réseaux **et de la boîte
+  mail** (défaut : `AUTH_SECRET`)
+- `MAIL_WORKER=off` — arrête la file d'envoi ; `PROMO_SCHEDULER=off` arrête le
+  libérateur de publications programmées. Les deux sont indépendants.
+- `MAIL_RATE_PER_MINUTE` — débit de la file d'envoi (défaut : 20)
+- `SMTP_HOST` / `SMTP_USER` / `SMTP_PASSWORD` … — repli avant toute
+  configuration depuis **Backend › Boîte mail**
 - `FACEBOOK_PAGE_ID` / `FACEBOOK_PAGE_ACCESS_TOKEN`, `LINKEDIN_ORGANIZATION_URN` /
   `LINKEDIN_ACCESS_TOKEN` — repli si aucun compte n'est connecté via le backoffice
+
+## Informations aux adhérents
+
+L'association publie ses annonces dans **Backend › Informations** : titre, texte
+avec une mise en forme simple (`**gras**`, `*italique*`, listes, liens), image de
+couverture, brouillon puis publication, et une seule information épinglée en tête.
+
+Les adhérents les retrouvent sous l'onglet **Informations** de leur espace, avec
+une pastille « Nouveau » et un compteur de non-lues qui retombe à la lecture.
+
+À la publication, une case permet d'**envoyer aussi le message par e-mail** : un
+message par adhérent, jamais de copie partagée.
+
+## Envoi d'e-mails
+
+Le site expédie depuis la boîte de l'association, branchée dans
+**Backend › Boîte mail**. Trois transports, un seul actif à la fois :
+
+| Transport | Chemin | À savoir |
+|---|---|---|
+| Google | API Gmail (`gmail.send`) | Une application laissée en mode « Test » voit son autorisation expirer au bout de 7 jours : passez-la « En production », ou déclarez-la « Interne » avec un compte Workspace. |
+| Microsoft | API Graph (`Mail.Send`) | Fonctionne pour `@outlook.com` et `@hotmail.com` comme pour une boîte 365 ; l'authentification SMTP par mot de passe y est désactivée depuis 2024. |
+| Autre serveur | SMTP (`nodemailer`) | Couvre aussi un mot de passe d'application Gmail, Outlook professionnel, OVH, Ionos. Marche immédiatement, sans démarche préalable. |
+
+Pour Google et Microsoft, l'adresse d'expédition est **lue chez le fournisseur**
+et non saisie : expédier depuis un autre domaine ferait échouer SPF et DKIM.
+
+Ce qui part du site : mots de passe temporaires (création, réinitialisation,
+invitation), invitations aux rencontres, diffusion d'une information, et les
+envois du studio de composition. Les diffusions passent par une file d'attente
+vidée en tâche de fond ; les mots de passe partent en direct, sans jamais être
+écrits en base.
+
+Sans boîte configurée, rien ne casse : les mots de passe temporaires restent
+affichés une fois à l'écran, comme auparavant.
 
 ## Note sur le logo
 

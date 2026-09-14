@@ -202,7 +202,11 @@ même raison.
 - Sessions JWT limitées à 7 jours (`auth.config.ts`), HSTS et suppression de
   `X-Powered-By` dans `next.config.mjs`. Le port Postgres de `docker-compose`
   n'est publié que sur `127.0.0.1`.
-- `npm test` verrouille ces protections (`tests/security.test.ts`).
+- `npm test` verrouille ces protections (`tests/security.test.ts`) : XSS du
+  journal, limitation des connexions, chiffrement des secrets, coordonnées du
+  référent, **mots de passe temporaires jamais mis en file**, secrets de
+  messagerie jamais renvoyés au navigateur, aucune copie cachée dans la chaîne
+  d'envoi, et rien rendu en HTML brut côté informations.
 
 ## Référencement (SEO)
 
@@ -273,6 +277,96 @@ même raison.
 
 `admin` > `moderator` > `editor` are staff; `member` is an adhérent linked to a
 `members` row via `users.memberId`. Capability matrix is in `src/lib/rbac.ts`.
+
+`manageInformations` (admin + modérateur) ouvre la rédaction des informations ;
+écrire à tous les adhérents reste sous `manageEmails` (admin seul), et la
+configuration de la boîte mail sous `manageSettings`. Un modérateur publie donc
+une information sans pouvoir la diffuser.
+
+## Informations adhérents
+
+Le fil de l'espace adhérent (`/backend/espace/informations`, onglet en tête)
+porte ce que publie le bureau depuis `/backend/informations`. Deux tables :
+`informations` (brouillon → publiée, `pinned`, `email_sent_at`) et
+`information_reads`.
+
+- **Texte riche** : `src/lib/rich-text.ts` est **pur** (`tests/rich-text.test.ts`)
+  et analyse un sous-ensemble de Markdown — `**gras**`, `*italique*`, `- puce`,
+  `1. numéro`, `[texte](https://…)`, `## sous-titre`. Deux rendus, un seul
+  analyseur : `richTextNodes()` pour l'écran (des éléments React, jamais
+  `dangerouslySetInnerHTML`), `richTextToEmailHtml()` pour le message. L'aperçu
+  du formulaire passe par le premier, il est donc fidèle par construction. Un
+  lien hors `http`/`https` perd sa cible et ne garde que son libellé
+  (`safeHttpUrl`, partagé avec `email-templates.ts`).
+- **Pas de WYSIWYG** : il produirait du HTML, qu'il faudrait stocker puis
+  assainir — seconde dépendance, seconde surface d'attaque. La saisie est un
+  `<textarea>` avec une barre qui encadre la sélection (`setRangeText`).
+- **Une seule image**, en couverture, jamais dans le corps : une data-URI
+  recopiée dans chaque ligne de la file pèserait 3 Mo par destinataire. Elle est
+  servie aux clients mail par `/api/informations/[id]/image`, qui ne répond que
+  pour une information publiée — Gmail et Outlook suppriment les
+  `<img src="data:">`.
+- **Non-lues** : une ligne par lecture (`information_reads`) plutôt qu'une date
+  « vu jusqu'ici ». C'est ce qui permet à la fois la pastille « Nouveau » par
+  information et le « lue par 12 / 40 » du back-office. Le marquage passe par
+  l'action `markInformationsRead`, appelée **après** affichage par
+  `MarkInformationsRead` : la pastille de l'onglet et celle de la barre latérale
+  sont calculées par deux composants serveur distincts, dont l'ordre de rendu
+  n'est pas garanti, et se contrediraient sur la même page.
+- **Une seule épinglée** : appliqué dans l'action (`unpinOthers`), pas par un
+  index conditionnel que drizzle-kit ne génère pas.
+- Les trois pages de l'espace passent `infoBadge` : sans cela le compteur
+  disparaîtrait en changeant d'onglet.
+
+## Envoi d'e-mails
+
+`/backend/boite-mail` est le décalque de `/backend/reseaux` : mêmes règles,
+mêmes garanties. Trois transports dans `mail_accounts`, un seul `is_active` —
+pas de cascade automatique, la bascule est un choix visible.
+
+- **Google → API Gmail** (`gmail.send`) et non SMTP+XOAUTH2 : celui-ci exigerait
+  `https://mail.google.com/`, portée *restreinte* donc audit de sécurité.
+  **Microsoft → API Graph** (`/me/sendMail`) : l'authentification basique SMTP
+  est désactivée depuis 2024, y compris sur outlook.com et hotmail.com.
+  **SMTP générique** via `nodemailer`, seule dépendance d'envoi.
+- `mail_accounts.from_address` est **lu chez le fournisseur** au retour OAuth,
+  jamais saisi : Gmail expédie comme l'utilisateur authentifié, Graph comme la
+  boîte, et une adresse d'un autre domaine ferait tomber SPF/DKIM.
+- Microsoft fait **tourner** le jeton de rafraîchissement à chaque
+  renouvellement : `ensureAccessToken` réenregistre celui qui revient, sinon
+  l'envoi meurt au bout d'une heure.
+- `src/lib/mime.ts` est **pur** (`tests/mime.test.ts`) : extrait de
+  `downloadOutlookDraft`, il sert le brouillon `.eml` **et** le champ `raw` de
+  l'API Gmail. CRLF stricts, mots encodés RFC 2047 repliés sans couper une
+  séquence UTF-8, CR/LF neutralisés dans les valeurs d'en-tête — un retour à la
+  ligne dans un objet permettrait sinon d'injecter un `Bcc:`.
+- `src/lib/mailer.ts` porte `sendNow()`, qui **ne lève jamais** : un envoi raté
+  est un verdict, pas une exception.
+- `src/lib/mail-outbox.ts` porte la file. Réclamation en
+  `UPDATE … FOR UPDATE SKIP LOCKED` — `releaseDuePromotions` s'en passe parce
+  que la transition de statut y fait office de verrou, pas ici. Faucheur des
+  verrous laissés par un conteneur arrêté en plein envoi, donc livraison **au
+  moins une fois**. ⚠ `db.execute` rend les colonnes **brutes** : il faut
+  reconvertir `to_address` en `toAddress`, le constructeur de requêtes le fait,
+  pas lui.
+- **Les mots de passe temporaires ne passent jamais par la file** :
+  `mail_messages.html` est stocké en base. Les cinq actions à identifiants
+  appellent `sendNow` en ligne directe et journalisent une trace sans contenu
+  (`logSentMail`). `tests/security.test.ts` le verrouille. L'envoi est un plus,
+  jamais un point de rupture : `OneTimeCredentials` affiche le mot de passe quoi
+  qu'il arrive.
+- **Une ligne `mail_messages` par destinataire** : `to_address` est un `varchar`
+  unique, la confidentialité d'une diffusion est structurelle.
+- La configuration mail ne passe **surtout pas** par `site_settings` :
+  `saveSiteSettings` boucle sur toutes les clés de `SITE_SETTING_DEFAULTS` et
+  écrase d'une chaîne vide celles qu'aucun champ ne porte.
+- La boucle d'envoi vit dans `src/instrumentation-node.ts`, à côté du libérateur
+  de promotions, et `next.config.mjs` déclare `serverExternalPackages:
+  ["nodemailer"]`. **Chaque boucle a son propre interrupteur** (`MAIL_WORKER`,
+  `PROMO_SCHEDULER`) : couper l'un dans `instrumentation.ts` couperait l'autre,
+  puisque le module entier ne serait plus chargé.
+- `emailBrand(settings)` (`src/lib/site-settings.ts`) compose l'identité en pied
+  de tous les messages : un seul endroit à changer.
 
 ## Docker notes
 
