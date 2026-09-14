@@ -127,6 +127,13 @@
       "when": 1789385157231,
       "tag": "0017_regular_devos",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789399747132,
+      "tag": "0018_lazy_big_bertha",
+      "breakpoints": true
     }
   ]
 }

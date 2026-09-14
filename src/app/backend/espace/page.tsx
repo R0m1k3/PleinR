@@ -11,6 +11,7 @@ import { HoursEditor } from "@/components/HoursEditor";
 import { TagsField } from "@/components/TagsField";
 import { MemberContactFields } from "@/components/MemberContactFields";
 import { communeOptions } from "@/lib/communes";
+import { unreadInformationCount } from "@/lib/informations";
 import { saveImageConsent, updateOwnProfile } from "../actions";
 import { EspaceHeader } from "./EspaceHeader";
 
@@ -21,6 +22,8 @@ export default async function EspacePage() {
   const session = await getSession();
   const memberId = session?.user.memberId ?? null;
   const fallbackName = session?.user.name ?? "Adhérent";
+  const userId = Number(session?.user.id);
+  const infoBadge = Number.isFinite(userId) ? await unreadInformationCount(userId) : 0;
 
   let memberName = fallbackName;
   let subtitle = "Espace adhérent";
@@ -88,6 +91,7 @@ export default async function EspacePage() {
         active="profil"
         publicPath={profile && profile.status === "active" ? memberPath(profile) : null}
         promoBadge={livePromoCount}
+        infoBadge={infoBadge}
       />
 
       {memberId && (

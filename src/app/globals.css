@@ -998,6 +998,54 @@ img {
   background: #33291D;
   color: #fff;
 }
+/* Corps d'une information : rendu par `richTextNodes`, donc uniquement des
+   p / ul / ol / li / strong / em / a / br. Le rythme vertical vit ici plutôt
+   qu'en styles en ligne, parce qu'il porte sur des balises engendrées. */
+.rich-text {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.rich-text > *:first-child {
+  margin-top: 0;
+}
+.rich-text > *:last-child {
+  margin-bottom: 0;
+}
+.rich-text p {
+  margin: 0 0 11px;
+}
+.rich-text h4 {
+  font-family: "Bricolage Grotesque", "Public Sans", system-ui, sans-serif;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  margin: 16px 0 8px;
+}
+.rich-text ul,
+.rich-text ol {
+  margin: 0 0 11px;
+  padding-left: 21px;
+}
+.rich-text li {
+  margin-bottom: 3px;
+}
+.rich-text strong {
+  color: var(--ink-strong);
+}
+.rich-text a {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Rédaction d'une information : éditeur et listes côte à côte, empilés dès
+   que la colonne de droite n'a plus la place d'être lisible. */
+@media (max-width: 1100px) {
+  .informations-split {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
 /* Suggestions de tags : pastilles cliquables sous le champ. */
 .tag-suggestions {
   display: flex;

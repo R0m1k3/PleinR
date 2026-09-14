@@ -13,7 +13,9 @@ export type BackendIconName =
   | "meetings"
   | "registrations"
   | "gallery"
+  | "news"
   | "emails"
+  | "mailbox"
   | "social"
   | "categories"
   | "settings"
@@ -68,6 +70,18 @@ const PATHS: Record<BackendIconName, ReactNode> = {
       <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
       <circle cx="8.6" cy="9.6" r="1.7" />
       <path d="m4 17 4.8-4.4a1.8 1.8 0 0 1 2.4 0L16 17M14 14.4l1.6-1.5a1.8 1.8 0 0 1 2.4 0L21 15.6" />
+    </>
+  ),
+  news: (
+    <>
+      <path d="M17.5 4.5H4.2A1.2 1.2 0 0 0 3 5.7v12a1.8 1.8 0 0 0 1.8 1.8h13.4a2.8 2.8 0 0 0 2.8-2.8V9.2h-3.5V4.5Z" />
+      <path d="M6.2 8.3h8.1M6.2 11.6h8.1M6.2 14.9h5.2" />
+    </>
+  ),
+  mailbox: (
+    <>
+      <rect x="2.6" y="5" width="18.8" height="14" rx="2.4" />
+      <path d="m3.4 7.2 7.4 5.3a2 2 0 0 0 2.4 0l7.4-5.3" />
     </>
   ),
   emails: (

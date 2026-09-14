@@ -5,6 +5,7 @@ function initialsOf(name: string) {
 }
 
 const TABS = [
+  { key: "informations", href: "/backend/espace/informations", label: "Informations" },
   { key: "profil", href: "/backend/espace", label: "Mon profil" },
   { key: "promotions", href: "/backend/espace/promotions", label: "Mes promotions" },
 ] as const;
@@ -12,9 +13,12 @@ const TABS = [
 export type EspaceTab = (typeof TABS)[number]["key"];
 
 /**
- * Bandeau de l'espace adhérent et onglets Profil / Promotions : deux pages
- * distinctes pour que la fiche publique et la vie des promotions ne se
- * mélangent pas dans une seule longue page.
+ * Bandeau de l'espace adhérent et ses onglets. Trois pages distinctes pour que
+ * les annonces de l'association, la fiche publique et la vie des promotions ne
+ * se mélangent pas dans une seule longue page.
+ *
+ * Les compteurs sont passés par chaque page : sans cela ils disparaîtraient
+ * en changeant d'onglet.
  */
 export function EspaceHeader({
   memberName,
@@ -22,6 +26,7 @@ export function EspaceHeader({
   active,
   publicPath,
   promoBadge,
+  infoBadge,
 }: {
   memberName: string;
   subtitle: string;
@@ -29,6 +34,8 @@ export function EspaceHeader({
   publicPath?: string | null;
   /** Nombre de promotions en ligne, affiché sur l'onglet. */
   promoBadge?: number;
+  /** Nombre d'informations non lues. */
+  infoBadge?: number;
 }) {
   return (
     <div style={{ marginBottom: 22 }}>
@@ -49,10 +56,11 @@ export function EspaceHeader({
       <nav className="espace-tabs" aria-label="Sections de l'espace adhérent">
         {TABS.map((tab) => {
           const isActive = tab.key === active;
+          const badge = tab.key === "promotions" ? promoBadge : tab.key === "informations" ? infoBadge : 0;
           return (
             <Link key={tab.key} href={tab.href} className={`espace-tab${isActive ? " active" : ""}`} aria-current={isActive ? "page" : undefined}>
               {tab.label}
-              {tab.key === "promotions" && promoBadge ? <span className="espace-tab__badge">{promoBadge}</span> : null}
+              {badge ? <span className="espace-tab__badge">{badge}</span> : null}
             </Link>
           );
         })}

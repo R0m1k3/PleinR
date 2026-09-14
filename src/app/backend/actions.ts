@@ -16,6 +16,7 @@ import {
   categories,
   contactMessages,
   imageConsents,
+  informations,
   meetingRegistrations,
   meetings,
   members,
@@ -42,6 +43,7 @@ import { isRangeInvalid } from "@/lib/promo-validity";
 import { formatSchedule, isDue, parseScheduleInput } from "@/lib/promo-schedule";
 import { publishPromoShares, requestedNetworks } from "@/lib/promo-publish";
 import { logActivity } from "@/lib/activity-log";
+import { markInformationsRead as markRead } from "@/lib/informations";
 import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
 
@@ -1311,4 +1313,161 @@ export async function disconnectSocial(formData: FormData) {
 // ---- Sign out ----
 export async function doSignOut() {
   await signOut({ redirectTo: "/" });
+}
+
+// ---- Informations de l'association ----
+
+function revalidateInformationPaths() {
+  revalidatePath("/backend/informations");
+  revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/informations");
+  revalidatePath("/backend/espace/promotions");
+  revalidatePath("/backend");
+}
+
+async function requireInformations() {
+  const access = await requireRole();
+  if (!can(access.role, "manageInformations")) throw new Error("Accès refusé");
+  return access;
+}
+
+/**
+ * Une seule information épinglée à la fois. Appliqué ici plutôt que par un
+ * index partiel : l'écriture est réservée au staff, il n'y a pas de course
+ * réelle, et drizzle-kit ne génère pas les index conditionnels.
+ */
+async function unpinOthers(keepId: number) {
+  await db
+    .update(informations)
+    .set({ pinned: false })
+    .where(and(eq(informations.pinned, true), ne(informations.id, keepId)));
+}
+
+export type SavedInformation = { id: number };
+
+export async function saveInformation(
+  formData: FormData
+): Promise<SavedInformation | ActionError> {
+  const { userId } = await requireInformations();
+
+  const id = Number(formData.get("id") ?? 0) || null;
+  const title = asString(formData, "title");
+  const body = asString(formData, "body");
+  if (!title) return { error: "Donnez un titre à cette information." };
+  if (!body) return { error: "Le message est vide." };
+
+  let imageUrl: string | null = null;
+  try {
+    imageUrl = asImageDataUri(formData, "imageUrl");
+  } catch (error) {
+    // Refus de saisie attendu : on le renvoie au formulaire, qui garde le reste.
+    return { error: error instanceof Error ? error.message : "Image refusée." };
+  }
+
+  const pinned = formData.get("pinned") === "on";
+  const now = new Date();
+
+  if (id) {
+    const [updated] = await db
+      .update(informations)
+      .set({ title, body, imageUrl, pinned, updatedAt: now })
+      .where(eq(informations.id, id))
+      .returning({ id: informations.id });
+    if (!updated) return { error: "Cette information n'existe plus." };
+    if (pinned) await unpinOthers(updated.id);
+    revalidateInformationPaths();
+    return { id: updated.id };
+  }
+
+  const [created] = await db
+    .insert(informations)
+    .values({ title, body, imageUrl, pinned, authorId: userId, createdAt: now, updatedAt: now })
+    .returning({ id: informations.id });
+  if (pinned) await unpinOthers(created.id);
+  await logActivity(`Information rédigée : <strong>${title}</strong>`, "#6FB0C6");
+  revalidateInformationPaths();
+  return { id: created.id };
+}
+
+export async function publishInformation(formData: FormData) {
+  await requireInformations();
+  const id = Number(formData.get("id") ?? 0);
+  if (!id) return;
+
+  const [published] = await db
+    .update(informations)
+    .set({ status: "published", publishedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(informations.id, id), eq(informations.status, "draft")))
+    .returning({ id: informations.id, title: informations.title });
+  if (!published) return;
+
+  await logActivity(`Information publiée : <strong>${published.title}</strong>`, "#1F8A5B");
+  revalidateInformationPaths();
+}
+
+export async function unpublishInformation(formData: FormData) {
+  await requireInformations();
+  const id = Number(formData.get("id") ?? 0);
+  if (!id) return;
+
+  // Le retrait dépingle : une information invisible ne doit pas garder la
+  // place de tête au retour en ligne.
+  const [hidden] = await db
+    .update(informations)
+    .set({ status: "draft", pinned: false, updatedAt: new Date() })
+    .where(eq(informations.id, id))
+    .returning({ title: informations.title });
+  if (!hidden) return;
+
+  await logActivity(`Information retirée : <strong>${hidden.title}</strong>`, "#9A6638");
+  revalidateInformationPaths();
+}
+
+export async function toggleInformationPin(formData: FormData) {
+  await requireInformations();
+  const id = Number(formData.get("id") ?? 0);
+  if (!id) return;
+
+  const [current] = await db
+    .select({ pinned: informations.pinned })
+    .from(informations)
+    .where(eq(informations.id, id));
+  if (!current) return;
+
+  const pinned = !current.pinned;
+  await db.update(informations).set({ pinned, updatedAt: new Date() }).where(eq(informations.id, id));
+  if (pinned) await unpinOthers(id);
+  revalidateInformationPaths();
+}
+
+export async function deleteInformation(formData: FormData) {
+  await requireInformations();
+  const id = Number(formData.get("id") ?? 0);
+  if (!id) return;
+  // Les lignes de lecture partent en cascade avec l'information.
+  await db.delete(informations).where(eq(informations.id, id));
+  revalidateInformationPaths();
+}
+
+/**
+ * Marque des informations comme lues pour l'utilisateur courant.
+ *
+ * Appelée par un petit composant client après affichage, plutôt qu'au rendu de
+ * la page : l'écriture et le compteur de la barre latérale vivent dans deux
+ * composants serveur distincts, dont l'ordre de rendu n'est pas garanti. En
+ * passant par une action, les deux pastilles retombent ensemble.
+ */
+export async function markInformationsRead(ids: number[]) {
+  const session = await getSession();
+  const userId = Number(session?.user.id);
+  if (!Number.isFinite(userId)) return;
+
+  const clean = [...new Set(ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))];
+  if (clean.length === 0) return;
+
+  await markRead(userId, clean);
+  revalidatePath("/backend/espace/informations");
+  revalidatePath("/backend/espace");
+  revalidatePath("/backend/espace/promotions");
+  revalidatePath("/backend");
 }

@@ -19,6 +19,7 @@ const TITLES: Record<string, [string, string]> = {
   "/backend/rencontres": ["Rencontres", "Gérer les prochaines dates"],
   "/backend/inscriptions": ["Inscriptions", "Gérer les participants aux rencontres"],
   "/backend/rencontres-passees": ["Rencontres passées", "Publier les archives et leurs photos"],
+  "/backend/informations": ["Informations", "Ce que l'association publie dans l'espace adhérent"],
   "/backend/emails": ["Création d'e-mails", "Composer des messages aux couleurs de Plein R"],
   "/backend/reseaux": ["Réseaux sociaux", "Connecter les pages Facebook et LinkedIn"],
   "/backend/administrateurs": ["Administrateurs", "Gérer les accès à l'administration"],
@@ -26,11 +27,12 @@ const TITLES: Record<string, [string, string]> = {
   "/backend/parametres": ["Paramètres du site", "Configurer l'association et les mentions légales"],
   "/backend/espace": ["Mon profil", "Votre fiche publique, vos inscriptions et votre droit à l'image"],
   "/backend/espace/promotions": ["Mes promotions", "Proposez une offre et suivez celles en ligne"],
+  "/backend/espace/informations": ["Informations", "Les annonces de l'association"],
   "/backend/changer-mot-de-passe": ["Mot de passe", "Sécurisez votre compte"],
 };
 
 type Capability = Parameters<typeof can>[1];
-type BadgeKey = "inbox" | "promos";
+type BadgeKey = "inbox" | "promos" | "infos";
 
 type NavItem = {
   href: string;
@@ -72,6 +74,7 @@ const SECTIONS: NavSection[] = [
   {
     label: "Communication",
     items: [
+      { href: "/backend/informations", label: "Informations", icon: "news", capability: "manageInformations" },
       { href: "/backend/emails", label: "E-mails", icon: "emails", capability: "manageEmails" },
       { href: "/backend/reseaux", label: "Réseaux sociaux", icon: "social", capability: "manageSettings" },
     ],
@@ -87,6 +90,7 @@ const SECTIONS: NavSection[] = [
   {
     label: "Côté adhérent",
     items: [
+      { href: "/backend/espace/informations", label: "Informations", icon: "news", badge: "infos" },
       { href: "/backend/espace", label: "Mon profil", icon: "space" },
       { href: "/backend/espace/promotions", label: "Mes promotions", icon: "promos" },
     ],
@@ -124,11 +128,13 @@ export function BackendShell({
   user,
   pendingCount,
   inboxCount = 0,
+  infoCount = 0,
   children,
 }: {
   user: { name: string; role: AppRole };
   pendingCount: number;
   inboxCount?: number;
+  infoCount?: number;
   children: ReactNode;
 }) {
   const pathname = usePathname();
@@ -164,7 +170,7 @@ export function BackendShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  const badges: Record<BadgeKey, number> = { inbox: inboxCount, promos: pendingCount };
+  const badges: Record<BadgeKey, number> = { inbox: inboxCount, promos: pendingCount, infos: infoCount };
 
   const sections = SECTIONS.map((section) => ({
     ...section,

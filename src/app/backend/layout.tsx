@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { contactMessages, imageConsents, membershipRequests, promotions } from "@/db/schema";
 import { ImageConsentForm } from "@/components/ImageConsentForm";
 import { isStaff } from "@/lib/rbac";
+import { unreadInformationCount } from "@/lib/informations";
 import { saveImageConsent } from "./actions";
 import { BackendShell } from "./BackendShell";
 import { NOINDEX } from "@/lib/seo";
@@ -70,6 +71,11 @@ export default async function BackendLayout({
     }
   }
 
+  // Le compteur d'informations non lues suit le compte, pas le rôle : un
+  // membre du bureau a lui aussi un espace adhérent.
+  const userId = Number(session.user.id);
+  const infoCount = Number.isFinite(userId) ? await unreadInformationCount(userId) : 0;
+
   let pendingCount = 0;
   let inboxCount = 0;
   if (isStaff(session.user.role)) {
@@ -87,6 +93,7 @@ export default async function BackendLayout({
       user={{ name: session.user.name ?? "Adhérent", role: session.user.role }}
       pendingCount={pendingCount}
       inboxCount={inboxCount}
+      infoCount={infoCount}
     >
       {children}
     </BackendShell>

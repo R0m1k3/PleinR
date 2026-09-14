@@ -10,6 +10,7 @@ import { memberPath } from "@/lib/seo";
 import { formatValidityShort, visibilityNote } from "@/lib/promo-validity";
 import { scheduleLabel } from "@/lib/promo-schedule";
 import { setOwnPromoShareTargets, setOwnPromoSuspension } from "../../actions";
+import { unreadInformationCount } from "@/lib/informations";
 import { EspaceHeader } from "../EspaceHeader";
 import { MemberSpaceForm } from "../MemberSpaceForm";
 
@@ -51,6 +52,10 @@ function fmtDate(d: Date) {
 export default async function EspacePromotionsPage() {
   const session = await getSession();
   const memberId = session?.user.memberId ?? null;
+  // Le compteur suit l'adhérent d'onglet en onglet : sans cela il
+  // disparaîtrait en quittant le fil.
+  const userId = Number(session?.user.id);
+  const infoBadge = Number.isFinite(userId) ? await unreadInformationCount(userId) : 0;
   let memberName = session?.user.name ?? "Adhérent";
   let memberLogoUrl: string | null = null;
   let subtitle = "Espace adhérent · Promotions";
@@ -139,7 +144,7 @@ export default async function EspacePromotionsPage() {
         </div>
       )}
 
-      <EspaceHeader memberName={memberName} subtitle={subtitle} active="promotions" publicPath={publicPath} promoBadge={live.length} />
+      <EspaceHeader memberName={memberName} subtitle={subtitle} active="promotions" publicPath={publicPath} promoBadge={live.length} infoBadge={infoBadge} />
 
       {/* Résumé : ce qui est visible par le public aujourd'hui */}
       <div className="grid grid-3" style={{ gap: 12, marginBottom: 24 }}>

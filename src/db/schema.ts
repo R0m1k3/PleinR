@@ -42,6 +42,7 @@ export const contactStatusEnum = pgEnum("contact_status", [
   "read",
   "archived",
 ]);
+export const infoStatusEnum = pgEnum("info_status", ["draft", "published"]);
 
 // ---- Categories (métiers) ----
 export const categories = pgTable("categories", {
@@ -292,6 +293,51 @@ export const imageConsents = pgTable("image_consents", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ---- Informations de l'association (fil de l'espace adhérent) ----
+// Le corps est du texte balisé (`src/lib/rich-text.ts`), jamais du HTML :
+// il est analysé puis rendu en éléments React.
+export const informations = pgTable(
+  "informations",
+  {
+    id: serial("id").primaryKey(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: text("body").notNull(),
+    imageUrl: text("image_url"),
+    status: infoStatusEnum("status").notNull().default("draft"),
+    pinned: boolean("pinned").notNull().default(false),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    authorId: integer("author_id").references(() => users.id, { onDelete: "set null" }),
+    // Garde anti-double-diffusion, sur le modèle de `publishPromoShares` :
+    // une information déjà envoyée ne repart pas à la republication.
+    emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    feedIdx: index("informations_feed_idx").on(table.status, table.publishedAt),
+  })
+);
+
+// Une ligne par lecture. Une simple date « vu jusqu'ici » sur l'utilisateur ne
+// permettrait ni la pastille « nouveau » par information, ni le « lue par
+// 12 / 40 » du back-office.
+export const informationReads = pgTable(
+  "information_reads",
+  {
+    id: serial("id").primaryKey(),
+    informationId: integer("information_id")
+      .notNull()
+      .references(() => informations.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    uniq: uniqueIndex("information_reads_user_info_idx").on(table.userId, table.informationId),
+  })
+);
+
 // ---- Relations ----
 export const membersRelations = relations(members, ({ one, many }) => ({
   category: one(categories, {
@@ -362,6 +408,21 @@ export const imageConsentsRelations = relations(imageConsents, ({ one }) => ({
   }),
 }));
 
+export const informationsRelations = relations(informations, ({ one, many }) => ({
+  author: one(users, {
+    fields: [informations.authorId],
+    references: [users.id],
+  }),
+  reads: many(informationReads),
+}));
+
+export const informationReadsRelations = relations(informationReads, ({ one }) => ({
+  information: one(informations, {
+    fields: [informationReads.informationId],
+    references: [informations.id],
+  }),
+}));
+
 export type Category = typeof categories.$inferSelect;
 export type Member = typeof members.$inferSelect;
 export type User = typeof users.$inferSelect;
@@ -378,3 +439,5 @@ export type MeetingRegistration = typeof meetingRegistrations.$inferSelect;
 export type PastMeeting = typeof pastMeetings.$inferSelect;
 export type PastMeetingPhoto = typeof pastMeetingPhotos.$inferSelect;
 export type ImageConsent = typeof imageConsents.$inferSelect;
+export type Information = typeof informations.$inferSelect;
+export type InformationRead = typeof informationReads.$inferSelect;

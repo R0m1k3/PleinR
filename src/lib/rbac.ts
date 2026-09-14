@@ -22,6 +22,7 @@ type Capability =
   | "manageAdmins"
   | "manageCategories"
   | "manageMeetings"
+  | "manageInformations"
   | "manageEmails"
   | "manageSettings"
   | "memberSpace";
@@ -35,6 +36,7 @@ const CAPABILITIES: Record<AppRole, Capability[]> = {
     "manageAdmins",
     "manageCategories",
     "manageMeetings",
+    "manageInformations",
     "manageEmails",
     "manageSettings",
     "memberSpace",
@@ -45,6 +47,7 @@ const CAPABILITIES: Record<AppRole, Capability[]> = {
     "moderatePromos",
     "publishSocial",
     "manageMeetings",
+    "manageInformations",
   ],
   editor: ["viewDashboard", "manageMembers"],
   member: ["memberSpace"],
