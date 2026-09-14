@@ -1,23 +1,20 @@
-function bytesBase64(bytes: Uint8Array) {
-  let binary = "";
-  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
-  }
-  return globalThis.btoa(binary);
-}
+/**
+ * Sorties navigateur du studio de composition : copie enrichie, brouillon
+ * Outlook, export HTML. Rien ici ne part sur le réseau — l'envoi réel vit
+ * côté serveur dans `src/lib/mailer.ts`.
+ *
+ * L'assemblage du message est délégué à `src/lib/mime.ts`, partagé avec le
+ * transport Gmail : un seul constructeur RFC 822, verrouillé par ses tests.
+ */
+import { buildMimeMessage, bytesToBase64, type MimeAttachment } from "@/lib/mime";
 
-function utf8Base64(value: string) {
-  return bytesBase64(new TextEncoder().encode(value));
-}
-
-function wrapBase64(value: string) {
-  return value.match(/.{1,76}/g)?.join("\r\n") ?? "";
-}
+const LOGO_CONTENT_ID = "plein-r-logo";
+const LOGO_SRC = /(\bsrc\s*=\s*)(["'])[^"']*\/assets\/logo\.png(?:\?[^"']*)?\2/gi;
 
 function slug(value: string) {
   return value
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-zA-Z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase() || "email-plein-r";
@@ -59,20 +56,25 @@ export async function copyRichEmail(html: string, plainText: string) {
 export async function downloadOutlookDraft(subject: string, html: string, prefix = "email") {
   const logoUrl = html.match(/\bsrc=["']([^"']*\/assets\/logo\.png(?:\?[^"']*)?)["']/i)?.[1];
   let renderedHtml = html;
-  let logoPart = "";
-  const boundary = "----=_PleinR_Outlook_Draft";
+  const inline: MimeAttachment[] = [];
 
+  // Le logo est embarqué plutôt que laissé en lien : un brouillon ouvert hors
+  // ligne, ou avant la mise en ligne du site, afficherait sinon un cadre vide.
   if (logoUrl) {
     const response = await fetch(logoUrl, { cache: "force-cache" });
     if (!response.ok) throw new Error("Logo Plein R introuvable.");
-    const base64 = bytesBase64(new Uint8Array(await response.arrayBuffer()));
-    renderedHtml = html.replace(/(\bsrc\s*=\s*)(["'])[^"']*\/assets\/logo\.png(?:\?[^"']*)?\2/gi, "$1$2cid:plein-r-logo$2");
-    logoPart = [`--${boundary}`, "Content-Type: image/png; name=\"logo.png\"", "Content-Transfer-Encoding: base64", "Content-ID: <plein-r-logo>", "Content-Disposition: inline; filename=\"logo.png\"", "", wrapBase64(base64)].join("\r\n");
+    renderedHtml = html.replace(LOGO_SRC, `$1$2cid:${LOGO_CONTENT_ID}$2`);
+    inline.push({
+      filename: "logo.png",
+      contentType: "image/png",
+      contentId: LOGO_CONTENT_ID,
+      base64: bytesToBase64(new Uint8Array(await response.arrayBuffer())),
+    });
   }
 
-  const mime = logoPart
-    ? ["X-Unsent: 1", `Subject: =?UTF-8?B?${utf8Base64(subject)}?=`, "MIME-Version: 1.0", `Content-Type: multipart/related; type=\"text/html\"; boundary=\"${boundary}\"`, "", `--${boundary}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", wrapBase64(utf8Base64(renderedHtml)), logoPart, `--${boundary}--`, ""].join("\r\n")
-    : ["X-Unsent: 1", `Subject: =?UTF-8?B?${utf8Base64(subject)}?=`, "MIME-Version: 1.0", "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", wrapBase64(utf8Base64(html)), ""].join("\r\n");
+  // `X-Unsent: 1` : Outlook ouvre le fichier comme un brouillon modifiable et
+  // non comme un message reçu.
+  const mime = buildMimeMessage({ subject, html: renderedHtml, inline, headers: { "X-Unsent": "1" } });
   downloadBlob(new Blob([mime], { type: "message/rfc822" }), `${prefix}-${slug(subject)}-outlook.eml`);
 }
 
