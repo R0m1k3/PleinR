@@ -1650,7 +1650,8 @@ async function requireMailSettings() {
   return access;
 }
 
-function mailRedirect(message: string, tone: "error" | "ok") {
+/** `redirect` lève : le type `never` évite d'avoir à rassurer TypeScript après. */
+function mailRedirect(message: string, tone: "error" | "ok"): never {
   redirect(`/backend/boite-mail?${tone}=${encodeURIComponent(message)}`);
 }
 
@@ -1739,15 +1740,15 @@ export async function sendMailTest() {
   );
 
   const result = await sendNow({
-    to: recipient!.email,
-    toName: recipient!.name,
+    to: recipient.email,
+    toName: recipient.name,
     subject,
     html,
     replyTo: settings.association_email || null,
   });
   await logSentMail({
     kind: "test",
-    toAddress: recipient!.email,
+    toAddress: recipient.email,
     subject,
     createdById: userId,
     result: result.ok ? { ok: true } : { ok: false, reason: result.reason },
@@ -1755,7 +1756,7 @@ export async function sendMailTest() {
 
   revalidatePath("/backend/boite-mail");
   mailRedirect(
-    result.ok ? `Message de test envoyé à ${recipient!.email}.` : `Échec de l'envoi : ${result.reason}`,
+    result.ok ? `Message de test envoyé à ${recipient.email}.` : `Échec de l'envoi : ${result.reason}`,
     result.ok ? "ok" : "error"
   );
 }
