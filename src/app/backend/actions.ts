@@ -43,6 +43,22 @@ import { isRangeInvalid } from "@/lib/promo-validity";
 import { formatSchedule, isDue, parseScheduleInput } from "@/lib/promo-schedule";
 import { publishPromoShares, requestedNetworks } from "@/lib/promo-publish";
 import { logActivity } from "@/lib/activity-log";
+import {
+  MAIL_LABELS,
+  MAIL_PROVIDERS,
+  checkMailHealth,
+  disconnectMailAccount,
+  saveOAuthApp,
+  saveSmtpAccount,
+  setActiveMailProvider,
+} from "@/lib/mail-accounts";
+import type { MailProvider } from "@/db/schema";
+import { sendNow } from "@/lib/mailer";
+import { cancelMailMessage, logSentMail, retryMailMessage } from "@/lib/mail-outbox";
+import { selfRecipient } from "@/lib/mail-recipients";
+import { buildGeneralEmail } from "@/lib/email-templates";
+import { emailBrand, getSiteSettings } from "@/lib/site-settings";
+import { siteUrl } from "@/lib/social-accounts";
 import { markInformationsRead as markRead } from "@/lib/informations";
 import { SITE_SETTING_DEFAULTS } from "@/lib/site-settings";
 import type { AppRole } from "@/types/next-auth";
@@ -1470,4 +1486,145 @@ export async function markInformationsRead(ids: number[]) {
   revalidatePath("/backend/espace");
   revalidatePath("/backend/espace/promotions");
   revalidatePath("/backend");
+}
+
+// ---- Boîte mail de l'association ----
+
+async function requireMailSettings() {
+  const access = await requireRole();
+  if (!can(access.role, "manageSettings")) throw new Error("Accès refusé");
+  return access;
+}
+
+function mailRedirect(message: string, tone: "error" | "ok") {
+  redirect(`/backend/boite-mail?${tone}=${encodeURIComponent(message)}`);
+}
+
+export async function saveMailApp(formData: FormData) {
+  await requireMailSettings();
+  const provider = String(formData.get("provider")) as MailProvider;
+  if (!MAIL_PROVIDERS.includes(provider) || provider === "smtp") return;
+
+  const appId = asString(formData, "appId");
+  if (!appId) mailRedirect("L'identifiant de l'application est requis.", "error");
+  // Champ secret laissé vide = on garde celui déjà enregistré.
+  const appSecret = asString(formData, "appSecret") || null;
+  try {
+    await saveOAuthApp(provider, appId, appSecret);
+  } catch (error) {
+    mailRedirect(error instanceof Error ? error.message : "Enregistrement impossible.", "error");
+  }
+  revalidatePath("/backend/boite-mail");
+}
+
+export async function saveMailSmtp(formData: FormData) {
+  await requireMailSettings();
+  const host = asString(formData, "smtpHost");
+  const user = asString(formData, "smtpUser");
+  const port = Number(formData.get("smtpPort") ?? 465) || 465;
+  if (!host || !user) mailRedirect("Le serveur et l'identifiant sont requis.", "error");
+
+  try {
+    await saveSmtpAccount({
+      host,
+      port: Math.min(65535, Math.max(1, port)),
+      secure: formData.get("smtpSecure") === "on",
+      user,
+      password: asString(formData, "smtpPassword") || null,
+      fromAddress: asString(formData, "fromAddress") || user,
+      fromName: asString(formData, "fromName"),
+    });
+  } catch (error) {
+    mailRedirect(error instanceof Error ? error.message : "Enregistrement impossible.", "error");
+  }
+  revalidatePath("/backend/boite-mail");
+  mailRedirect("Réglages SMTP enregistrés.", "ok");
+}
+
+export async function setMailProvider(formData: FormData) {
+  await requireMailSettings();
+  const provider = String(formData.get("provider")) as MailProvider;
+  if (!MAIL_PROVIDERS.includes(provider)) return;
+  await setActiveMailProvider(provider);
+  await logActivity(`Boîte mail : expédition via <strong>${MAIL_LABELS[provider]}</strong>`, "#2C6FB3");
+  revalidatePath("/backend/boite-mail");
+}
+
+export async function disconnectMail(formData: FormData) {
+  await requireMailSettings();
+  const provider = String(formData.get("provider")) as MailProvider;
+  if (!MAIL_PROVIDERS.includes(provider)) return;
+  await disconnectMailAccount(provider);
+  await logActivity(`Boîte mail déconnectée : <strong>${MAIL_LABELS[provider]}</strong>`, "#d8472b");
+  revalidatePath("/backend/boite-mail");
+}
+
+/**
+ * Envoi de contrôle vers sa propre adresse. Direct et non mis en file : c'est
+ * précisément le verdict immédiat qu'on cherche.
+ */
+export async function sendMailTest() {
+  const { userId, name } = await requireMailSettings();
+  const recipient = userId ? await selfRecipient(userId) : null;
+  if (!recipient) mailRedirect("Votre compte n'a pas d'adresse e-mail utilisable.", "error");
+
+  const settings = await getSiteSettings();
+  const base = await siteUrl();
+  const { subject, html } = buildGeneralEmail(
+    {
+      subject: `Test d'envoi — ${settings.association_name}`,
+      kicker: settings.association_name,
+      title: "La boîte mail répond",
+      body: `Bonjour ${name},\n\nCe message confirme que le site sait expédier depuis la boîte de l'association.\n\nSi vous le recevez, les mots de passe temporaires, les invitations aux rencontres et les informations diffusées partiront de la même façon.`,
+      buttonLabel: "",
+      buttonUrl: "",
+      signature: `L'équipe de ${settings.association_name}`,
+    },
+    base,
+    emailBrand(settings)
+  );
+
+  const result = await sendNow({
+    to: recipient!.email,
+    toName: recipient!.name,
+    subject,
+    html,
+    replyTo: settings.association_email || null,
+  });
+  await logSentMail({
+    kind: "test",
+    toAddress: recipient!.email,
+    subject,
+    createdById: userId,
+    result: result.ok ? { ok: true } : { ok: false, reason: result.reason },
+  });
+
+  revalidatePath("/backend/boite-mail");
+  mailRedirect(
+    result.ok ? `Message de test envoyé à ${recipient!.email}.` : `Échec de l'envoi : ${result.reason}`,
+    result.ok ? "ok" : "error"
+  );
+}
+
+/** Contrôle la santé des trois fournisseurs à la demande. */
+export async function checkMailProvider(formData: FormData) {
+  await requireMailSettings();
+  const provider = String(formData.get("provider")) as MailProvider;
+  if (!MAIL_PROVIDERS.includes(provider)) return;
+  await checkMailHealth(provider);
+  revalidatePath("/backend/boite-mail");
+}
+
+export async function retryMail(formData: FormData) {
+  await requireMailSettings();
+  const id = Number(formData.get("id") ?? 0);
+  if (id) await retryMailMessage(id);
+  revalidatePath("/backend/boite-mail");
+}
+
+export async function cancelMail(formData: FormData) {
+  await requireMailSettings();
+  const id = Number(formData.get("id") ?? 0);
+  if (id) await cancelMailMessage(id);
+  revalidatePath("/backend/boite-mail");
 }

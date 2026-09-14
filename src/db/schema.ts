@@ -43,6 +43,21 @@ export const contactStatusEnum = pgEnum("contact_status", [
   "archived",
 ]);
 export const infoStatusEnum = pgEnum("info_status", ["draft", "published"]);
+export const mailProviderEnum = pgEnum("mail_provider", ["google", "microsoft", "smtp"]);
+export const mailStatusEnum = pgEnum("mail_status", [
+  "queued",
+  "sending",
+  "sent",
+  "failed",
+  "cancelled",
+]);
+export const mailKindEnum = pgEnum("mail_kind", [
+  "credentials",
+  "information",
+  "meeting",
+  "studio",
+  "test",
+]);
 
 // ---- Categories (métiers) ----
 export const categories = pgTable("categories", {
@@ -338,6 +353,69 @@ export const informationReads = pgTable(
   })
 );
 
+// ---- Boîte mail de l'association ----
+// Une ligne par fournisseur, `is_active` désigne celui qui expédie. Les secrets
+// sont chiffrés (`src/lib/crypto.ts`) et ne ressortent jamais vers le
+// navigateur — même règle que `social_accounts`.
+export const mailAccounts = pgTable("mail_accounts", {
+  id: serial("id").primaryKey(),
+  provider: mailProviderEnum("provider").notNull().unique(),
+  // Lue chez le fournisseur pour Google et Microsoft : on expédie comme la
+  // boîte authentifiée, sinon SPF et DKIM tombent.
+  fromAddress: varchar("from_address", { length: 200 }),
+  fromName: varchar("from_name", { length: 200 }),
+  isActive: boolean("is_active").notNull().default(false),
+  appId: varchar("app_id", { length: 200 }),
+  appSecret: text("app_secret"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  smtpHost: varchar("smtp_host", { length: 200 }),
+  smtpPort: integer("smtp_port"),
+  smtpSecure: boolean("smtp_secure").notNull().default(true),
+  smtpUser: varchar("smtp_user", { length: 200 }),
+  smtpPassword: text("smtp_password"),
+  connectedById: integer("connected_by_id").references(() => users.id, { onDelete: "set null" }),
+  connectedAt: timestamp("connected_at", { withTimezone: true }),
+  lastCheckAt: timestamp("last_check_at", { withTimezone: true }),
+  lastCheckOk: boolean("last_check_ok"),
+  lastCheckError: text("last_check_error"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// File d'attente d'envoi. `to_address` est un destinataire **unique** : une
+// diffusion produit autant de lignes que d'adhérents, et aucune adresse ne peut
+// donc apparaître aux yeux des autres.
+export const mailMessages = pgTable(
+  "mail_messages",
+  {
+    id: serial("id").primaryKey(),
+    kind: mailKindEnum("kind").notNull(),
+    status: mailStatusEnum("status").notNull().default("queued"),
+    toAddress: varchar("to_address", { length: 200 }).notNull(),
+    toName: varchar("to_name", { length: 200 }),
+    subject: varchar("subject", { length: 300 }).notNull(),
+    html: text("html").notNull(),
+    text: text("text"),
+    replyTo: varchar("reply_to", { length: 200 }),
+    informationId: integer("information_id").references(() => informations.id, { onDelete: "set null" }),
+    meetingId: integer("meeting_id").references(() => meetings.id, { onDelete: "set null" }),
+    memberId: integer("member_id").references(() => members.id, { onDelete: "set null" }),
+    createdById: integer("created_by_id").references(() => users.id, { onDelete: "set null" }),
+    provider: mailProviderEnum("provider"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    dueIdx: index("mail_messages_due_idx").on(table.status, table.nextAttemptAt),
+    informationIdx: index("mail_messages_information_idx").on(table.informationId),
+  })
+);
+
 // ---- Relations ----
 export const membersRelations = relations(members, ({ one, many }) => ({
   category: one(categories, {
@@ -440,4 +518,8 @@ export type PastMeeting = typeof pastMeetings.$inferSelect;
 export type PastMeetingPhoto = typeof pastMeetingPhotos.$inferSelect;
 export type ImageConsent = typeof imageConsents.$inferSelect;
 export type Information = typeof informations.$inferSelect;
+export type MailAccount = typeof mailAccounts.$inferSelect;
+export type MailProvider = (typeof mailProviderEnum.enumValues)[number];
+export type MailMessage = typeof mailMessages.$inferSelect;
+export type MailKind = (typeof mailKindEnum.enumValues)[number];
 export type InformationRead = typeof informationReads.$inferSelect;

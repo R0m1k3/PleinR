@@ -22,6 +22,7 @@ const TITLES: Record<string, [string, string]> = {
   "/backend/informations": ["Informations", "Ce que l'association publie dans l'espace adhérent"],
   "/backend/emails": ["Création d'e-mails", "Composer des messages aux couleurs de Plein R"],
   "/backend/reseaux": ["Réseaux sociaux", "Connecter les pages Facebook et LinkedIn"],
+  "/backend/boite-mail": ["Boîte mail", "Brancher la boîte de l'association pour les envois du site"],
   "/backend/administrateurs": ["Administrateurs", "Gérer les accès à l'administration"],
   "/backend/categories": ["Catégories", "Gérer les métiers de l'annuaire"],
   "/backend/parametres": ["Paramètres du site", "Configurer l'association et les mentions légales"],
@@ -83,6 +84,7 @@ const SECTIONS: NavSection[] = [
     label: "Configuration",
     items: [
       { href: "/backend/categories", label: "Catégories", icon: "categories", capability: "manageCategories" },
+      { href: "/backend/boite-mail", label: "Boîte mail", icon: "mailbox", capability: "manageSettings" },
       { href: "/backend/parametres", label: "Paramètres du site", icon: "settings", capability: "manageSettings" },
       { href: "/backend/administrateurs", label: "Administrateurs", icon: "admins", capability: "manageAdmins" },
     ],

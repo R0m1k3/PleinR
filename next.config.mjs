@@ -4,6 +4,9 @@ const nextConfig = {
   reactStrictMode: true,
   // Pas d'en-tête X-Powered-By : inutile de renseigner un attaquant sur la pile.
   poweredByHeader: false,
+  // `nodemailer` charge net/tls/dns par des requires dynamiques : laissé au
+  // bundler, il se retrouve à moitié inliné et casse à l'exécution.
+  serverExternalPackages: ["nodemailer"],
   experimental: {
     // Les images d'entête/logo sont envoyées en data-URL via server action.
     serverActions: { bodySizeLimit: "4mb" },

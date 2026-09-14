@@ -1,3 +1,4 @@
+import type { EmailBrand } from "@/lib/email-templates";
 import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { siteSettings } from "@/db/schema";
@@ -121,4 +122,19 @@ export function parseBoardMembers(value: string) {
     const [name, role] = line.split("|").map((part) => part.trim());
     return { name, role: role || "Membre du directoire" };
   });
+}
+
+/**
+ * Identité de l'association telle qu'elle apparaît en pied de tous les
+ * e-mails. Elle sert au studio de composition comme aux envois automatiques :
+ * un seul endroit à changer.
+ */
+export function emailBrand(settings: SiteSettings): EmailBrand {
+  return {
+    associationName: settings.association_name,
+    address: settings.association_address,
+    email: settings.association_email,
+    phone: settings.association_phone,
+    siret: settings.association_siret,
+  };
 }
