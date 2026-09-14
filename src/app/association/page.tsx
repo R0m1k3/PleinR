@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { meetingRegistrations, meetings, pastMeetingPhotos, pastMeetings } from "@/db/schema";
 import { JsonLd } from "@/components/JsonLd";
+import { MeetingCard } from "@/components/MeetingCard";
 import { PastMeetingGallery } from "@/components/PastMeetingGallery";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -232,40 +233,31 @@ export default async function AssociationPage() {
               const remaining = Math.max(0, meeting.capacity - registered);
               const isRegistered = myMeetingIds.has(meeting.id);
               return (
-                <article id={`rencontre-${meeting.id}`} key={meeting.id} className="lift" style={{ background: "#fff", border: isRegistered ? "2px solid #1f8a5b" : "1px solid #e6dcc6", borderRadius: 12, overflow: "hidden", scrollMarginTop: 100 }}>
-                  <div style={{ position: "relative", aspectRatio: "16 / 10", background: meeting.imageUrl ? `center/cover no-repeat url(${meeting.imageUrl})` : "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)" }}>
-                    {isRegistered && (
-                      <span style={{ position: "absolute", top: 12, right: 12, display: "inline-flex", alignItems: "center", gap: 6, background: "#1f8a5b", color: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 12, fontWeight: 800, boxShadow: "0 4px 14px rgba(22,72,49,0.28)" }}>
-                        ✓ Inscrit
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ padding: 18 }}>
-                    <div style={{ color: "#9a6638", fontSize: 12.5, fontWeight: 800 }}>
-                      {formatDate(meeting.startsAt)} · {formatTime(meeting.startsAt)}
-                    </div>
-                    <h3 className="font-display" style={{ margin: "7px 0 7px", color: "#26201a", fontSize: 21 }}>
-                      {meeting.title}
-                    </h3>
-                    {meeting.location && <div style={{ fontSize: 13, color: "#6c6150", fontWeight: 700 }}>{meeting.location}</div>}
-                    <p style={{ color: "#8c8068", fontSize: 13.5, lineHeight: 1.6, minHeight: 64 }}>
-                      {meeting.description}
-                    </p>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#6c6150", fontSize: 12.5, fontWeight: 800, marginBottom: 12 }}>
-                      <span>{registered}/{meeting.capacity} inscrits</span>
-                      <span>{remaining} place(s)</span>
-                    </div>
-                    <div style={{ color: "#8c8068", fontSize: 12.5, marginBottom: 10 }}>
-                      Jusqu'à {meeting.participantsPerAccount} participant{meeting.participantsPerAccount > 1 ? "s" : ""} par compte
-                    </div>
-                    <Link
-                      href={`/inscription/${meeting.id}`}
-                      style={{ display: "block", textAlign: "center", textDecoration: "none", background: remaining <= 0 && !isRegistered ? "#a99c82" : "#13324F", color: "#fff", borderRadius: 8, padding: 11, fontWeight: 800 }}
-                    >
-                      {isRegistered ? "Modifier mon inscription" : remaining <= 0 ? "Complet" : memberId ? "S'inscrire" : "Connexion et inscription"}
-                    </Link>
-                  </div>
-                </article>
+                <MeetingCard
+                  key={meeting.id}
+                  meeting={{
+                    id: meeting.id,
+                    title: meeting.title,
+                    description: meeting.description,
+                    location: meeting.location,
+                    imageUrl: meeting.imageUrl,
+                    // Formatées ici : côté client, le fuseau du visiteur
+                    // donnerait une autre heure et casserait l'hydratation.
+                    dateLabel: formatDate(meeting.startsAt),
+                    timeLabel: formatTime(meeting.startsAt),
+                    capacity: meeting.capacity,
+                    registered,
+                    participantsPerAccount: meeting.participantsPerAccount,
+                    isRegistered,
+                    ctaLabel: isRegistered
+                      ? "Modifier mon inscription"
+                      : remaining <= 0
+                        ? "Complet"
+                        : memberId
+                          ? "S'inscrire"
+                          : "Connexion et inscription",
+                  }}
+                />
               );
             })}
           </div>
