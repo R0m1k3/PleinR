@@ -62,6 +62,13 @@ export const members = pgTable("members", {
   email: varchar("email", { length: 200 }).notNull(),
   // E-mail public de la fiche ; à vide, la fiche retombe sur `email`.
   contactEmail: varchar("contact_email", { length: 200 }),
+  // Référent de l'adhérent : la personne à joindre au sein du commerce, avec
+  // sa ligne directe. Contrairement aux coordonnées de l'établissement, ces
+  // trois champs ne sont montrés qu'aux visiteurs connectés (cf.
+  // `src/lib/member-contact.ts`), jamais dans le HTML public ni le JSON-LD.
+  contactFirstName: varchar("contact_first_name", { length: 120 }),
+  contactLastName: varchar("contact_last_name", { length: 120 }),
+  contactPhone: varchar("contact_phone", { length: 40 }),
   categoryId: integer("category_id").references(() => categories.id),
   city: varchar("city", { length: 120 }),
   address: varchar("address", { length: 240 }),

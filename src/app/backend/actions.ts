@@ -525,6 +525,9 @@ export async function updateMember(formData: FormData) {
       name: String(formData.get("name") ?? "").trim(),
       email: String(formData.get("email") ?? "").trim(),
       contactEmail: String(formData.get("contactEmail") ?? "").trim().toLowerCase() || null,
+      contactFirstName: String(formData.get("contactFirstName") ?? "").trim() || null,
+      contactLastName: String(formData.get("contactLastName") ?? "").trim() || null,
+      contactPhone: String(formData.get("contactPhone") ?? "").trim() || null,
       categoryId,
       city,
       address: String(formData.get("address") ?? "").trim() || null,
@@ -543,6 +546,7 @@ export async function updateMember(formData: FormData) {
 
   revalidatePath("/backend/adherents");
   revalidatePath("/adherents/[id]", "page");
+  revalidatePath("/annuaire");
   revalidatePath("/");
 }
 
@@ -1095,6 +1099,9 @@ export async function updateOwnProfile(formData: FormData) {
     .set({
       name,
       contactEmail: String(formData.get("contactEmail") ?? "").trim().toLowerCase() || null,
+      contactFirstName: String(formData.get("contactFirstName") ?? "").trim() || null,
+      contactLastName: String(formData.get("contactLastName") ?? "").trim() || null,
+      contactPhone: String(formData.get("contactPhone") ?? "").trim() || null,
       description,
       address: String(formData.get("address") ?? "").trim() || null,
       postalCode: String(formData.get("postalCode") ?? "").trim() || null,

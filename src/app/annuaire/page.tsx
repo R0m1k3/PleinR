@@ -8,7 +8,9 @@ import {
   getAllCategories,
   getCategoriesInUse,
   getLiveBadgesByMember,
+  getMemberContacts,
 } from "@/lib/queries";
+import { getSession } from "@/lib/session";
 import { CategoryLinks } from "@/components/CategoryLinks";
 import { JsonLd } from "@/components/JsonLd";
 import { breadcrumbJsonLd, memberListJsonLd, pageMetadata } from "@/lib/seo";
@@ -32,13 +34,20 @@ export default async function AnnuairePage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
-  const [rawMembers, categories, badges, baseUrl, categoriesInUse] = await Promise.all([
+  const [rawMembers, categories, badges, baseUrl, categoriesInUse, session] = await Promise.all([
     getActiveMembersWithCategory(),
     getAllCategories(),
     getLiveBadgesByMember(),
     publicBaseUrl(),
     getCategoriesInUse(),
+    getSession(),
   ]);
+
+  // Coordonnées du référent : réservées aux visiteurs connectés. Pour un
+  // visiteur anonyme la requête n'est pas faite du tout, donc rien ne part
+  // dans le HTML ni vers le composant client.
+  const signedIn = Boolean(session?.user);
+  const contacts = signedIn ? await getMemberContacts() : null;
 
   const badgeByMember = new Map<number, string | null>();
   for (const b of badges) {
@@ -51,6 +60,7 @@ export default async function AnnuairePage({
     ...m,
     hasPromo: badgeByMember.has(m.id),
     promoBadge: badgeByMember.get(m.id) ?? null,
+    contact: contacts?.get(m.id) ?? null,
   }));
 
   return (
@@ -97,6 +107,12 @@ export default async function AnnuairePage({
           <p style={{ margin: 0, fontSize: 16.5, color: "#6c6150", maxWidth: 560 }}>
             Trouvez un professionnel du Bassin de Pompey, découvrez sa fiche et ses bons plans.
           </p>
+          {signedIn && (
+            <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "#9a8d72", maxWidth: 560 }}>
+              Vous êtes connecté : les coordonnées du référent de chaque adhérent (nom, prénom,
+              téléphone) sont affichées sur les fiches ci-dessous.
+            </p>
+          )}
         </section>
 
         <AnnuaireClient members={members} categories={categories} initialQuery={q ?? ""} />

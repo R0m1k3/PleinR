@@ -1,4 +1,5 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import { activityNodes, sanitizeActivityMessage } from "../src/lib/activity";
@@ -107,5 +108,48 @@ describe("Chiffrement des secrets réseaux", () => {
   it("rejette un format inattendu", () => {
     assert.throws(() => decryptSecret("pas-un-secret-chiffré"));
     assert.equal(tryDecryptSecret("pas-un-secret-chiffré"), null);
+  });
+});
+
+describe("Coordonnées du référent — jamais dans les lectures publiques", () => {
+  const source = readFileSync(new URL("../src/lib/queries.ts", import.meta.url), "utf8");
+
+  /** Corps d'une fonction exportée de `queries.ts`, jusqu'à la suivante. */
+  function bodyOf(name: string): string {
+    const start = source.indexOf(`export async function ${name}(`);
+    assert.notEqual(start, -1, `${name} introuvable dans src/lib/queries.ts`);
+    const next = source.indexOf("\nexport ", start + 1);
+    return source.slice(start, next === -1 ? source.length : next);
+  }
+
+  // Nom, prénom et ligne directe de l'adhérent ne sont montrés qu'à un visiteur
+  // connecté. La garantie tient à une seule chose : aucune requête servant une
+  // page publique ne les rapatrie — sinon ils partiraient dans le HTML, le
+  // JSON-LD ou les props du composant client de l'annuaire.
+  const publicReads = [
+    "getActiveMembersWithCategory",
+    "getActiveMembersByCategory",
+    "getRotatingActiveMembers",
+    "getPublicMember",
+    "getLivePromotions",
+  ];
+
+  for (const name of publicReads) {
+    it(`${name} ne lit pas le référent`, () => {
+      const body = bodyOf(name);
+      for (const column of ["contactFirstName", "contactLastName", "contactPhone"]) {
+        assert.ok(
+          !body.includes(column),
+          `${name} sélectionne ${column} : ces coordonnées deviendraient publiques.`
+        );
+      }
+    });
+  }
+
+  it("les lectures réservées existent et sont séparées", () => {
+    for (const name of ["getMemberContacts", "getMemberContact"]) {
+      const body = bodyOf(name);
+      assert.ok(body.includes("contactPhone"), `${name} devrait lire le référent`);
+    }
   });
 });

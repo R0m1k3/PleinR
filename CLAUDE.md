@@ -248,6 +248,18 @@ même raison.
   (`src/lib/promo-categories.ts`, groupes pour `<optgroup>`), pas le métier de
   l'adhérent ; `defaultPromoCategory(slug)` pré-sélectionne depuis le métier.
 
+- **Référent** : `members.contact_first_name` / `contact_last_name` /
+  `contact_phone` portent la personne à joindre et sa ligne directe. Ils sont
+  **réservés aux visiteurs connectés** : aucune requête publique ne les lit
+  (`tests/security.test.ts` le verrouille), seules `getMemberContacts()` /
+  `getMemberContact()` les rapatrient, et uniquement après un `getSession()`
+  positif. L'annuaire, les pages métier et la fiche affichent alors un bloc
+  « Contact adhérent » ; hors session la requête n'est pas faite, donc rien
+  n'est masqué en CSS, rien ne part dans le HTML ni dans le JSON-LD.
+  `src/lib/member-contact.ts` est **pur** (`tests/member-contact.test.ts`) :
+  `memberContact()` compose « Prénom Nom » et renvoie `null` s'il n'y a rien à
+  montrer, `telHref()` fabrique le lien `tel:`. Les deux formulaires de fiche
+  (espace adhérent et écran staff) partagent `MemberContactFields`.
 - `members.email` est l'e-mail **administratif** (identifiant de connexion à la
   création, échanges avec l'association) ; `members.contact_email` est l'e-mail
   **public** de la fiche, saisi par l'adhérent ou le staff. La fiche et le

@@ -2,10 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { MemberCard, type MemberCardData } from "@/components/MemberCard";
+import type { MemberContact } from "@/lib/member-contact";
 
 export type DirectoryMember = MemberCardData & {
   hasPromo: boolean;
   promoBadge: string | null;
+  /** Référent de l'adhérent, `null` tant que le visiteur n'est pas connecté. */
+  contact: MemberContact | null;
 };
 
 export function AnnuaireClient({
@@ -176,7 +179,7 @@ export function AnnuaireClient({
       {list.length > 0 ? (
         <div className="grid grid-3" style={{ gap: 20 }}>
           {list.map((m, i) => (
-            <MemberCard key={m.id} m={m} index={i} />
+            <MemberCard key={m.id} m={m} index={i} contact={m.contact} />
           ))}
         </div>
       ) : (

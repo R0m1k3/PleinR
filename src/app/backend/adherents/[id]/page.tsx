@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { categories, members, users } from "@/db/schema";
 import { can } from "@/lib/rbac";
 import { ImageField } from "@/components/ImageField";
+import { MemberContactFields } from "@/components/MemberContactFields";
 import { HoursEditor } from "@/components/HoursEditor";
 import { TagsField } from "@/components/TagsField";
 import { communeOptions } from "@/lib/communes";
@@ -131,6 +132,12 @@ export default async function EditMemberPage({
             </select>
           </div>
         </div>
+
+        <MemberContactFields
+          firstName={member.contactFirstName}
+          lastName={member.contactLastName}
+          phone={member.contactPhone}
+        />
 
         <div className="grid grid-2" style={{ gap: 16, marginTop: 16 }}>
           <ImageField name="coverUrl" label="Image d'entête (bannière)" defaultValue={member.coverUrl ?? ""} height={130} />

@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, members, promotions } from "@/db/schema";
+import { memberContact, type MemberContact } from "@/lib/member-contact";
 
 /**
  * Promotion réellement visible par le public : validée **et** dans sa période
@@ -133,6 +134,46 @@ export async function getPublicMember(id: number) {
     .leftJoin(categories, eq(members.categoryId, categories.id))
     .where(eq(members.id, id));
   return m ?? null;
+}
+
+/**
+ * Référents des adhérents actifs, indexés par fiche.
+ *
+ * Volontairement séparé des lectures publiques (`getActiveMembersWithCategory`,
+ * `getPublicMember`) : nom, prénom et ligne directe ne sont réservés aux
+ * visiteurs connectés que parce qu'aucune requête publique ne les rapatrie.
+ * L'appelant vérifie la session **avant** d'appeler.
+ */
+export async function getMemberContacts(): Promise<Map<number, MemberContact>> {
+  const rows = await db
+    .select({
+      id: members.id,
+      contactFirstName: members.contactFirstName,
+      contactLastName: members.contactLastName,
+      contactPhone: members.contactPhone,
+    })
+    .from(members)
+    .where(eq(members.status, "active"));
+
+  const byMember = new Map<number, MemberContact>();
+  for (const row of rows) {
+    const contact = memberContact(row);
+    if (contact) byMember.set(row.id, contact);
+  }
+  return byMember;
+}
+
+/** Référent d'une fiche. Même règle que `getMemberContacts()` : session vérifiée d'abord. */
+export async function getMemberContact(id: number): Promise<MemberContact | null> {
+  const [row] = await db
+    .select({
+      contactFirstName: members.contactFirstName,
+      contactLastName: members.contactLastName,
+      contactPhone: members.contactPhone,
+    })
+    .from(members)
+    .where(eq(members.id, id));
+  return row ? memberContact(row) : null;
 }
 
 export async function getMemberLivePromotions(memberId: number) {

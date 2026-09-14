@@ -13,7 +13,9 @@ import {
   getCategoriesInUse,
   getCategoryBySlug,
   getLiveBadgesByMember,
+  getMemberContacts,
 } from "@/lib/queries";
+import { getSession } from "@/lib/session";
 import {
   NOINDEX,
   breadcrumbJsonLd,
@@ -77,12 +79,16 @@ export default async function CategoriePage({ params }: { params: Params }) {
   const category = await getCategoryBySlug(categorie);
   if (!category) notFound();
 
-  const [rawMembers, badges, categoriesInUse, baseUrl] = await Promise.all([
+  const [rawMembers, badges, categoriesInUse, baseUrl, session] = await Promise.all([
     getActiveMembersByCategory(category.id),
     getLiveBadgesByMember(),
     getCategoriesInUse(),
     publicBaseUrl(),
+    getSession(),
   ]);
+  // Même règle que sur l'annuaire : le référent n'est lu que pour un visiteur
+  // connecté, et reste hors du JSON-LD (construit sur `members`).
+  const contacts = session?.user ? await getMemberContacts() : null;
   const badgeByMember = new Map<number, string | null>();
   for (const b of badges) {
     if (b.memberId != null && !badgeByMember.has(b.memberId)) badgeByMember.set(b.memberId, b.badge);
@@ -148,7 +154,7 @@ export default async function CategoriePage({ params }: { params: Params }) {
         {members.length > 0 ? (
           <div className="grid grid-3" style={{ gap: 20 }}>
             {members.map((m, i) => (
-              <MemberCard key={m.id} m={m} index={i} />
+              <MemberCard key={m.id} m={m} index={i} contact={contacts?.get(m.id) ?? null} />
             ))}
           </div>
         ) : (

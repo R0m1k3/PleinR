@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { VitrineImage } from "@/components/VitrineImage";
 import { memberPath } from "@/lib/seo";
+import type { MemberContact } from "@/lib/member-contact";
 
 export type MemberCardData = {
   id: number;
@@ -44,8 +45,21 @@ const clampLines = (lines: number) =>
 /**
  * Carte d'un adhérent dans une grille (annuaire, page métier). Composant sans
  * état : il se rend aussi bien côté serveur que dans le filtre client.
+ *
+ * `contact` (nom du référent, ligne directe) n'est passé qu'aux visiteurs
+ * connectés : la page ne le rapatrie pas du tout pour un visiteur anonyme, il
+ * n'y a donc rien à masquer en CSS. Le numéro reste en texte simple — un
+ * `tel:` imbriqué dans le lien de la carte serait un lien dans un lien.
  */
-export function MemberCard({ m, index = 0 }: { m: MemberCardData; index?: number }) {
+export function MemberCard({
+  m,
+  index = 0,
+  contact = null,
+}: {
+  m: MemberCardData;
+  index?: number;
+  contact?: MemberContact | null;
+}) {
   const location = [m.address, m.city].filter(Boolean).join(" · ");
   return (
     <Link
@@ -87,6 +101,21 @@ export function MemberCard({ m, index = 0 }: { m: MemberCardData; index?: number
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: m.accent ?? "#E0A63C", flex: "0 0 auto" }} />
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{location}</span>
         </div>
+        {contact && (
+          <div style={{ marginTop: 10, borderTop: "1px dashed #e6dcc6", paddingTop: 10 }}>
+            <div style={{ fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 800, color: "#9a8d72", marginBottom: 4 }}>
+              Contact adhérent
+            </div>
+            {contact.name && (
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#3c3322", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {contact.name}
+              </div>
+            )}
+            {contact.phone && (
+              <div style={{ fontSize: 12.5, color: "#6c6150", marginTop: 2 }}>{contact.phone}</div>
+            )}
+          </div>
+        )}
       </div>
     </Link>
   );

@@ -7,7 +7,9 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { VitrineImage } from "@/components/VitrineImage";
 import { PromoImage } from "@/components/PromoImage";
 import { JsonLd } from "@/components/JsonLd";
-import { getMemberLivePromotions, getPublicMember } from "@/lib/queries";
+import { getMemberContact, getMemberLivePromotions, getPublicMember } from "@/lib/queries";
+import { getSession } from "@/lib/session";
+import { telHref } from "@/lib/member-contact";
 import {
   NOINDEX,
   breadcrumbJsonLd,
@@ -144,7 +146,16 @@ export default async function FicheAdherentPage({
   const canonical = memberPath(member);
   if (`/adherents/${id}` !== canonical) permanentRedirect(canonical);
 
-  const [promos, baseUrl] = await Promise.all([getMemberLivePromotions(memberId), publicBaseUrl()]);
+  const [promos, baseUrl, session] = await Promise.all([
+    getMemberLivePromotions(memberId),
+    publicBaseUrl(),
+    getSession(),
+  ]);
+  // Nom, prénom et ligne directe du référent : réservés aux visiteurs
+  // connectés. La requête n'est pas faite pour un visiteur anonyme, et ces
+  // champs restent hors du JSON-LD et des métadonnées de la fiche.
+  const contact = session?.user ? await getMemberContact(memberId) : null;
+  const contactTel = telHref(contact?.phone);
   const accent = member.accent ?? "#E0A63C";
 
   const fullAddress = [member.address, [member.postalCode, member.city].filter(Boolean).join(" ")]
@@ -384,6 +395,27 @@ export default async function FicheAdherentPage({
                       <div className="practical-empty">Coordonnées non communiquées.</div>
                     )}
                   </div>
+                  {contact && (
+                    <div className="contact-referent">
+                      <div className="contact-referent__label">
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: accent }} />
+                        Contact adhérent
+                      </div>
+                      {contact.name && <div className="contact-referent__name">{contact.name}</div>}
+                      {contact.phone &&
+                        (contactTel ? (
+                          <a className="contact-referent__phone" href={contactTel}>
+                            {contact.phone}
+                          </a>
+                        ) : (
+                          <div className="contact-referent__phone">{contact.phone}</div>
+                        ))}
+                      <div className="contact-referent__hint">
+                        Visible uniquement parce que vous êtes connecté : ces coordonnées ne sont pas
+                        publiées sur le site.
+                      </div>
+                    </div>
+                  )}
                 </section>
               </div>
             </section>

@@ -9,6 +9,7 @@ import { ImageField } from "@/components/ImageField";
 import { ImageConsentForm } from "@/components/ImageConsentForm";
 import { HoursEditor } from "@/components/HoursEditor";
 import { TagsField } from "@/components/TagsField";
+import { MemberContactFields } from "@/components/MemberContactFields";
 import { communeOptions } from "@/lib/communes";
 import { saveImageConsent, updateOwnProfile } from "../actions";
 import { EspaceHeader } from "./EspaceHeader";
@@ -166,6 +167,12 @@ export default async function EspacePage() {
               <input name="website" defaultValue={profile.website ?? ""} className="field" placeholder="https://..." />
             </div>
           </div>
+
+          <MemberContactFields
+            firstName={profile.contactFirstName}
+            lastName={profile.contactLastName}
+            phone={profile.contactPhone}
+          />
 
           <div className="grid grid-2" style={{ gap: 16, marginTop: 16 }}>
             <ImageField name="coverUrl" label="Image d'entête (bannière)" defaultValue={profile.coverUrl ?? ""} height={130} />
