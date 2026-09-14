@@ -1,3 +1,5 @@
+import { safeHttpUrl } from "@/lib/rich-text";
+
 export type EmailBrand = {
   associationName: string;
   address?: string;
@@ -43,15 +45,6 @@ function esc(value: unknown) {
 
 function lines(value: unknown) {
   return esc(value).replace(/\r?\n/g, "<br>");
-}
-
-function webUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
-  } catch {
-    return "";
-  }
 }
 
 function paragraphs(value: string) {
@@ -100,7 +93,7 @@ function emailShell({ title, content, baseUrl, brand }: { title: string; content
 }
 
 function cta(url: string, label: string) {
-  const safe = webUrl(url);
+  const safe = safeHttpUrl(url);
   if (!safe || !label) return "";
   return `<table role="presentation" width="300" cellpadding="0" cellspacing="0" border="0" style="width:300px;border-collapse:collapse;"><tr><td align="center" bgcolor="#2C6FB3" style="background:#2C6FB3;padding:16px 0;border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:bold;"><a href="${esc(safe)}" target="_blank" style="display:block;color:#FFFFFF;text-decoration:none;">${esc(label)}</a></td></tr></table>`;
 }
