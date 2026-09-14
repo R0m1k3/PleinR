@@ -13,7 +13,7 @@ export function BackfillAccountsForm({ missingAccounts }: { missingAccounts: num
   if (issued) {
     return (
       <OneTimeCredentials
-        items={issued.map((i) => ({ label: i.label, email: i.email, tempPassword: i.tempPassword }))}
+        items={issued}
         title={`${issued.length} compte(s) créé(s) — identifiants à transmettre`}
       />
     );
@@ -25,7 +25,8 @@ export function BackfillAccountsForm({ missingAccounts }: { missingAccounts: num
         setPending(true);
         try {
           const created = await createMissingMemberAccounts();
-          setIssued(created.map((c) => ({ label: c.name, email: c.email, tempPassword: c.tempPassword })));
+          // On propage tout : l'état d'envoi accompagne chaque ligne.
+          setIssued(created.map((c) => ({ ...c, label: c.name })));
           router.refresh();
         } finally {
           setPending(false);

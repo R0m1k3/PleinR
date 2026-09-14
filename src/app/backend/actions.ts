@@ -56,7 +56,7 @@ import type { MailProvider } from "@/db/schema";
 import { sendNow } from "@/lib/mailer";
 import { cancelMailMessage, logSentMail, retryMailMessage } from "@/lib/mail-outbox";
 import { selfRecipient } from "@/lib/mail-recipients";
-import { buildGeneralEmail } from "@/lib/email-templates";
+import { buildCredentialsEmail, buildGeneralEmail } from "@/lib/email-templates";
 import { emailBrand, getSiteSettings } from "@/lib/site-settings";
 import { siteUrl } from "@/lib/social-accounts";
 import { markInformationsRead as markRead } from "@/lib/informations";
@@ -373,7 +373,55 @@ export async function publishPromo(formData: FormData) {
  * qui a déclenché l'action. Un export de la base ne peut donc plus révéler de
  * mot de passe utilisable.
  */
-export type IssuedCredentials = { email: string; tempPassword: string };
+export type IssuedCredentials = {
+  email: string;
+  tempPassword: string;
+  /** Faux si aucune boîte n'est configurée ou si le fournisseur a refusé. */
+  mailed: boolean;
+  mailError?: string;
+};
+
+/**
+ * Envoie les identifiants au destinataire, tout de suite.
+ *
+ * **Jamais par la file d'attente** : `mail_messages.html` est stocké en base,
+ * et le mot de passe temporaire ne doit exister que le temps de l'action. Seule
+ * une trace sans contenu est journalisée.
+ *
+ * L'envoi est un plus, jamais un point de rupture : en cas d'échec, le mot de
+ * passe reste affiché à l'écran comme avant, et l'appelant en est informé.
+ */
+async function deliverCredentials(
+  input: { name: string; email: string; tempPassword: string; intro: string },
+  actorId: number | null
+): Promise<{ mailed: boolean; mailError?: string }> {
+  try {
+    const settings = await getSiteSettings();
+    const { subject, html } = buildCredentialsEmail(
+      { name: input.name, email: input.email, tempPassword: input.tempPassword, intro: input.intro },
+      await siteUrl(),
+      emailBrand(settings)
+    );
+    const result = await sendNow({
+      to: input.email,
+      toName: input.name,
+      subject,
+      html,
+      replyTo: settings.association_email || null,
+    });
+    await logSentMail({
+      kind: "credentials",
+      toAddress: input.email,
+      subject,
+      createdById: actorId,
+      result: result.ok ? { ok: true } : { ok: false, reason: result.reason },
+    });
+    return result.ok ? { mailed: true } : { mailed: false, mailError: result.reason };
+  } catch (error) {
+    // Un envoi raté ne doit jamais faire échouer la création du compte.
+    return { mailed: false, mailError: error instanceof Error ? error.message : "Envoi impossible" };
+  }
+}
 
 export type CreatedMemberAccount = IssuedCredentials & { memberId: number };
 
@@ -412,7 +460,7 @@ async function resolveMemberTags(
 export async function addMember(
   formData: FormData
 ): Promise<CreatedMemberAccount | ActionError | undefined> {
-  const { role } = await requireRole();
+  const { role, userId } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
   const name = String(formData.get("name") ?? "").trim();
@@ -448,10 +496,15 @@ export async function addMember(
 
   await logActivity(`Nouvel adhérent ajouté : <strong>${name}</strong>`, "#2C6FB3");
 
+  const delivery = await deliverCredentials(
+    { name, email, tempPassword, intro: "Votre compte adhérent Plein R est ouvert. Voici de quoi vous connecter à votre espace : fiche publique, promotions et informations de l'association." },
+    userId
+  );
+
   revalidatePath("/backend/adherents");
   revalidatePath("/backend");
   revalidatePath("/");
-  return { memberId: newMember.id, email, tempPassword };
+  return { memberId: newMember.id, email, tempPassword, ...delivery };
 }
 
 // Crée des comptes de connexion pour les adhérents existants qui n'en ont pas
@@ -459,7 +512,7 @@ export async function addMember(
 // reçoit un mot de passe temporaire à changer à la première connexion. Les
 // identifiants sont renvoyés pour un affichage unique : rien n'est conservé.
 export async function createMissingMemberAccounts(): Promise<(IssuedCredentials & { name: string })[]> {
-  const { role } = await requireRole();
+  const { role, userId: actorId } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
   const allMembers = await db
@@ -488,7 +541,11 @@ export async function createMissingMemberAccounts(): Promise<(IssuedCredentials 
       mustChangePassword: true,
     });
     takenEmails.add(email);
-    created.push({ name: m.name, email, tempPassword });
+    const delivery = await deliverCredentials(
+      { name: m.name, email, tempPassword, intro: "Votre compte adhérent Plein R est ouvert. Voici de quoi vous connecter à votre espace : fiche publique, promotions et informations de l'association." },
+      actorId
+    );
+    created.push({ name: m.name, email, tempPassword, ...delivery });
   }
 
   if (created.length > 0) {
@@ -501,7 +558,7 @@ export async function createMissingMemberAccounts(): Promise<(IssuedCredentials 
 // Réinitialise le mot de passe d'un adhérent : le nouveau mot de passe
 // temporaire est renvoyé pour un affichage unique, puis oublié.
 export async function resetMemberPassword(formData: FormData): Promise<IssuedCredentials | undefined> {
-  const { role } = await requireRole();
+  const { role, userId } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
   const memberId = Number(formData.get("memberId"));
@@ -521,8 +578,13 @@ export async function resetMemberPassword(formData: FormData): Promise<IssuedCre
     })
     .where(eq(users.id, u.id));
 
+  const delivery = await deliverCredentials(
+    { name: u.name, email: u.email, tempPassword, intro: "Le mot de passe de votre compte Plein R vient d'être réinitialisé par l'association. Vos sessions ouvertes ont été fermées." },
+    userId
+  );
+
   revalidatePath(`/backend/adherents/${memberId}`);
-  return { email: u.email, tempPassword };
+  return { email: u.email, tempPassword, ...delivery };
 }
 
 export async function updateMember(formData: FormData) {
@@ -588,7 +650,7 @@ export async function deleteMember(formData: FormData) {
 export async function inviteAdmin(
   formData: FormData
 ): Promise<IssuedCredentials | ActionError | undefined> {
-  const { role } = await requireRole();
+  const { role, userId } = await requireRole();
   if (!can(role, "manageAdmins")) throw new Error("Accès refusé");
 
   const name = String(formData.get("name") ?? "").trim();
@@ -613,9 +675,14 @@ export async function inviteAdmin(
     mustChangePassword: true,
   });
 
+  const delivery = await deliverCredentials(
+    { name, email, tempPassword, intro: "Un accès à l'administration du site Plein R vient d'être ouvert à votre nom. Voici de quoi vous connecter." },
+    userId
+  );
+
   await logActivity(`<strong>${name}</strong> a été invité comme ${roleLabel}`, "#2C6FB3");
   revalidatePath("/backend/administrateurs");
-  return { email, tempPassword };
+  return { email, tempPassword, ...delivery };
 }
 
 export async function removeAdmin(formData: FormData) {
@@ -1149,7 +1216,7 @@ export async function updateOwnProfile(formData: FormData) {
 export async function approveMembershipRequest(
   formData: FormData
 ): Promise<CreatedMemberAccount | ActionError | undefined> {
-  const { role } = await requireRole();
+  const { role, userId } = await requireRole();
   if (!can(role, "manageMembers")) throw new Error("Accès refusé");
 
   const id = Number(formData.get("id"));
@@ -1200,11 +1267,16 @@ export async function approveMembershipRequest(
   await db.update(membershipRequests).set({ status: "approved" }).where(eq(membershipRequests.id, id));
   await logActivity(`Demande approuvée : adhérent <strong>${req.name}</strong> créé`, "#1f8a5b");
 
+  const delivery = await deliverCredentials(
+    { name: req.name, email, tempPassword, intro: "Votre demande d'adhésion a été acceptée : bienvenue chez Plein R. Voici de quoi vous connecter à votre espace adhérent." },
+    userId
+  );
+
   revalidatePath("/backend/demandes");
   revalidatePath("/backend/adherents");
   revalidatePath("/backend");
   revalidatePath("/");
-  return { memberId: newMember.id, email, tempPassword };
+  return { memberId: newMember.id, email, tempPassword, ...delivery };
 }
 
 // ---- Inbox: membership requests + contact messages ----

@@ -161,3 +161,47 @@ export function buildMeetingEmail(meeting: MeetingEmailData, texts: MeetingEmail
   <tr><td style="padding:0 40px 24px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#8C8068;">Si bouton bloqué, copiez ce lien :<br><a href="${esc(registrationUrl)}" style="color:#2C6FB3;word-break:break-all;">${esc(registrationUrl)}</a></td></tr>`;
   return { subject, html: emailShell({ title: subject, content: body, baseUrl, brand }), registrationUrl };
 }
+
+export type CredentialsEmailData = {
+  name: string;
+  email: string;
+  tempPassword: string;
+  /** « Votre compte adhérent », « Votre accès à l'administration »… */
+  intro: string;
+};
+
+/**
+ * Identifiants d'un compte qui vient d'être créé ou réinitialisé.
+ *
+ * Construit dans la portée de l'action qui émet le mot de passe et expédié
+ * aussitôt : ce message ne passe **jamais** par la file d'attente, dont le
+ * corps est stocké en base.
+ */
+export function buildCredentialsEmail(data: CredentialsEmailData, baseUrl: string, brand: EmailBrand) {
+  const loginUrl = `${baseUrl.replace(/\/$/, "")}/login`;
+  const subject = `Vos identifiants ${brand.associationName}`;
+  const body = `
+  <tr><td style="padding:42px 40px 16px;">
+    <div style="padding-bottom:15px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:14px;letter-spacing:2.2px;text-transform:uppercase;color:#9A6638;font-weight:bold;">${esc(brand.associationName)}</div>
+    <div style="padding-bottom:23px;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:36px;color:#26201A;">Bonjour ${esc(data.name)},</div>
+    <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:25px;color:#5D5447;">${lines(data.intro)}</div>
+  </td></tr>
+  <tr><td style="padding:8px 40px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#FAF7EF" style="width:100%;background:#FAF7EF;border:1px solid #E6DCC6;border-left:5px solid #E0A63C;border-collapse:collapse;">
+      <tr><td style="padding:24px 28px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:24px;color:#5D5447;">
+        Identifiant<br><strong style="font-size:16px;color:#26201A;">${esc(data.email)}</strong>
+        <div style="padding-top:14px;">Mot de passe temporaire<br>
+          <strong style="font-family:'Courier New',Courier,monospace;font-size:19px;letter-spacing:1.5px;color:#26201A;">${esc(data.tempPassword)}</strong>
+        </div>
+      </td></tr>
+    </table>
+  </td></tr>
+  <tr><td align="center" style="padding:26px 40px 10px;">${cta(loginUrl, "Me connecter")}</td></tr>
+  <tr><td style="padding:12px 40px 40px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:23px;color:#5D5447;">
+    Ce mot de passe est <strong style="color:#26201A;">provisoire</strong> : il vous sera demandé d'en choisir un
+    nouveau dès votre première connexion. Si vous n'êtes pas à l'origine de cette demande, prévenez
+    l'association.
+  </td></tr>
+  <tr><td style="padding:0 40px 24px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#8C8068;">Si le bouton ne fonctionne pas, copiez ce lien :<br><a href="${esc(loginUrl)}" style="color:#2C6FB3;word-break:break-all;">${esc(loginUrl)}</a></td></tr>`;
+  return { subject, html: emailShell({ title: subject, content: body, baseUrl, brand }) };
+}
