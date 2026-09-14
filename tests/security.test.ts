@@ -153,3 +153,170 @@ describe("Coordonnées du référent — jamais dans les lectures publiques", ()
     }
   });
 });
+
+describe("Mots de passe temporaires — jamais mis en file d'attente", () => {
+  const source = readFileSync(new URL("../src/app/backend/actions.ts", import.meta.url), "utf8");
+
+  /** Corps d'une fonction exportée, jusqu'à la suivante. */
+  function actionBody(name: string): string {
+    const start = source.indexOf(`export async function ${name}(`);
+    assert.notEqual(start, -1, `${name} introuvable dans src/app/backend/actions.ts`);
+    const next = source.indexOf("\nexport ", start + 1);
+    return source.slice(start, next === -1 ? source.length : next);
+  }
+
+  // `mail_messages.html` est stocké en base. Mettre un message d'identifiants
+  // dans la file y écrirait le mot de passe en clair, alors que tout le reste
+  // du produit s'emploie à ne jamais le conserver : il part donc en ligne
+  // directe, et seule une trace sans contenu est journalisée.
+  const issuers = [
+    "addMember",
+    "createMissingMemberAccounts",
+    "resetMemberPassword",
+    "inviteAdmin",
+    "approveMembershipRequest",
+  ];
+
+  for (const name of issuers) {
+    it(`${name} envoie directement, sans passer par la file`, () => {
+      const body = actionBody(name);
+      assert.ok(body.includes("generateTempPassword()"), `${name} devrait émettre un mot de passe`);
+      assert.ok(body.includes("deliverCredentials("), `${name} devrait transmettre les identifiants`);
+      assert.ok(
+        !body.includes("queueMail"),
+        `${name} met un mot de passe temporaire dans la file : il finirait stocké en base.`
+      );
+    });
+  }
+
+  it("la trace journalisée ne porte aucun contenu", () => {
+    const outbox = readFileSync(new URL("../src/lib/mail-outbox.ts", import.meta.url), "utf8");
+    const start = outbox.indexOf("export async function logSentMail(");
+    assert.notEqual(start, -1, "logSentMail introuvable");
+    const body = outbox.slice(start, outbox.indexOf("\n/**", start + 1));
+    assert.ok(body.includes('html: ""'), "logSentMail devrait écrire un corps vide");
+  });
+});
+
+describe("Messagerie — aucun secret vers le navigateur", () => {
+  const page = readFileSync(new URL("../src/app/backend/boite-mail/page.tsx", import.meta.url), "utf8");
+
+  // Même règle que l'écran Réseaux sociaux : la page ne connaît que la
+  // *présence* d'un secret, jamais sa valeur.
+  for (const column of ["appSecret", "smtpPassword", "accessToken", "refreshToken"]) {
+    it(`l'écran ne lit jamais ${column} en clair`, () => {
+      // La présence du champ sert au libellé du champ de saisie ; ce qui est
+      // interdit, c'est de le déchiffrer.
+      assert.ok(
+        !page.includes(`decryptSecret(`) && !page.includes(`tryDecryptSecret(`),
+        `boite-mail/page.tsx déchiffre un secret : il partirait dans le HTML.`
+      );
+    });
+  }
+
+  it("le champ de saisie est masqué et un champ vide conserve la valeur", () => {
+    assert.ok(page.includes('type="password"'), "les secrets doivent être saisis en champ masqué");
+    assert.ok(
+      page.includes("laissez vide pour le conserver"),
+      "l'écran doit annoncer qu'un champ vide conserve le secret enregistré"
+    );
+  });
+
+  it("les secrets sont chiffrés à l'écriture", () => {
+    const accounts = readFileSync(new URL("../src/lib/mail-accounts.ts", import.meta.url), "utf8");
+
+    /** Corps d'une fonction exportée, jusqu'à la suivante. */
+    function writerBody(name: string): string {
+      const start = accounts.indexOf(`export async function ${name}(`);
+      assert.notEqual(start, -1, `${name} introuvable dans src/lib/mail-accounts.ts`);
+      const next = accounts.indexOf("\nexport ", start + 1);
+      return accounts.slice(start, next === -1 ? accounts.length : next);
+    }
+
+    // Seuls ces trois écrivent en base ; `exchangeMailCode` rend les jetons en
+    // mémoire à son appelant, qui les chiffre.
+    for (const name of ["saveOAuthApp", "saveSmtpAccount", "saveMailConnection"]) {
+      const body = writerBody(name);
+      const assignments = body.match(/\b(appSecret|smtpPassword|accessToken|refreshToken):\s*[^,\n]+/g) ?? [];
+      // On écarte les annotations de type de la signature et les valeurs
+      // littérales : seules les affectations réelles nous intéressent.
+      const writes = assignments.filter(
+        (assignment) => !/:\s*(null|""|string|number|boolean|Date)\b/.test(assignment)
+      );
+      assert.ok(writes.length > 0, `${name} n'écrit aucun secret : le test ne vérifie plus rien`);
+      for (const assignment of writes) {
+        assert.ok(
+          assignment.includes("encryptSecret("),
+          `${name} écrit un secret sans le chiffrer : ${assignment}`
+        );
+      }
+    }
+  });
+});
+
+describe("Diffusion groupée — aucune adresse partagée", () => {
+  it("ni copie ni copie cachée nulle part dans la chaîne d'envoi", () => {
+    for (const file of ["../src/lib/mailer.ts", "../src/lib/mail-outbox.ts"]) {
+      const source = readFileSync(new URL(file, import.meta.url), "utf8");
+      assert.ok(!/\bcc\s*:/i.test(source), `${file} pose une copie`);
+      assert.ok(!/\bbcc\s*:/i.test(source), `${file} pose une copie cachée`);
+    }
+  });
+
+  it("la file ne porte qu'un destinataire par ligne", () => {
+    const schema = readFileSync(new URL("../src/db/schema.ts", import.meta.url), "utf8");
+    assert.ok(
+      /toAddress: varchar\("to_address", \{ length: \d+ \}\)\.notNull\(\)/.test(schema),
+      "to_address devrait être une adresse unique et obligatoire"
+    );
+  });
+});
+
+describe("Informations — rien n'est rendu en HTML brut", () => {
+  const files = [
+    "../src/lib/rich-text.ts",
+    "../src/components/InformationCard.tsx",
+    "../src/app/backend/informations/InformationForm.tsx",
+    "../src/app/backend/espace/informations/page.tsx",
+  ];
+
+  for (const file of files) {
+    it(`${file.split("/").pop()} n'emprunte pas dangerouslySetInnerHTML`, () => {
+      const source = readFileSync(new URL(file, import.meta.url), "utf8");
+      // L'usage réel, pas la mention : `rich-text.ts` explique en commentaire
+      // pourquoi il ne s'en sert pas.
+      assert.ok(
+        !/dangerouslySetInnerHTML\s*[={]/.test(source),
+        "le texte des informations vient de tiers : il doit rester des nœuds React"
+      );
+    });
+  }
+
+  it("les lectures publiques ignorent les informations", () => {
+    // Le fil est réservé aux adhérents connectés : aucune requête servant une
+    // page publique ne doit y toucher.
+    const queries = readFileSync(new URL("../src/lib/queries.ts", import.meta.url), "utf8");
+    assert.ok(!queries.includes("informations"), "src/lib/queries.ts lit les informations");
+  });
+});
+
+describe("Boucles de fond — jamais dans le bundle edge", () => {
+  it("le module Node reste chargé à la demande et écarté du runtime edge", () => {
+    const entry = readFileSync(new URL("../src/instrumentation.ts", import.meta.url), "utf8");
+    assert.ok(entry.includes('NEXT_RUNTIME !== "nodejs"'), "la garde de runtime a disparu");
+    assert.ok(!entry.includes("mail-outbox"), "instrumentation.ts importe la file directement");
+    assert.ok(!entry.includes("nodemailer"), "instrumentation.ts importe nodemailer");
+
+    const config = readFileSync(new URL("../next.config.mjs", import.meta.url), "utf8");
+    assert.ok(config.includes("IgnorePlugin"), "l'exclusion du bundle edge a disparu");
+    assert.ok(config.includes('serverExternalPackages: ["nodemailer"]'), "nodemailer doit rester externe");
+  });
+
+  it("chaque boucle a son propre interrupteur", () => {
+    // Couper le libérateur de promotions ne doit pas couper l'envoi des
+    // e-mails : les deux n'ont rien à voir.
+    const worker = readFileSync(new URL("../src/instrumentation-node.ts", import.meta.url), "utf8");
+    assert.ok(worker.includes('process.env.PROMO_SCHEDULER !== "off"'));
+    assert.ok(worker.includes('process.env.MAIL_WORKER !== "off"'));
+  });
+});
