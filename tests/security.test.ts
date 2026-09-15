@@ -277,6 +277,7 @@ describe("Informations — rien n'est rendu en HTML brut", () => {
     "../src/lib/rich-text.ts",
     "../src/components/InformationCard.tsx",
     "../src/app/backend/informations/InformationForm.tsx",
+    "../src/components/RichTextEditor.tsx",
     "../src/app/backend/espace/informations/page.tsx",
   ];
 
@@ -318,5 +319,48 @@ describe("Boucles de fond — jamais dans le bundle edge", () => {
     const worker = readFileSync(new URL("../src/instrumentation-node.ts", import.meta.url), "utf8");
     assert.ok(worker.includes('process.env.PROMO_SCHEDULER !== "off"'));
     assert.ok(worker.includes('process.env.MAIL_WORKER !== "off"'));
+  });
+});
+
+describe("Éditeur visuel — le HTML ne quitte jamais la page", () => {
+  const editor = readFileSync(new URL("../src/components/RichTextEditor.tsx", import.meta.url), "utf8");
+  const form = readFileSync(new URL("../src/app/backend/informations/InformationForm.tsx", import.meta.url), "utf8");
+
+  // L'édition est visuelle, mais ce qui part au serveur reste le format
+  // balisé restreint : c'est tout l'arrangement qui permet un éditeur
+  // confortable sans stocker de HTML tiers.
+  it("le formulaire envoie le balisage sérialisé, jamais du HTML", () => {
+    assert.ok(form.includes('<input type="hidden" name="body"'), "le corps doit voyager en champ caché");
+    assert.ok(!form.includes("innerHTML"), "le formulaire ne manipule pas de HTML");
+    assert.ok(editor.includes("serializeToRichText("), "l'éditeur doit resérialiser ce qu'il édite");
+  });
+
+  it("seul du HTML produit par nous est injecté dans la zone d'édition", () => {
+    // Toute écriture de HTML dans l'éditeur passe par notre générateur : jamais
+    // une chaîne venue du presse-papier ou du serveur.
+    for (const call of editor.match(/innerHTML\s*=\s*[^;\n]+/g) ?? []) {
+      assert.ok(call.includes("richTextToEditorHtml("), `HTML injecté sans générateur : ${call}`);
+    }
+    for (const call of editor.match(/insertHTML"[^)]*\)/g) ?? []) {
+      assert.ok(call.includes("richTextToEditorHtml("), `HTML inséré sans générateur : ${call}`);
+    }
+  });
+
+  it("le collage est analysé dans un document inerte", () => {
+    // `DOMParser` n'exécute rien et ne charge aucune ressource, contrairement
+    // à une affectation d'`innerHTML` — même sur un nœud détaché, un
+    // `<img onerror>` peut s'y déclencher.
+    assert.ok(editor.includes('getData("text/html")'), "le collage HTML doit être traité");
+    assert.ok(editor.includes("new DOMParser().parseFromString("), "le HTML collé doit passer par DOMParser");
+    const pasteIndex = editor.indexOf('getData("text/html")');
+    const parserIndex = editor.indexOf("new DOMParser().parseFromString(");
+    assert.ok(parserIndex > pasteIndex, "le HTML collé doit être analysé avant toute réinjection");
+  });
+
+  it("le sérialiseur écarte les balises exécutables", () => {
+    const serializer = readFileSync(new URL("../src/lib/rich-text-dom.ts", import.meta.url), "utf8");
+    for (const tag of ["SCRIPT", "STYLE", "IFRAME", "OBJECT"]) {
+      assert.ok(serializer.includes(`"${tag}"`), `${tag} devrait être explicitement écarté`);
+    }
   });
 });

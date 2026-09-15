@@ -11,9 +11,14 @@ import { createElement, Fragment } from "react";
  * produirait du HTML, qu'il faudrait stocker puis assainir : deuxième
  * dépendance, deuxième surface d'attaque.
  *
- * Grammaire : `**gras**`, `*italique*`, `- puce`, `1. numéro`,
+ * Grammaire : `**gras**`, `*italique*` ou `_italique_`, `- puce`, `1. numéro`,
  * `[texte](https://…)`, `## sous-titre`, ligne vide = paragraphe.
  * Un saut de ligne simple reste un saut de ligne.
+ *
+ * Ce balisage n'est **pas** montré à l'utilisateur : il écrit dans un éditeur
+ * visuel (`src/components/RichTextEditor.tsx`) et c'est le navigateur qui
+ * resérialise vers ce format (`src/lib/rich-text-dom.ts`) avant l'envoi. Le
+ * format reste donc le contrat de stockage, jamais une syntaxe à apprendre.
  *
  * Deux rendus, un seul analyseur : `richTextNodes()` pour l'écran,
  * `richTextToEmailHtml()` pour le message. L'aperçu du formulaire passe par
@@ -46,6 +51,19 @@ export function safeHttpUrl(value: string): string {
   }
 }
 
+/** Vrai en bord de mot : début, fin, espace ou ponctuation. */
+function isWordEdge(char: string | undefined): boolean {
+  return char === undefined || !/[\p{L}\p{N}]/u.test(char);
+}
+
+/** Position du tiret bas fermant, ou -1 s'il n'y en a pas en bord de mot. */
+function closingUnderscore(text: string, from: number): number {
+  for (let index = from; index < text.length; index += 1) {
+    if (text[index] === "_" && isWordEdge(text[index + 1])) return index;
+  }
+  return -1;
+}
+
 function parseInline(text: string): Inline[] {
   const nodes: Inline[] = [];
   let buffer = "";
@@ -70,6 +88,19 @@ function parseInline(text: string): Inline[] {
     }
     if (text[index] === "*") {
       const end = text.indexOf("*", index + 1);
+      if (end > index + 1) {
+        flush();
+        nodes.push({ kind: "em", children: parseInline(text.slice(index + 1, end)) });
+        index = end + 1;
+        continue;
+      }
+    }
+    // Tiret bas accepté comme italique — c'est ce qu'émet le sérialiseur, pour
+    // éviter l'ambiguïté de « ***gras italique*** ». Il ne compte qu'aux
+    // frontières de mot, sans quoi « fichier_de_sauvegarde » deviendrait
+    // italique en son milieu.
+    if (text[index] === "_" && isWordEdge(text[index - 1])) {
+      const end = closingUnderscore(text, index + 1);
       if (end > index + 1) {
         flush();
         nodes.push({ kind: "em", children: parseInline(text.slice(index + 1, end)) });
@@ -315,4 +346,53 @@ export function richTextExcerpt(source: string, max = 160): string {
   const cut = plain.slice(0, max);
   const lastSpace = cut.lastIndexOf(" ");
   return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
+// ---- Rendu vers l'éditeur visuel ----
+
+function inlineEditorHtml(nodes: Inline[]): string {
+  return nodes
+    .map((node) => {
+      switch (node.kind) {
+        case "break":
+          return "<br>";
+        case "strong":
+          return `<strong>${inlineEditorHtml(node.children)}</strong>`;
+        case "em":
+          return `<em>${inlineEditorHtml(node.children)}</em>`;
+        case "link":
+          return `<a href="${esc(node.href)}">${inlineEditorHtml(node.children)}</a>`;
+        default:
+          return esc(node.value);
+      }
+    })
+    .join("");
+}
+
+/**
+ * HTML minimal posé dans la zone d'édition visuelle.
+ *
+ * Produit exactement les balises que `serializeToRichText` sait relire, pour
+ * que l'aller-retour édition → stockage → édition soit stable. Un contenu vide
+ * rend un paragraphe avec un `<br>` : sans lui, le navigateur n'offre aucune
+ * ligne où poser le curseur.
+ */
+export function richTextToEditorHtml(source: string): string {
+  const blocks = parseRichText(source);
+  if (blocks.length === 0) return "<p><br></p>";
+
+  return blocks
+    .map((block) => {
+      switch (block.kind) {
+        case "heading":
+          return `<h4>${inlineEditorHtml(block.children)}</h4>`;
+        case "bullets":
+          return `<ul>${block.items.map((item) => `<li>${inlineEditorHtml(item)}</li>`).join("")}</ul>`;
+        case "ordered":
+          return `<ol>${block.items.map((item) => `<li>${inlineEditorHtml(item)}</li>`).join("")}</ol>`;
+        default:
+          return `<p>${inlineEditorHtml(block.children) || "<br>"}</p>`;
+      }
+    })
+    .join("");
 }

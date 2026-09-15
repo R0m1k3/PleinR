@@ -5,6 +5,7 @@ import {
   parseRichText,
   richTextExcerpt,
   richTextNodes,
+  richTextToEditorHtml,
   richTextToEmailHtml,
   richTextToPlain,
   safeHttpUrl,
@@ -163,4 +164,35 @@ test("une saisie vide ne produit aucun bloc", () => {
   assert.deepEqual(parseRichText("   \n\n  "), []);
   assert.equal(richTextToEmailHtml(""), "");
   assert.equal(richTextExcerpt(""), "");
+});
+
+test("le tiret bas vaut italique, mais seulement en bord de mot", () => {
+  assert.ok(richTextToEmailHtml("_doux_").includes("<em>doux</em>"));
+  assert.ok(richTextToEmailHtml("**_gras italique_**").includes("<em>gras italique</em>"));
+  // Un nom de fichier ne doit pas devenir italique en son milieu.
+  assert.equal(richTextToPlain("fichier_de_sauvegarde.pdf"), "fichier_de_sauvegarde.pdf");
+  assert.ok(!richTextToEmailHtml("fichier_de_sauvegarde.pdf").includes("<em>"));
+  assert.equal(richTextToPlain("un _ seul"), "un _ seul");
+});
+
+test("le rendu vers l'éditeur reprend les balises que le sérialiseur sait relire", () => {
+  const html = richTextToEditorHtml("## Titre\n\nDu **gras** et un [lien](https://pleinr.fr)\n\n- un\n- deux\n\n1. a");
+  assert.ok(html.includes("<h4>Titre</h4>"));
+  assert.ok(html.includes("<strong>gras</strong>"));
+  assert.ok(html.includes('<a href="https://pleinr.fr/">lien</a>'));
+  assert.ok(html.includes("<ul><li>un</li><li>deux</li></ul>"));
+  assert.ok(html.includes("<ol><li>a</li></ol>"));
+});
+
+test("un contenu vide offre une ligne où écrire", () => {
+  assert.equal(richTextToEditorHtml(""), "<p><br></p>");
+  assert.equal(richTextToEditorHtml("   "), "<p><br></p>");
+});
+
+test("le rendu vers l'éditeur échappe le texte et refuse les cibles hostiles", () => {
+  const html = richTextToEditorHtml('<script>alert(1)</script> & "guillemets"');
+  assert.ok(html.includes("&lt;script&gt;"));
+  assert.ok(html.includes("&amp;"));
+  assert.ok(!html.includes("<script"));
+  assert.ok(!richTextToEditorHtml("[x](javascript:alert(1))").includes("<a "));
 });

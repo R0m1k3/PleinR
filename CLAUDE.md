@@ -206,7 +206,9 @@ même raison.
   journal, limitation des connexions, chiffrement des secrets, coordonnées du
   référent, **mots de passe temporaires jamais mis en file**, secrets de
   messagerie jamais renvoyés au navigateur, aucune copie cachée dans la chaîne
-  d'envoi, et rien rendu en HTML brut côté informations.
+  d'envoi, rien rendu en HTML brut côté informations, et **le HTML de l'éditeur
+  visuel qui ne quitte jamais la page** (formulaire à champ caché, collage passé
+  par `DOMParser`, réinjection limitée à `richTextToEditorHtml`).
 
 ## Référencement (SEO)
 
@@ -309,16 +311,38 @@ porte ce que publie le bureau depuis `/backend/informations`. Deux tables :
 `information_reads`.
 
 - **Texte riche** : `src/lib/rich-text.ts` est **pur** (`tests/rich-text.test.ts`)
-  et analyse un sous-ensemble de Markdown — `**gras**`, `*italique*`, `- puce`,
-  `1. numéro`, `[texte](https://…)`, `## sous-titre`. Deux rendus, un seul
+  et analyse un sous-ensemble de Markdown — `**gras**`, `_italique_`, `- puce`,
+  `1. numéro`, `[texte](https://…)`, `## sous-titre`. Trois rendus, un seul
   analyseur : `richTextNodes()` pour l'écran (des éléments React, jamais
-  `dangerouslySetInnerHTML`), `richTextToEmailHtml()` pour le message. L'aperçu
-  du formulaire passe par le premier, il est donc fidèle par construction. Un
-  lien hors `http`/`https` perd sa cible et ne garde que son libellé
-  (`safeHttpUrl`, partagé avec `email-templates.ts`).
-- **Pas de WYSIWYG** : il produirait du HTML, qu'il faudrait stocker puis
-  assainir — seconde dépendance, seconde surface d'attaque. La saisie est un
-  `<textarea>` avec une barre qui encadre la sélection (`setRangeText`).
+  `dangerouslySetInnerHTML`), `richTextToEmailHtml()` pour le message,
+  `richTextToEditorHtml()` pour remplir l'éditeur. Un lien hors `http`/`https`
+  perd sa cible et ne garde que son libellé (`safeHttpUrl`, partagé avec
+  `email-templates.ts`). L'italique s'écrit avec des tirets bas : `***x***`
+  serait ambigu pour l'analyseur, `**_x_**` ne l'est pas ; `*étoiles*` reste
+  accepté en lecture, et un tiret bas au milieu d'un mot
+  (`fichier_de_sauvegarde`) n'ouvre rien.
+- **La syntaxe ne se montre jamais** : `RichTextEditor` est un
+  `contentEditable` avec une barre d'outils (G, I, Sous-titre, listes, lien).
+  L'adhérent qui rédige voit du gras, pas des étoiles. Le balisage voyage dans
+  un `<input type="hidden">`.
+- **Le WYSIWYG porte sur la saisie, pas sur le stockage.** C'est l'invariant à
+  ne pas casser : à chaque frappe, `src/lib/rich-text-dom.ts`
+  (`serializeToRichText`, **pur**, `tests/rich-text-dom.test.ts`) retraverse le
+  contenu édité et n'en garde que le gras, l'italique, les listes, les
+  sous-titres et les liens. Le HTML de l'éditeur ne quitte jamais la page : la
+  base ne reçoit que le format balisé, que le serveur ré-analyse avec le même
+  analyseur qu'avant. Aucun assainisseur HTML n'est donc nécessaire.
+  Le module lit aussi le gras/italique **codés en style CSS**
+  (`<span style="font-weight:700">` de Google Docs), le style explicite
+  l'emportant sur la balise — sans quoi le `<b style="font-weight:normal">` dont
+  Docs enveloppe tout document mettrait le texte entier en gras.
+- **Un collage est analysé par `DOMParser`**, jamais par une affectation
+  d'`innerHTML` : le document produit est inerte, donc un `<img onerror>` collé
+  ne s'exécute pas. Ce qui est réinjecté dans l'éditeur est du HTML **produit
+  par nous** (`richTextToEditorHtml`), jamais celui du presse-papier.
+- **Les sauts de ligne sont normalisés à l'enregistrement** : l'encodage des
+  formulaires HTML convertit tout `\n` en `\r\n`, et le balisage stocké
+  différerait sinon de celui que l'éditeur a produit (`saveInformation`).
 - **Une seule image**, en couverture, jamais dans le corps : une data-URI
   recopiée dans chaque ligne de la file pèserait 3 Mo par destinataire. Elle est
   servie aux clients mail par `/api/informations/[id]/image`, qui ne répond que

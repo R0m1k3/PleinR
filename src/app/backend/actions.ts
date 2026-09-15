@@ -1449,7 +1449,9 @@ export async function saveInformation(
 
   const id = Number(formData.get("id") ?? 0) || null;
   const title = asString(formData, "title");
-  const body = asString(formData, "body");
+  // L'encodage des formulaires HTML convertit tout saut de ligne en CRLF :
+  // sans cela le balisage stocké différerait de celui que l'éditeur a produit.
+  const body = asString(formData, "body").replace(/\r\n?/g, "\n");
   if (!title) return { error: "Donnez un titre à cette information." };
   if (!body) return { error: "Le message est vide." };
 
