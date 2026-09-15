@@ -11,6 +11,7 @@ import {
   type MailHealth,
 } from "@/lib/mail-accounts";
 import { recentMails } from "@/lib/mail-outbox";
+import { SmtpAccountForm } from "@/components/SmtpAccountForm";
 import { publicBaseUrl } from "@/lib/social-accounts";
 import { getSiteSettings } from "@/lib/site-settings";
 import type { MailAccount, MailProvider } from "@/db/schema";
@@ -194,61 +195,24 @@ export default async function BoiteMailPage({
 
             {verdict && !verdict.ok && (
               <div style={{ marginTop: 13 }}>
-                <Banner tone="error">{verdict.reason.slice(0, 220)}</Banner>
+                <Banner tone="error">{verdict.reason.slice(0, 400)}</Banner>
               </div>
             )}
 
             <div style={{ borderTop: "1px solid #f0e8d6", margin: "14px 0" }} />
 
             {provider === "smtp" ? (
-              <form action={saveMailSmtp}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                  <label className="field-label">
-                    Serveur
-                    <input className="field" name="smtpHost" defaultValue={account?.smtpHost ?? ""} placeholder="smtp.ionos.fr" style={{ marginTop: 6 }} />
-                  </label>
-                  <label className="field-label">
-                    Port
-                    <input className="field" name="smtpPort" type="number" min={1} max={65535} defaultValue={account?.smtpPort ?? 465} style={{ marginTop: 6 }} />
-                  </label>
-                  <label className="field-label">
-                    Identifiant
-                    <input className="field" name="smtpUser" defaultValue={account?.smtpUser ?? ""} placeholder="bureau@pleinr.fr" style={{ marginTop: 6 }} />
-                  </label>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginTop: 12 }}>
-                  <label className="field-label">
-                    Mot de passe
-                    <input
-                      className="field"
-                      name="smtpPassword"
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder={account?.smtpPassword ? "Enregistré — laissez vide pour le conserver" : "Mot de passe de la boîte"}
-                      style={{ marginTop: 6 }}
-                    />
-                  </label>
-                  <label className="field-label">
-                    Adresse d&apos;expédition
-                    <input className="field" name="fromAddress" defaultValue={account?.fromAddress ?? ""} placeholder="contact@pleinr.fr" style={{ marginTop: 6 }} />
-                  </label>
-                  <label className="field-label">
-                    Nom affiché
-                    <input className="field" name="fromName" defaultValue={account?.fromName ?? settings.association_name} style={{ marginTop: 6 }} />
-                  </label>
-                </div>
-                <label style={{ display: "flex", gap: 9, alignItems: "center", marginTop: 12, fontSize: 13, color: "#6c6150" }}>
-                  <input type="checkbox" name="smtpSecure" defaultChecked={account?.smtpSecure ?? true} />
-                  Connexion chiffrée dès l&apos;ouverture (port 465). Décochez pour STARTTLS (port 587).
-                </label>
-                <p className="field-hint" style={{ marginTop: 8 }}>
-                  L&apos;adresse d&apos;expédition doit appartenir au domaine qui authentifie la connexion, sinon
-                  SPF et DKIM échouent et les messages partent en indésirable.
-                </p>
-                <div style={{ display: "flex", gap: 9, marginTop: 14, flexWrap: "wrap" }}>
-                  <button type="submit" style={primary}>Enregistrer</button>
-                </div>
-              </form>
+              <SmtpAccountForm
+                saveAction={saveMailSmtp}
+                host={account?.smtpHost ?? ""}
+                port={account?.smtpPort ?? 465}
+                secure={account?.smtpSecure ?? true}
+                user={account?.smtpUser ?? ""}
+                hasPassword={Boolean(account?.smtpPassword)}
+                fromAddress={account?.fromAddress ?? ""}
+                fromName={account?.fromName ?? settings.association_name}
+                submitStyle={primary}
+              />
             ) : (
               <>
                 <form action={saveMailApp}>

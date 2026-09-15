@@ -1,5 +1,6 @@
 import { buildMimeMessage, formatAddress, toBase64Url, utf8ToBase64 } from "@/lib/mime";
 import { resolveMailSender, type MailHealth, type MailSender } from "@/lib/mail-accounts";
+import { describeSmtpError } from "@/lib/smtp-config";
 
 /**
  * Expédition d'un message.
@@ -102,14 +103,19 @@ async function sendViaGraph(sender: MailSender, mail: OutgoingMail): Promise<Sen
 async function sendViaSmtp(sender: MailSender, mail: OutgoingMail): Promise<SendResult> {
   if (!sender.smtp) return { ok: false, reason: "Réglages SMTP incomplets." };
   const transport = await smtpTransport(sender.smtp);
-  await transport.sendMail({
-    from: formatAddress(sender.fromAddress, sender.fromName),
-    to: formatAddress(mail.to, mail.toName),
-    replyTo: mail.replyTo ?? undefined,
-    subject: mail.subject,
-    html: mail.html,
-    text: mail.text ?? undefined,
-  });
+  try {
+    await transport.sendMail({
+      from: formatAddress(sender.fromAddress, sender.fromName),
+      to: formatAddress(mail.to, mail.toName),
+      replyTo: mail.replyTo ?? undefined,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text ?? undefined,
+    });
+  } catch (error) {
+    // Le verdict part dans le journal d'envoi : il doit se lire sans trace OpenSSL.
+    return { ok: false, reason: describeSmtpError(error instanceof Error ? error.message : String(error), sender.smtp) };
+  }
   return { ok: true, provider: "smtp" };
 }
 
@@ -117,6 +123,17 @@ async function sendViaSmtp(sender: MailSender, mail: OutgoingMail): Promise<Send
  * `nodemailer` charge `net`, `tls` et `dns` par des requires dynamiques : il
  * est importé à la demande, et déclaré dans `serverExternalPackages`, pour ne
  * jamais entrer dans un bundle qui ne les a pas.
+ *
+ * Deux réglages qui ne sont pas des détails :
+ *
+ * - `requireTLS` hors TLS implicite : sans lui, STARTTLS est *opportuniste*.
+ *   Un serveur qui ne l'annonce pas — ou un intermédiaire qui retire la
+ *   capacité de la réponse EHLO — ferait partir l'identifiant et le mot de
+ *   passe en clair sans que rien ne le signale. On préfère l'échec.
+ * - les délais : ceux de `nodemailer` se comptent en minutes, or ces
+ *   connexions sont ouvertes depuis une action serveur. Un port filtré en
+ *   sortie — cas courant chez les hébergeurs — doit rendre son verdict en
+ *   quelques secondes, pas bloquer l'écran.
  */
 async function smtpTransport(config: SmtpConfig) {
   const nodemailer = (await import("nodemailer")).default;
@@ -124,18 +141,28 @@ async function smtpTransport(config: SmtpConfig) {
     host: config.host,
     port: config.port,
     secure: config.secure,
+    requireTLS: !config.secure,
     auth: { user: config.user, pass: config.password },
+    connectionTimeout: 12_000,
+    greetingTimeout: 12_000,
+    socketTimeout: 30_000,
+    // SNI explicite : sans lui, un hôte joint par IP casse la validation.
+    tls: { servername: config.host, minVersion: "TLSv1.2" },
   });
 }
 
 /** Contrôle de santé SMTP : ouvre la connexion, s'authentifie, referme. */
 export async function verifySmtp(config: SmtpConfig): Promise<MailHealth> {
+  const transport = await smtpTransport(config).catch(() => null);
+  if (!transport) return { ok: false, reason: "Transport SMTP indisponible." };
   try {
-    const transport = await smtpTransport(config);
     await transport.verify();
-    transport.close();
-    return { ok: true, detail: `Connexion établie avec ${config.host}` };
+    const how = config.secure ? "chiffrée dès l'ouverture" : "STARTTLS";
+    return { ok: true, detail: `Connexion établie avec ${config.host} sur le port ${config.port} (${how})` };
   } catch (error) {
-    return { ok: false, reason: error instanceof Error ? error.message : "Serveur SMTP injoignable" };
+    return { ok: false, reason: describeSmtpError(error instanceof Error ? error.message : "", config) };
+  } finally {
+    // Sans cela, un échec laisserait la socket au pool jusqu'à son expiration.
+    transport.close();
   }
 }

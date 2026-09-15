@@ -382,6 +382,21 @@ pas de cascade automatique, la bascule est un choix visible.
   **Microsoft → API Graph** (`/me/sendMail`) : l'authentification basique SMTP
   est désactivée depuis 2024, y compris sur outlook.com et hotmail.com.
   **SMTP générique** via `nodemailer`, seule dépendance d'envoi.
+- **Port et chiffrement SMTP sont un seul choix.** `src/lib/smtp-config.ts` est
+  **pur** (`tests/smtp-config.test.ts`) : `impliedSecure()` dit que seul le port
+  465 chiffre dès l'ouverture, les autres (587, 25, 2525) passent par STARTTLS,
+  et `tlsMismatch()` prévient quand la case et le port se contredisent. Le
+  formulaire (`SmtpAccountForm`, client) réaligne la case sur le port choisi :
+  un TLS tenté sur le 587 échoue sur la bannière en clair (« wrong version
+  number »), un dialogue en clair sur le 465 attend une réponse qui ne vient
+  jamais. `describeSmtpError()` traduit ces échecs avant affichage —
+  l'explication d'abord, la trace ensuite, parce que l'écran tronque.
+- Le transport pose `requireTLS` hors TLS implicite : sans lui, STARTTLS est
+  *opportuniste* et l'identifiant partirait en clair chez un serveur qui ne
+  l'annonce pas. Les délais (`connectionTimeout`, `greetingTimeout`) sont
+  ramenés à quelques secondes : ces connexions s'ouvrent depuis une action
+  serveur, et un port filtré en sortie — cas courant chez les hébergeurs — ne
+  doit pas bloquer l'écran deux minutes.
 - `mail_accounts.from_address` est **lu chez le fournisseur** au retour OAuth,
   jamais saisi : Gmail expédie comme l'utilisateur authentifié, Graph comme la
   boîte, et une adresse d'un autre domaine ferait tomber SPF/DKIM.
