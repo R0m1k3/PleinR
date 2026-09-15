@@ -982,46 +982,76 @@ export async function deleteMeetingRegistration(formData: FormData) {
   revalidateMeetingPaths(registration?.meetingId);
 }
 
-export async function createPastMeeting(formData: FormData) {
-  const { role } = await requireRole();
-  if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
-  const title = asString(formData, "title");
-  if (!title) return;
-  await db.insert(pastMeetings).values({
-    title,
-    eventDate: asDate(formData, "eventDate"),
-    location: asNullableString(formData, "location"),
-    description: asNullableString(formData, "description"),
-    participants: asNullableString(formData, "participants"),
-    meetingId: formData.get("meetingId") ? Number(formData.get("meetingId")) : null,
-  });
+/** Chemins où une rencontre passée est affichée, publics comme backoffice. */
+function revalidatePastMeetingPaths() {
   revalidatePath("/backend/rencontres");
-  revalidatePath("/association");
   revalidatePath("/backend/rencontres-passees");
+  revalidatePath("/association");
   revalidatePath("/rencontres-passees");
 }
 
-export async function updatePastMeeting(formData: FormData) {
+export type SavedPastMeeting = { id: number };
+
+/**
+ * Crée ou met à jour une rencontre passée. Une seule action pour les deux cas :
+ * la fenêtre du backoffice ne fait pas la différence, elle enregistre une fiche
+ * puis lui attache ses photos.
+ *
+ * Les refus attendus — titre vide, date illisible, rencontre liée disparue —
+ * sont **renvoyés** et affichés par la fenêtre, qui garde la saisie. Un `throw`
+ * deviendrait un digest illisible en production, et la fiche en cours de
+ * rédaction serait perdue.
+ */
+export async function savePastMeeting(formData: FormData): Promise<SavedPastMeeting | ActionError> {
   const { role } = await requireRole();
   if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
-  const id = Number(formData.get("id"));
+
+  const id = Number(formData.get("id") ?? 0) || null;
   const title = asString(formData, "title");
-  if (!id || !title) return;
-  await db
-    .update(pastMeetings)
-    .set({
-      title,
-      eventDate: asDate(formData, "eventDate"),
-      location: asNullableString(formData, "location"),
-      description: asNullableString(formData, "description"),
-      participants: asNullableString(formData, "participants"),
-      meetingId: formData.get("meetingId") ? Number(formData.get("meetingId")) : null,
-    })
-    .where(eq(pastMeetings.id, id));
-  revalidatePath("/backend/rencontres");
-  revalidatePath("/association");
-  revalidatePath("/backend/rencontres-passees");
-  revalidatePath("/rencontres-passees");
+  if (!title) return { error: "Donnez un titre à cette rencontre." };
+
+  const rawDate = asString(formData, "eventDate");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) return { error: "Renseignez la date de la rencontre." };
+  const eventDate = new Date(`${rawDate}T12:00:00`);
+  if (Number.isNaN(eventDate.getTime())) return { error: "Date invalide." };
+
+  // Le lien vers une rencontre du calendrier est vérifié : une rencontre
+  // supprimée entre l'ouverture de la fenêtre et l'enregistrement ferait sinon
+  // échouer l'écriture sur une violation de clé étrangère, donc sans explication.
+  const rawMeetingId = asString(formData, "meetingId");
+  let meetingId: number | null = null;
+  if (rawMeetingId) {
+    meetingId = Number(rawMeetingId);
+    if (!Number.isInteger(meetingId) || meetingId <= 0) return { error: "Rencontre liée invalide." };
+    const [linked] = await db.select({ id: meetings.id }).from(meetings).where(eq(meetings.id, meetingId));
+    if (!linked) return { error: "Cette rencontre du calendrier n'existe plus." };
+  }
+
+  const values = {
+    title,
+    eventDate,
+    location: asNullableString(formData, "location"),
+    // Les formulaires HTML encodent les sauts de ligne en CRLF : on normalise
+    // pour que le texte relu soit celui qui a été écrit.
+    description: asString(formData, "description").replace(/\r\n?/g, "\n") || null,
+    participants: asString(formData, "participants").replace(/\r\n?/g, "\n") || null,
+    meetingId,
+  };
+
+  if (id) {
+    const [updated] = await db
+      .update(pastMeetings)
+      .set(values)
+      .where(eq(pastMeetings.id, id))
+      .returning({ id: pastMeetings.id });
+    if (!updated) return { error: "Cette rencontre passée n'existe plus." };
+    revalidatePastMeetingPaths();
+    return { id: updated.id };
+  }
+
+  const [created] = await db.insert(pastMeetings).values(values).returning({ id: pastMeetings.id });
+  revalidatePastMeetingPaths();
+  return { id: created.id };
 }
 
 export async function deletePastMeeting(formData: FormData) {
@@ -1030,44 +1060,106 @@ export async function deletePastMeeting(formData: FormData) {
   const id = Number(formData.get("id"));
   if (!id) return;
   await db.delete(pastMeetings).where(eq(pastMeetings.id, id));
-  revalidatePath("/backend/rencontres");
-  revalidatePath("/association");
-  revalidatePath("/backend/rencontres-passees");
-  revalidatePath("/rencontres-passees");
+  revalidatePastMeetingPaths();
 }
 
-export async function addPastMeetingPhoto(formData: FormData) {
+/** Les identifiants reviennent dans l'ordre d'insertion : la fenêtre s'en sert
+ * pour réordonner l'ensemble une fois toutes les photos envoyées. */
+export type AddedPhotos = { added: number; ids: number[] };
+
+/**
+ * Attache un lot de photos à une rencontre passée.
+ *
+ * Le navigateur compresse puis découpe l'envoi en paquets tenant sous la limite
+ * des server actions (`chunkByBytes`) : plusieurs appels, donc, et chacun doit
+ * pouvoir échouer seul. Les photos déjà enregistrées le restent.
+ */
+export async function addPastMeetingPhotos(formData: FormData): Promise<AddedPhotos | ActionError> {
   const { role } = await requireRole();
   if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
+
   const pastMeetingId = Number(formData.get("pastMeetingId"));
-  const imageUrl = asString(formData, "imageUrl");
-  if (!pastMeetingId || !imageUrl) return;
+  if (!pastMeetingId) return { error: "Rencontre introuvable." };
+  const [archive] = await db.select({ id: pastMeetings.id }).from(pastMeetings).where(eq(pastMeetings.id, pastMeetingId));
+  if (!archive) return { error: "Cette rencontre passée n'existe plus." };
+
+  const images = formData.getAll("imageUrl").map((value) => String(value));
+  const captions = formData.getAll("caption").map((value) => String(value).trim().slice(0, 200));
+  if (images.length === 0) return { added: 0, ids: [] };
+
+  const rows: { pastMeetingId: number; imageUrl: string; caption: string | null; position: number }[] = [];
   const [{ max } = { max: 0 }] = await db
     .select({ max: sql<number>`coalesce(max(${pastMeetingPhotos.position}), 0)` })
     .from(pastMeetingPhotos)
     .where(eq(pastMeetingPhotos.pastMeetingId, pastMeetingId));
-  await db.insert(pastMeetingPhotos).values({
-    pastMeetingId,
-    imageUrl,
-    caption: asNullableString(formData, "caption"),
-    position: Number(max) + 1,
-  });
-  revalidatePath("/backend/rencontres");
-  revalidatePath("/association");
-  revalidatePath("/backend/rencontres-passees");
-  revalidatePath("/rencontres-passees");
+
+  for (const [index, image] of images.entries()) {
+    const value = image.trim();
+    if (!value) continue;
+    // Une image n'est acceptée qu'en data-URI : une URL ferait charger par le
+    // serveur une adresse choisie par l'utilisateur (SSRF).
+    if (value.length > MAX_IMAGE_DATA_URI) return { error: "Une photo est trop lourde même après compression." };
+    if (!IMAGE_DATA_URI.test(value)) return { error: "Format de photo non accepté." };
+    rows.push({
+      pastMeetingId,
+      imageUrl: value,
+      caption: captions[index] || null,
+      position: Number(max) + index + 1,
+    });
+  }
+
+  if (rows.length === 0) return { added: 0, ids: [] };
+  const inserted = await db.insert(pastMeetingPhotos).values(rows).returning({ id: pastMeetingPhotos.id });
+  revalidatePastMeetingPaths();
+  return { added: inserted.length, ids: inserted.map((photo) => photo.id) };
 }
 
-export async function deletePastMeetingPhoto(formData: FormData) {
+export type SyncedPhotos = { removed: number };
+
+/**
+ * Aligne les photos existantes sur ce que montre la fenêtre : ordre, légendes,
+ * et suppression de celles qui en ont été retirées.
+ *
+ * `syncPhotos` est obligatoire : sans ce drapeau, un appel amputé de sa liste
+ * (requête tronquée, formulaire partiel) effacerait toute la galerie en silence.
+ */
+export async function savePastMeetingPhotos(formData: FormData): Promise<SyncedPhotos | ActionError> {
   const { role } = await requireRole();
   if (!can(role, "manageMeetings")) throw new Error("Accès refusé");
-  const id = Number(formData.get("id"));
-  if (!id) return;
-  await db.delete(pastMeetingPhotos).where(eq(pastMeetingPhotos.id, id));
-  revalidatePath("/backend/rencontres");
-  revalidatePath("/association");
-  revalidatePath("/backend/rencontres-passees");
-  revalidatePath("/rencontres-passees");
+  if (formData.get("syncPhotos") !== "1") return { error: "Demande incomplète." };
+
+  const pastMeetingId = Number(formData.get("pastMeetingId"));
+  if (!pastMeetingId) return { error: "Rencontre introuvable." };
+
+  const kept = formData
+    .getAll("photoId")
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  const captions = formData.getAll("photoCaption").map((value) => String(value).trim().slice(0, 200));
+
+  const existing = await db
+    .select({ id: pastMeetingPhotos.id })
+    .from(pastMeetingPhotos)
+    .where(eq(pastMeetingPhotos.pastMeetingId, pastMeetingId));
+  const owned = new Set(existing.map((photo) => photo.id));
+
+  let removed = 0;
+  for (const photo of existing) {
+    if (kept.includes(photo.id)) continue;
+    await db.delete(pastMeetingPhotos).where(eq(pastMeetingPhotos.id, photo.id));
+    removed += 1;
+  }
+
+  for (const [index, photoId] of kept.entries()) {
+    if (!owned.has(photoId)) continue;
+    await db
+      .update(pastMeetingPhotos)
+      .set({ caption: captions[index] || null, position: index + 1 })
+      .where(eq(pastMeetingPhotos.id, photoId));
+  }
+
+  revalidatePastMeetingPaths();
+  return { removed };
 }
 
 // ---- Paramètres du site ----

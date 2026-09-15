@@ -139,12 +139,14 @@ même raison.
 - Les images de promo sont stockées en data-URI : l'upload se fait donc en
   binaire (multipart pour Facebook, Images API en 3 étapes pour LinkedIn), pas
   par URL.
-- L'image part **telle quelle** : aucun recadrage ni redimensionnement côté
-  application. Un visuel non carré est donc recadré — ou entouré de bandes de
-  couleur — par la plateforme. `src/lib/image-info.ts` (pur, verrouillé par
-  `tests/image-info.test.ts`) décrit le fichier déposé (dimensions, format,
-  poids) et `MemberSpaceForm` l'affiche sous l'aperçu : on informe, on ne
-  bloque pas.
+- **Aucun recadrage** : le rapport largeur/hauteur n'est jamais touché, un
+  visuel non carré est donc recadré — ou entouré de bandes de couleur — par la
+  plateforme. `src/lib/image-info.ts` (pur, verrouillé par
+  `tests/image-info.test.ts`) décrit l'image **telle qu'elle sera publiée** et
+  `MemberSpaceForm` l'affiche sous l'aperçu : on informe, on ne bloque pas.
+- Le poids, lui, est ramené dans les clous **par le navigateur** (cf. Images)
+  avant l'envoi : une photo de téléphone dépassait la limite de 3 Mo du serveur
+  et la publication échouait sans recours depuis l'écran de l'adhérent.
 - La diffusion est déclenchée **par la validation** (ou par l'échéance d'une
   publication programmée), pas par un bouton :
   `promotions.share_facebook` / `share_linkedin` sont choisis par l'adhérent,
@@ -167,6 +169,64 @@ même raison.
   `https://` inexistant.
 - Les URLs publiques des pages FB/LinkedIn sont des `site_settings`
   (`association_facebook`, `association_linkedin`), éditables dans Paramètres.
+
+## Images
+
+Toute image déposée est **compressée dans le navigateur** avant de partir :
+elle voyage en data-URI à travers une server action plafonnée à 4 Mo et finit
+stockée en base, alors qu'une photo de téléphone pèse 4 à 12 Mo. L'ancien
+réflexe — « Image trop lourde (max ~900 Ko), compressez-la d'abord » — revenait
+à demander à l'utilisateur ce que le navigateur sait faire seul.
+
+- `src/lib/image-compress.ts` est **pur** (`tests/image-compress.test.ts`) :
+  seuils, `scaleToFit()` (jamais d'agrandissement), `compressionSteps()` (on
+  épuise la qualité à définition pleine **avant** de réduire la définition),
+  `base64Bytes()`, `compressionSummary()` et `chunkByBytes()` pour découper un
+  envoi groupé sous la limite d'une requête.
+- `src/lib/image-compress-dom.ts` porte `prepareImageFile()` : décodage
+  (orientation EXIF appliquée via `createImageBitmap`, sans quoi une photo de
+  téléphone repartirait couchée), canvas, encodage. Une image **déjà dans le
+  budget n'est pas réencodée** — un réencodage JPEG dégrade toujours un peu —
+  et une image **avec transparence** ne devient jamais un JPEG (WebP, sinon
+  PNG) : un logo se retrouverait sur fond noir.
+- Budgets : `FIELD_MAX_BYTES` (1,2 Mo) pour une image de formulaire,
+  `PHOTO_MAX_BYTES` (800 Ko) pour une photo de galerie, `MAX_SIDE` 2048 px.
+- `ImageField` et `MemberSpaceForm` passent par là et affichent ce qui a été
+  fait (« 4,2 Mo → 620 Ko »). Un format que le navigateur ne sait pas décoder
+  (HEIC d'iPhone sur un poste Windows) est le seul refus, et il est expliqué.
+
+## Rencontres passées
+
+Le backoffice (`/backend/rencontres-passees`) est une grille de cartes ; tout
+le reste se passe dans une **fenêtre** (`PastMeetingDialog`) : titre, date,
+lieu, rencontre liée, récit, participants **et photos**, y compris à la
+création. Les photos ne dépendent plus d'une archive déjà publiée.
+
+- `savePastMeeting()` crée ou met à jour, `addPastMeetingPhotos()` attache un
+  lot (plusieurs appels : `chunkByBytes` découpe sous la limite des server
+  actions et rend les identifiants insérés), `savePastMeetingPhotos()` aligne
+  ordre, légendes et suppressions. Cette dernière exige `syncPhotos=1` : sans
+  ce drapeau, un appel amputé de sa liste viderait la galerie en silence.
+- Les refus attendus sont **renvoyés** (`ActionError`), jamais levés ; la
+  rencontre liée est vérifiée avant l'écriture, une rencontre supprimée
+  entre-temps donnant sinon une violation de clé étrangère sans explication.
+- **La fenêtre ne se referme qu'une fois la page rafraîchie**
+  (`closing && !refreshing`). Sans cette attente, rouvrir la fiche montre
+  l'état d'avant l'enregistrement — la rencontre liée revenue à « Aucune » —
+  et on croit que rien n'a été retenu.
+- `ModalShell` (partagé avec le site public) rend la fenêtre dans un
+  **portail** vers `<body>` : une carte survolée porte un `transform`, qui
+  redéfinit le bloc conteneur d'un `position: fixed`, et la fenêtre s'ouvrirait
+  *dans* la carte. Le portail la sort aussi du bouton qui l'ouvre.
+- Côté public, `PastMeetingCard` rend une carte de **hauteur fixe** (424 px,
+  couverture + titre sur 2 lignes + 3 lignes de texte écrêtées par
+  `line-clamp`, d'où des classes dans `globals.css` plutôt que des styles en
+  ligne) : le récit complet et toutes les photos vivent dans la fenêtre, avec
+  galerie, flèches, vignettes et navigation au clavier. Les sauts de ligne du
+  récit sont conservés (`white-space: pre-line`).
+- Le nombre de participants affiché vient des inscriptions **si** une rencontre
+  du calendrier est liée, sinon des lignes saisies à la main ; la fenêtre le
+  dit sous le champ pour éviter la surprise.
 
 ## Sécurité
 

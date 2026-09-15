@@ -4,15 +4,10 @@ import { asc, desc, eq, sql } from "drizzle-orm";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
 import { meetingRegistrations, meetings, pastMeetingPhotos, pastMeetings } from "@/db/schema";
-import { ImageField } from "@/components/ImageField";
 import { can } from "@/lib/rbac";
-import {
-  addPastMeetingPhoto,
-  createPastMeeting,
-  deletePastMeeting,
-  deletePastMeetingPhoto,
-  updatePastMeeting,
-} from "../actions";
+import { splitLines } from "@/lib/site-settings";
+import { PastMeetingDialogButton } from "./PastMeetingDialog";
+import { emptyDraft, type ArchiveDraft, type MeetingOption } from "./draft";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +15,10 @@ function dateValue(date: Date) {
   const local = new Date(date);
   local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
   return local.toISOString().slice(0, 10);
+}
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
 
 export default async function PastMeetingsAdminPage() {
@@ -52,121 +51,110 @@ export default async function PastMeetingsAdminPage() {
   const refusalsByMeeting = new Map<number, string[]>();
   for (const refusal of refusals) refusalsByMeeting.set(refusal.meetingId, [...(refusalsByMeeting.get(refusal.meetingId) ?? []), refusal.attendeeName]);
 
+  const meetingOptions: MeetingOption[] = meetingRows.map((meeting) => ({
+    id: meeting.id,
+    registered: Number(meeting.registered),
+    label: `${meeting.title} — ${formatDate(meeting.startsAt)} (${Number(meeting.registered)} inscrit${Number(meeting.registered) > 1 ? "s" : ""})`,
+  }));
+
+  const drafts: ArchiveDraft[] = archives.map((archive) => ({
+    id: archive.id,
+    title: archive.title,
+    eventDate: dateValue(archive.eventDate),
+    location: archive.location ?? "",
+    description: archive.description ?? "",
+    participants: archive.participants ?? "",
+    meetingId: archive.meetingId ? String(archive.meetingId) : "",
+    // `bytes` ne sert qu'aux photos à envoyer : celles déjà en base ne repartent pas.
+    photos: (photosByPast.get(archive.id) ?? []).map((photo) => ({
+      key: `photo-${photo.id}`,
+      id: photo.id,
+      imageUrl: photo.imageUrl,
+      caption: photo.caption ?? "",
+      bytes: 0,
+    })),
+    refused: archive.meetingId ? refusalsByMeeting.get(archive.meetingId) ?? [] : [],
+  }));
+
   return (
-    <div style={{ display: "grid", gap: 28 }}>
+    <div style={{ display: "grid", gap: 24 }}>
       <section style={panelStyle}>
-        <h2 className="font-display" style={{ margin: "0 0 6px", fontSize: 20, color: "#26201a" }}>Nouvelle rencontre passée</h2>
-        <p style={{ color: "#8c8068", fontSize: 13, margin: "0 0 18px" }}>Les trois archives les plus récentes apparaissent sur « L'association » et la page complète rassemble toutes les rencontres passées.</p>
-        <form action={createPastMeeting} className="grid grid-2" style={{ gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           <div>
-            <label className="field-label">Titre</label>
-            <input name="title" className="field" required />
+            <h2 className="font-display" style={{ margin: "0 0 6px", fontSize: 20, color: "#26201a" }}>Rencontres passées</h2>
+            <p style={{ color: "#8c8068", fontSize: 13, margin: 0, maxWidth: 620, lineHeight: 1.6 }}>
+              Une fenêtre par rencontre : récit, participants et photos au même endroit. Les trois plus récentes
+              apparaissent sur « L&apos;association », toutes sur la page des rencontres passées.
+            </p>
           </div>
-          <div>
-            <label className="field-label">Date</label>
-            <input name="eventDate" type="date" className="field" required />
-          </div>
-          <div>
-            <label className="field-label">Lieu</label>
-            <input name="location" className="field" />
-          </div>
-          <div>
-            <label className="field-label">Rencontre liée</label>
-            <select name="meetingId" className="field" defaultValue="">
-              <option value="">Aucune</option>
-              {meetingRows.map((meeting) => <option key={meeting.id} value={meeting.id}>{meeting.title} ({Number(meeting.registered)} participants)</option>)}
-            </select>
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="field-label">Description</label>
-            <textarea name="description" rows={3} className="field" />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="field-label">Participants manuels (un par ligne, uniquement sans rencontre liée)</label>
-            <textarea name="participants" rows={3} className="field" />
-          </div>
-          <button type="submit" style={primaryButton}>Publier l'archive</button>
-        </form>
+          <PastMeetingDialogButton draft={emptyDraft()} meetings={meetingOptions} style={primaryButton}>
+            Nouvelle rencontre passée
+          </PastMeetingDialogButton>
+        </div>
       </section>
 
       <section>
         <div style={sectionTitle}>Archives publiées</div>
-        <div className="grid grid-3" style={{ gap: 18 }}>
-          {archives.map((archive) => {
-            const refused = archive.meetingId ? refusalsByMeeting.get(archive.meetingId) ?? [] : [];
-            return (
-              <article key={archive.id} style={cardStyle}>
-                {refused.length > 0 && (
-                  <div style={{ background: "#fbe9e6", border: "1px solid #f0c4bb", color: "#b53a25", borderRadius: 8, padding: "11px 13px", fontSize: 12.5, lineHeight: 1.5, marginBottom: 13 }}>
-                    <strong>Droit à l'image refusé :</strong> {refused.join(", ")}. Vérifiez que ces personnes ne figurent pas sur les photos publiées.
-                  </div>
-                )}
-                <form action={updatePastMeeting} style={{ display: "grid", gap: 12 }}>
-                  <input type="hidden" name="id" value={archive.id} />
-                  <div>
-                    <label className="field-label">Titre</label>
-                    <input name="title" defaultValue={archive.title} className="field" required />
-                  </div>
-                  <div>
-                    <label className="field-label">Date</label>
-                    <input name="eventDate" type="date" defaultValue={dateValue(archive.eventDate)} className="field" required />
-                  </div>
-                  <div>
-                    <label className="field-label">Lieu</label>
-                    <input name="location" defaultValue={archive.location ?? ""} className="field" />
-                  </div>
-                  <div>
-                    <label className="field-label">Rencontre liée</label>
-                    <select name="meetingId" className="field" defaultValue={archive.meetingId ?? ""}>
-                      <option value="">Aucune</option>
-                      {meetingRows.map((meeting) => <option key={meeting.id} value={meeting.id}>{meeting.title} ({Number(meeting.registered)})</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="field-label">Description</label>
-                    <textarea name="description" rows={3} defaultValue={archive.description ?? ""} className="field" />
-                  </div>
-                  <div>
-                    <label className="field-label">Participants manuels</label>
-                    <textarea name="participants" rows={3} defaultValue={archive.participants ?? ""} className="field" />
-                  </div>
-                  <button type="submit" style={primaryButton}>Enregistrer</button>
-                </form>
-
-                <div style={{ marginTop: 14, borderTop: "1px solid #f0e8d6", paddingTop: 14 }}>
-                  <form action={addPastMeetingPhoto} style={{ display: "grid", gap: 10 }}>
-                    <input type="hidden" name="pastMeetingId" value={archive.id} />
-                    <ImageField name="imageUrl" label="Ajouter une photo" height={100} />
-                    <input name="caption" className="field" placeholder="Légende" />
-                    <button type="submit" style={primaryButton}>Ajouter la photo</button>
-                  </form>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 12 }}>
-                    {(photosByPast.get(archive.id) ?? []).map((photo) => (
-                      <form key={photo.id} action={deletePastMeetingPhoto}>
-                        <input type="hidden" name="id" value={photo.id} />
-                        <button type="submit" title="Supprimer" aria-label={`Supprimer la photo ${photo.caption ?? ""}`} style={{ width: "100%", aspectRatio: "1 / 1", border: "1px solid #e6dcc6", borderRadius: 8, cursor: "pointer", background: `center/cover no-repeat url(${photo.imageUrl})` }} />
-                      </form>
-                    ))}
-                  </div>
-                </div>
-
-                <form action={deletePastMeeting} style={{ marginTop: 12 }}>
-                  <input type="hidden" name="id" value={archive.id} />
-                  <button type="submit" style={dangerButton}>Supprimer l'archive</button>
-                </form>
-              </article>
-            );
-          })}
-        </div>
-        {archives.length === 0 && <div style={emptyStyle}>Aucune rencontre passée publiée.</div>}
+        {archives.length === 0 ? (
+          <div style={emptyStyle}>Aucune rencontre passée publiée.</div>
+        ) : (
+          <div className="grid grid-3" style={{ gap: 18 }}>
+            {archives.map((archive, index) => {
+              const draft = drafts[index];
+              const archivePhotos = photosByPast.get(archive.id) ?? [];
+              const participantCount = archive.meetingId
+                ? meetingOptions.find((option) => option.id === archive.meetingId)?.registered ?? 0
+                : splitLines(archive.participants ?? "").length;
+              const cover = archivePhotos[0]?.imageUrl;
+              return (
+                <PastMeetingDialogButton key={archive.id} draft={draft} meetings={meetingOptions} style={cardButton}>
+                  <span
+                    className={cover ? "pm-card__cover" : "pm-card__cover pm-card__cover--empty"}
+                    style={{ display: "block", borderRadius: "10px 10px 0 0", ...(cover ? { backgroundImage: `url(${cover})` } : {}) }}
+                  >
+                    {archivePhotos.length > 0 && (
+                      <span className="pm-card__count">{archivePhotos.length} photo{archivePhotos.length > 1 ? "s" : ""}</span>
+                    )}
+                  </span>
+                  <span className="pm-card__body" style={{ display: "flex" }}>
+                    <span style={{ color: "#9a6638", fontSize: 12.5, fontWeight: 800 }}>{formatDate(archive.eventDate)}</span>
+                    <span className="font-display pm-card__title" style={{ display: "-webkit-box" }}>{archive.title}</span>
+                    {archive.location && <span className="pm-line" style={{ color: "#6c6150", fontSize: 13, fontWeight: 700 }}>{archive.location}</span>}
+                    {archive.description && <span className="pm-card__text" style={{ display: "-webkit-box" }}>{archive.description}</span>}
+                    <span className="pm-card__meta">
+                      <span>{participantCount} participant{participantCount > 1 ? "s" : ""}</span>
+                      <span className="pm-card__more">Modifier →</span>
+                    </span>
+                  </span>
+                  {draft.refused.length > 0 && (
+                    <span style={{ display: "block", background: "#fbe9e6", color: "#b53a25", fontSize: 12, fontWeight: 700, padding: "8px 14px" }}>
+                      Droit à l&apos;image refusé par {draft.refused.length} participant{draft.refused.length > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </PastMeetingDialogButton>
+              );
+            })}
+          </div>
+        )}
       </section>
     </div>
   );
 }
 
 const panelStyle: CSSProperties = { background: "#fff", border: "1px solid #e6dcc6", borderRadius: 8, padding: 22 };
-const cardStyle: CSSProperties = { background: "#fff", border: "1px solid #e6dcc6", borderRadius: 8, padding: 16 };
 const sectionTitle: CSSProperties = { fontSize: 12.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 800, marginBottom: 12 };
 const primaryButton: CSSProperties = { border: "none", background: "#13324F", color: "#fff", fontWeight: 800, fontSize: 13.5, padding: "11px 16px", borderRadius: 8, cursor: "pointer" };
-const dangerButton: CSSProperties = { width: "100%", border: "1px solid #e0c3bb", background: "#fff", color: "#d8472b", fontWeight: 800, fontSize: 13, padding: "10px 14px", borderRadius: 8, cursor: "pointer" };
+const cardButton: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  height: 424,
+  textAlign: "left",
+  background: "#fff",
+  border: "1px solid #e6dcc6",
+  borderRadius: 10,
+  overflow: "hidden",
+  padding: 0,
+  cursor: "pointer",
+  font: "inherit",
+};
 const emptyStyle: CSSProperties = { background: "#fff", border: "1px solid #e6dcc6", borderRadius: 8, padding: 24, color: "#8c8068" };
