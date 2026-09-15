@@ -11,6 +11,8 @@ import type { PromoCategoryGroup } from "@/lib/promo-categories";
 import { formatValidity, isRangeInvalid } from "@/lib/promo-validity";
 import { formatSchedule, parseScheduleInput } from "@/lib/promo-schedule";
 import { imageNotes, imageSummary, type ImageInfo } from "@/lib/image-info";
+import { FIELD_MAX_BYTES, compressionSummary } from "@/lib/image-compress";
+import { prepareImageFile } from "@/lib/image-compress-dom";
 
 const STRIPE_WARM =
   "repeating-linear-gradient(45deg,#efe9da,#efe9da 12px,#e6ddc9 12px,#e6ddc9 24px)";
@@ -118,6 +120,7 @@ export function MemberSpaceForm({
   // c'est ici — dernier moment où l'adhérent peut changer de visuel — qu'on lui
   // dit ce que les réseaux feront d'un format inattendu.
   const [imgInfo, setImgInfo] = useState<ImageInfo | null>(null);
+  const [imgNote, setImgNote] = useState<string | null>(null);
   const [shares, setShares] = useState<SocialNetwork[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
@@ -128,25 +131,30 @@ export function MemberSpaceForm({
     setSubmitted(false);
   }
 
-  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  /**
+   * Le navigateur compresse avant l'envoi. Une photo de téléphone dépasse la
+   * limite de 3 Mo du serveur : elle était refusée en pleine publication, sans
+   * que l'adhérent puisse rien y faire depuis son écran. Le cadrage, lui, n'est
+   * pas touché — le rapport largeur/hauteur est conservé, donc les remarques de
+   * `ImageReport` sur ce que feront les réseaux restent vraies.
+   */
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    const bytes = f.size;
     setImgInfo(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result);
-      setImgData(dataUrl);
+    setImgNote("Compression en cours…");
+    try {
+      const prepared = await prepareImageFile(f, { maxBytes: FIELD_MAX_BYTES });
+      setImgData(prepared.dataUri);
       setSubmitted(false);
-      // Les dimensions ne sont lisibles qu'une fois l'image décodée par le
-      // navigateur. Un échec de décodage laisse simplement le résumé vide :
-      // l'information est un confort, elle ne conditionne pas le dépôt.
-      const probe = new Image();
-      probe.onload = () => setImgInfo({ width: probe.naturalWidth, height: probe.naturalHeight, bytes });
-      probe.onerror = () => setImgInfo(null);
-      probe.src = dataUrl;
-    };
-    reader.readAsDataURL(f);
+      // Le résumé décrit l'image telle qu'elle sera publiée, pas le fichier
+      // d'origine : c'est celle-là que verront le site et les réseaux.
+      setImgInfo({ width: prepared.width, height: prepared.height, bytes: prepared.bytes });
+      setImgNote(prepared.recompressed ? compressionSummary(prepared) : null);
+    } catch (cause) {
+      setImgNote(cause instanceof Error ? cause.message : "Image refusée.");
+      if (fileRef.current) fileRef.current.value = "";
+    }
   }
 
   function reset() {
@@ -158,6 +166,7 @@ export function MemberSpaceForm({
     setPublishAt("");
     setImgData("");
     setImgInfo(null);
+    setImgNote(null);
     setShares([]);
     setSubmitted(false);
     if (fileRef.current) fileRef.current.value = "";
@@ -245,6 +254,9 @@ export function MemberSpaceForm({
           <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} />
         </label>
 
+        {imgNote && (
+          <div style={{ marginTop: -8, marginBottom: 10, fontSize: 12.5, color: "#6c6150" }}>{imgNote}</div>
+        )}
         {imgInfo && <ImageReport info={imgInfo} />}
 
         <label className="field-label">Titre de la promotion</label>

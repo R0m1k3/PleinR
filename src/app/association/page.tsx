@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { meetingRegistrations, meetings, pastMeetingPhotos, pastMeetings } from "@/db/schema";
 import { JsonLd } from "@/components/JsonLd";
 import { MeetingCard } from "@/components/MeetingCard";
-import { PastMeetingGallery } from "@/components/PastMeetingGallery";
+import { PastMeetingCard } from "@/components/PastMeetingCard";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import {
@@ -43,6 +43,11 @@ function formatDate(date: Date) {
     month: "long",
     year: "numeric",
   }).format(date);
+}
+
+/** Sans le jour de la semaine : la carte d'archive est déjà dense. */
+function formatPastDate(date: Date) {
+  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
 
 function formatTime(date: Date) {
@@ -290,16 +295,18 @@ export default async function AssociationPage() {
                     ? registrationCounts.get(meeting.meetingId) ?? 0
                     : splitLines(meeting.participants ?? "").length;
                   return (
-                    <article key={meeting.id} style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 8, padding: 18 }}>
-                      <div style={{ color: "#9a6638", fontSize: 12.5, fontWeight: 800 }}>{formatDate(meeting.eventDate)}</div>
-                      <h3 className="font-display" style={{ color: "#26201a", fontSize: 22, margin: "7px 0" }}>{meeting.title}</h3>
-                      {meeting.location && <div style={{ color: "#6c6150", fontSize: 13, fontWeight: 700 }}>{meeting.location}</div>}
-                      {meeting.description && <p style={{ color: "#8c8068", fontSize: 13.5, lineHeight: 1.65 }}>{meeting.description}</p>}
-                      <div style={{ color: "#6c6150", fontSize: 12.5, fontWeight: 800, marginBottom: 12 }}>
-                        {participantCount} participant{participantCount > 1 ? "s" : ""} · {photos.length} photo{photos.length > 1 ? "s" : ""}
-                      </div>
-                      <PastMeetingGallery title={meeting.title} photos={photos} />
-                    </article>
+                    <PastMeetingCard
+                      key={meeting.id}
+                      meeting={{
+                        id: meeting.id,
+                        title: meeting.title,
+                        dateLabel: formatPastDate(meeting.eventDate),
+                        location: meeting.location,
+                        description: meeting.description,
+                        participantCount,
+                        photos: photos.map((photo) => ({ id: photo.id, imageUrl: photo.imageUrl, caption: photo.caption })),
+                      }}
+                    />
                   );
                 })}
               </div>

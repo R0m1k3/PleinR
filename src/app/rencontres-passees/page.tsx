@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { asc, desc, inArray } from "drizzle-orm";
 import { JsonLd } from "@/components/JsonLd";
-import { PastMeetingGallery } from "@/components/PastMeetingGallery";
+import { PastMeetingCard } from "@/components/PastMeetingCard";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { db } from "@/db";
@@ -79,16 +79,18 @@ export default async function PastMeetingsPage() {
                   ? registrationCounts.get(archive.meetingId) ?? 0
                   : splitLines(archive.participants ?? "").length;
                 return (
-                  <article key={archive.id} style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 8, padding: 18 }}>
-                    <div style={{ color: "#9a6638", fontSize: 12.5, fontWeight: 800 }}>{formatDate(archive.eventDate)}</div>
-                    <h2 className="font-display" style={{ color: "#26201a", fontSize: 23, margin: "7px 0" }}>{archive.title}</h2>
-                    {archive.location && <div style={{ color: "#6c6150", fontSize: 13, fontWeight: 700 }}>{archive.location}</div>}
-                    {archive.description && <p style={{ color: "#8c8068", fontSize: 13.5, lineHeight: 1.65 }}>{archive.description}</p>}
-                    <div style={{ color: "#6c6150", fontSize: 12.5, fontWeight: 800, marginBottom: 12 }}>
-                      {participantCount} participant{participantCount > 1 ? "s" : ""} · {archivePhotos.length} photo{archivePhotos.length > 1 ? "s" : ""}
-                    </div>
-                    <PastMeetingGallery title={archive.title} photos={archivePhotos} />
-                  </article>
+                  <PastMeetingCard
+                    key={archive.id}
+                    meeting={{
+                      id: archive.id,
+                      title: archive.title,
+                      dateLabel: formatDate(archive.eventDate),
+                      location: archive.location,
+                      description: archive.description,
+                      participantCount,
+                      photos: archivePhotos.map((photo) => ({ id: photo.id, imageUrl: photo.imageUrl, caption: photo.caption })),
+                    }}
+                  />
                 );
               })}
             </div>

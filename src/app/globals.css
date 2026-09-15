@@ -1805,3 +1805,306 @@ img {
   }
 }
 
+
+/* ---- Rencontres passées : cartes égales et fenêtre de lecture ----
+   Les cartes ont une hauteur fixe quels que soient la longueur du texte et le
+   nombre de photos : c'est la grille qui doit rester lisible, le détail vit
+   dans la fenêtre. D'où les `line-clamp` — un CSS que des styles en ligne ne
+   peuvent pas porter, comme les points de rupture ci-dessous. */
+.pm-card {
+  display: flex;
+  flex-direction: column;
+  height: 424px;
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #e6dcc6;
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.pm-card:hover,
+.pm-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgba(38, 32, 26, 0.13);
+}
+.pm-card__cover {
+  position: relative;
+  height: 178px;
+  flex: none;
+  background: #ece4d3 center/cover no-repeat;
+}
+.pm-card__cover--empty {
+  background: repeating-linear-gradient(135deg, #efe7d6, #efe7d6 12px, #e7ddc8 12px, #e7ddc8 24px);
+}
+.pm-card__count {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  background: rgba(19, 50, 79, 0.82);
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.pm-card__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 15px 17px 16px;
+}
+.pm-card__title {
+  margin: 6px 0 4px;
+  font-size: 21px;
+  line-height: 1.2;
+  color: #26201a;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pm-card__text {
+  margin: 6px 0 0;
+  color: #8c8068;
+  font-size: 13.5px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pm-card__meta {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #6c6150;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+.pm-card__more {
+  color: #13324f;
+}
+.pm-line {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---- Fenêtre (site public et backoffice) ---- */
+.pm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(19, 50, 79, 0.74);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+}
+.pm-panel {
+  width: min(1080px, 100%);
+  max-height: min(92vh, 940px);
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.85fr);
+  box-shadow: 0 30px 70px rgba(15, 25, 40, 0.38);
+}
+.pm-panel--form {
+  grid-template-columns: minmax(0, 1fr);
+  width: min(920px, 100%);
+}
+.pm-panel__media {
+  background: #101f2e;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pm-panel__stage {
+  position: relative;
+  flex: 1;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+.pm-panel__stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.pm-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #13324f;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pm-arrow:hover {
+  background: #fff;
+}
+.pm-arrow--prev {
+  left: 12px;
+}
+.pm-arrow--next {
+  right: 12px;
+}
+.pm-thumbs {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 14px;
+  overflow-x: auto;
+}
+.pm-thumb {
+  flex: none;
+  width: 62px;
+  height: 62px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: #24384a center/cover no-repeat;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.62;
+}
+.pm-thumb--active {
+  border-color: #e0a63c;
+  opacity: 1;
+}
+.pm-panel__info {
+  padding: 26px 26px 28px;
+  overflow: auto;
+  min-height: 0;
+}
+.pm-panel__close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  z-index: 2;
+  border: none;
+  background: #fff;
+  color: #13324f;
+  border-radius: 999px;
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(15, 25, 40, 0.24);
+}
+.pm-body-text {
+  color: #5f5646;
+  font-size: 14.5px;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
+/* ---- Fenêtre d'édition du backoffice ---- */
+.pm-form {
+  display: flex;
+  flex-direction: column;
+  max-height: min(92vh, 940px);
+}
+.pm-form__scroll {
+  overflow: auto;
+  padding: 22px 24px 8px;
+}
+.pm-form__foot {
+  border-top: 1px solid #efe7d6;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fdfbf6;
+  flex-wrap: wrap;
+}
+.pm-dropzone {
+  border: 1px dashed #d6c9ad;
+  border-radius: 12px;
+  background: #fdfbf6;
+  padding: 18px;
+  text-align: center;
+  color: #8c8068;
+  font-size: 13.5px;
+}
+.pm-dropzone--over {
+  border-color: #13324f;
+  background: #f1f5f9;
+}
+.pm-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+.pm-photo {
+  border: 1px solid #e6dcc6;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.pm-photo__image {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #f1ebdd center/cover no-repeat;
+}
+.pm-photo__tools {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+}
+.pm-photo__tool {
+  border: 1px solid #e6dcc6;
+  background: #fff;
+  color: #6f6450;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.pm-photo__tool--danger {
+  color: #d8472b;
+  border-color: #e9cfc7;
+  margin-left: auto;
+}
+
+@media (max-width: 860px) {
+  .pm-panel {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: 94vh;
+  }
+  .pm-panel__stage {
+    min-height: 220px;
+  }
+  .pm-backdrop {
+    padding: 12px;
+  }
+  .pm-panel__info {
+    padding: 20px;
+  }
+}
