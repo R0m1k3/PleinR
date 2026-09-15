@@ -268,6 +268,17 @@ même raison.
   droit à l'image) et `/backend/espace/promotions` (dépôt et suivi des promos,
   les offres **en ligne** en tête). `EspaceHeader` porte le bandeau et les
   onglets ; toute action qui touche l'espace revalide les deux chemins.
+- **Pas de barre latérale hors staff** : `BackendShell` branche sur
+  `isStaff(user.role)`. Chez un adhérent la barre ne porterait que la section
+  « Côté adhérent », c'est-à-dire les trois entrées déjà rendues en onglets par
+  `EspaceHeader` — deux menus pour la même chose. Il ne reste qu'un bandeau de
+  marque, aligné sur la colonne de contenu (`max-width` 1040). Conséquence à ne
+  pas perdre de vue : sous 1024px les actions du compte vivaient **dans le
+  tiroir** ; sans tiroir, `.backend-header--plain` rétablit leur affichage dans
+  l'entête, sinon la déconnexion deviendrait inatteignable sur téléphone.
+  `tests/backend-nav.test.ts` verrouille les deux points. Le staff garde la
+  barre : elle y est la navigation principale, et « Côté adhérent » son seul
+  chemin vers son propre espace.
 - La catégorie d'une promotion est un **type de produit ou de service**
   (`src/lib/promo-categories.ts`, groupes pour `<optgroup>`), pas le métier de
   l'adhérent ; `defaultPromoCategory(slug)` pré-sélectionne depuis le métier.

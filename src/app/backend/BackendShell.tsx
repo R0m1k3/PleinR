@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { BackendIcon, type BackendIconName } from "@/components/BackendIcons";
-import { can, ROLE_LABELS } from "@/lib/rbac";
+import { can, isStaff, ROLE_LABELS } from "@/lib/rbac";
 import type { AppRole } from "@/types/next-auth";
 import { doSignOut } from "./actions";
 
@@ -191,6 +191,43 @@ export function BackendShell({
       </button>
     </form>
   );
+
+  /**
+   * Un adhérent n'a pas de barre latérale : elle ne porterait que la section
+   * « Côté adhérent », c'est-à-dire les trois entrées déjà présentes en onglets
+   * sous le bandeau de l'espace. Deux menus pour la même chose, dont un qui
+   * mange un quart de l'écran. Il ne reste donc qu'un bandeau de marque, et le
+   * contenu prend toute la largeur — recentré pour ne pas s'étirer.
+   *
+   * Le staff la garde : chez lui elle est la navigation principale, et
+   * « Côté adhérent » y est le seul chemin vers son propre espace.
+   */
+  if (!isStaff(user.role)) {
+    return (
+      <div className="backend backend--plain" style={{ fontFamily: "'Public Sans',sans-serif", color: "#33291D" }}>
+        <header className="backend-header backend-header--plain">
+          <Link href="/backend/espace/informations" className="backend-brand">
+            <span className="backend-brand__mark">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/logo.png" alt="Plein R" style={{ height: 34, width: "auto", display: "block" }} />
+            </span>
+            <span className="backend-brand__text">
+              <span className="font-display backend-brand__name">Plein R</span>
+              <span className="backend-brand__sub">Espace adhérent</span>
+            </span>
+          </Link>
+          <div className="backend-header__actions">
+            {siteLink}
+            {signOut}
+          </div>
+        </header>
+
+        {/* Le bandeau de l'espace porte déjà le nom et les onglets : répéter
+            ici le titre de la page ferait un troisième étage d'en-tête. */}
+        <div className="backend-content backend-content--plain">{children}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="backend" style={{ fontFamily: "'Public Sans',sans-serif", color: "#33291D" }}>

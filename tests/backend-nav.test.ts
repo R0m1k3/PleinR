@@ -42,3 +42,41 @@ test("chaque icône déclarée dans le type est dessinée", () => {
     assert.ok(drawn.has(name), `l'icône « ${name} » est déclarée mais pas dessinée`);
   }
 });
+
+/**
+ * Un adhérent n'a pas de barre latérale : elle ne porterait que la section
+ * « Côté adhérent », déjà rendue en onglets par `EspaceHeader`. Le test tient
+ * les deux bouts — la coquille doit brancher sur le rôle, et sa variante sans
+ * barre ne doit rendre ni `aside`, ni bouton de tiroir.
+ */
+const memberStart = shell.indexOf("if (!isStaff(user.role))");
+// La tranche s'arrête à la coquille du staff, sinon elle l'embarquerait et
+// le test verrait son <aside> — il passerait pour un échec de la variante.
+const staffStart = shell.indexOf('<div className="backend" style', memberStart);
+const memberBranch = shell.slice(memberStart, staffStart);
+
+test("la coquille distingue le staff de l'adhérent", () => {
+  assert.ok(shell.includes("isStaff"), "BackendShell ne consulte plus le rôle");
+  assert.ok(memberStart >= 0, "la branche sans barre latérale a disparu");
+  assert.ok(staffStart > memberStart, "la coquille du staff ne suit plus la branche adhérent");
+});
+
+test("la variante adhérent ne rend ni barre latérale ni tiroir", () => {
+  assert.ok(!/<aside/.test(memberBranch), "un <aside> subsiste dans la variante adhérent");
+  assert.ok(!memberBranch.includes("backend-burger"), "le bouton de tiroir subsiste sans tiroir à ouvrir");
+  assert.ok(!memberBranch.includes("sidebar"), "une classe de barre latérale subsiste");
+});
+
+test("sans tiroir, les actions du compte restent dans l'entête", () => {
+  // Sur téléphone elles vivaient dans la barre : sans elle, se déconnecter
+  // deviendrait impossible si la règle d'affichage n'était pas rétablie.
+  assert.ok(memberBranch.includes("{signOut}"), "la déconnexion a disparu de l'entête adhérent");
+  assert.ok(memberBranch.includes("{siteLink}"), "le retour au site a disparu de l'entête adhérent");
+
+  const css = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
+  assert.match(
+    css,
+    /\.backend-header--plain\s+\.backend-header__actions\s*\{\s*display:\s*flex/,
+    "les actions restent masquées sous 1024px, où le tiroir n'existe plus",
+  );
+});

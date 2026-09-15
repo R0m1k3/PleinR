@@ -850,6 +850,81 @@ img {
   min-width: 0;
 }
 
+/* ---- Backend sans barre latérale (espace adhérent) ----
+   Un adhérent n'a que les trois onglets de son espace : une barre latérale
+   les répéterait. `.backend` étant une rangée flex, la variante repasse en
+   bloc pour que l'entête et le contenu s'empilent simplement. */
+.backend--plain {
+  display: block;
+}
+/* L'entête s'aligne sur la colonne de contenu : sans cela le logo collerait
+   au bord de l'écran pendant que le contenu reste centré. */
+.backend-header--plain {
+  padding: 14px max(24px, calc((100% - 1040px) / 2));
+}
+.backend-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-right: auto;
+  min-width: 0;
+  text-decoration: none;
+}
+.backend-brand__mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 5px;
+  border-radius: 11px;
+  background: #fff;
+  border: 1px solid #e6dcc6;
+}
+.backend-brand__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+.backend-brand__name {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink-strong);
+}
+.backend-brand__sub {
+  font-size: 11.5px;
+  color: var(--muted-3);
+}
+/* Sans barre latérale, il n'y a plus de tiroir où loger les actions sur
+   téléphone : elles restent dans l'entête à toutes les largeurs. */
+.backend-header--plain .backend-header__actions {
+  display: flex;
+}
+.backend-content--plain {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1024px) {
+  .backend-header--plain {
+    padding: 11px 16px;
+  }
+  .backend-content--plain {
+    max-width: none;
+  }
+}
+
+/* Le nom de marque s'efface avant les actions : le logo suffit à situer la
+   page, deux boutons tronqués ne servent à rien. */
+@media (max-width: 560px) {
+  .backend-brand__text {
+    display: none;
+  }
+  .backend-header--plain .backend-action {
+    padding: 8px 11px;
+    font-size: 13px;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
