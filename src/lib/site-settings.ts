@@ -44,6 +44,10 @@ export const SITE_SETTING_DEFAULTS = {
   association_publication_director: "",
   association_privacy_contact: "",
   legal_updated: "",
+  // Référencement : identifiant de mesure GA4 (« G-… ») et jeton de
+  // validation Search Console. Vides = aucune balise posée sur le site.
+  google_analytics_id: "",
+  google_site_verification: "",
 };
 
 export type SiteSettings = typeof SITE_SETTING_DEFAULTS;
