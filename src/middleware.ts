@@ -32,7 +32,11 @@ function contentSecurityPolicy(nonce: string, isDev: boolean, isHttps: boolean):
     "font-src 'self' https://fonts.gstatic.com",
     // data: pour les images stockées en data-URI, https: pour les vignettes distantes.
     "img-src 'self' data: https:",
-    "connect-src 'self'",
+    // Mesure d'audience GA4 : gtag.js renvoie ses relevés par `fetch`. Les
+    // hôtes sont listés même sans identifiant configuré — la CSP est posée
+    // sur le runtime Edge, qui ne peut pas interroger la base pour savoir si
+    // la mesure est active.
+    "connect-src 'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
     // Carte « Nous situer » de la fiche adhérent.
     "frame-src https://www.google.com https://maps.google.com",
     // Uniquement quand la page est servie en HTTPS : sur une page HTTP (test
@@ -55,6 +59,9 @@ export default auth((request: NextRequest) => {
   // ses balises <script>. Il est ensuite renvoyé sur la réponse au navigateur.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
+  // Un layout ne connaît pas l'URL demandée : `Analytics` s'en sert pour ne
+  // mesurer que les pages publiques.
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
   requestHeaders.set("content-security-policy", csp);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });

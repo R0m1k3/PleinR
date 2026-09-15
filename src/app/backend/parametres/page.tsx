@@ -98,6 +98,32 @@ export default async function ParametresPage() {
         </div>
       </section>
 
+      <section style={panel}>
+        <h2 className="font-display" style={title}>Référencement & mesure d&apos;audience</h2>
+        <div className="grid grid-2" style={{ gap: 16 }}>
+          <Field
+            label="Identifiant Google Analytics (GA4)"
+            name="google_analytics_id"
+            value={settings.google_analytics_id}
+            placeholder="G-XXXXXXXXXX"
+          />
+          <Field
+            label="Jeton Search Console (balise HTML)"
+            name="google_site_verification"
+            value={settings.google_site_verification}
+            placeholder="Valeur de l'attribut content"
+          />
+        </div>
+        <div style={{ marginTop: 14, color: "#9a6638", fontSize: 13, lineHeight: 1.6 }}>
+          Laissez vide pour ne rien charger : sans identifiant, aucune balise Google n&apos;est
+          posée sur le site. La mesure d&apos;audience ne couvre que les pages publiques — ni le
+          backoffice, ni l&apos;espace adhérent. Le plan du site est déjà publié sur{" "}
+          <code>/sitemap.xml</code> et annoncé dans <code>/robots.txt</code> : il suffit de le
+          déclarer dans Search Console. Pensez à mentionner Google Analytics dans la page
+          Confidentialité avant de l&apos;activer.
+        </div>
+      </section>
+
       <button type="submit" style={submitButton}>Enregistrer les paramètres</button>
     </form>
   );

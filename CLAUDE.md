@@ -225,6 +225,24 @@ même raison.
   `app/manifest.ts` et `app/opengraph-image.tsx` (vignette 1200×630 générée).
 - `/backend`, `/login`, `/inscription/*` et les fiches non actives sont en
   `NOINDEX` ; les pages publiques utilisent `<main>` et un seul `<h1>`.
+- **Mesure d'audience** : `src/lib/analytics.ts` est **pur**
+  (`tests/analytics.test.ts`). `normalizeMeasurementId()` n'accepte qu'un
+  identifiant GA4 (`G-…`, ni `UA-…` ni texte libre) : c'est la garde qui interdit
+  d'injecter une chaîne arbitraire dans le script en ligne. Le réglage
+  `google_analytics_id` (Paramètres) vide = **aucune balise posée**.
+  `<Analytics>` (`src/components/Analytics.tsx`) rend les deux `<script>` avec le
+  nonce de la CSP et n'agit que sur les pages publiques : `isTrackedPath()`
+  écarte `PRIVATE_PATHS`, le chemin venant de l'en-tête `x-pathname` posé par le
+  middleware (un layout ne connaît pas l'URL demandée). La CSP liste les hôtes
+  `*.google-analytics.com` / `*.analytics.google.com` / `*.googletagmanager.com`
+  en `connect-src` sans condition : elle est posée sur le runtime Edge, qui ne
+  peut pas interroger la base. `script-src` n'a pas besoin d'eux —
+  `'strict-dynamic'` couvre les scripts que gtag.js charge ensuite.
+- **Search Console** : le réglage `google_site_verification` alimente
+  `verification.google` dans `app/layout.tsx` (balise `<meta>`).
+  `normalizeSiteVerification()` refuse la balise `<meta>` complète collée telle
+  quelle. Le plan du site est déjà servi sur `/sitemap.xml` et annoncé dans
+  `/robots.txt` : il n'y a aucun fichier à déposer, seulement l'URL à déclarer.
 - **Tags adhérents** : `src/lib/tags.ts` (pur) porte un vocabulaire par métier
   (`CATEGORY_TAGS`, un par slug du référentiel, vérifié par `tests/tags.test.ts`)
   et un vocabulaire transversal détecté dans la description. `autoTags()` ne

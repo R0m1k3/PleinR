@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@/components/Analytics";
 import { JsonLd } from "@/components/JsonLd";
 import {
   INDEX_FOLLOW,
@@ -11,6 +12,7 @@ import {
   organizationJsonLd,
   webSiteJsonLd,
 } from "@/lib/seo";
+import { normalizeSiteVerification } from "@/lib/analytics";
 import { metadataBase, publicBaseUrl } from "@/lib/seo-server";
 import { getSiteSettings, socialLinks } from "@/lib/site-settings";
 import "./globals.css";
@@ -33,8 +35,14 @@ export const viewport: Viewport = {
  * relatives (canonique, Open Graph, image de partage).
  */
 export async function generateMetadata(): Promise<Metadata> {
+  const [base, settings] = await Promise.all([
+    metadataBase(),
+    getSiteSettings().catch(() => null),
+  ]);
+  // Jeton « balise HTML » de Search Console, collé dans Backend › Paramètres.
+  const google = normalizeSiteVerification(settings?.google_site_verification);
   return {
-    metadataBase: await metadataBase(),
+    metadataBase: base,
     title: {
       default: SITE_TITLE,
       template: `%s · ${SITE_NAME}`,
@@ -63,6 +71,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: SITE_DESCRIPTION,
     },
     robots: INDEX_FOLLOW,
+    verification: google ? { google } : undefined,
     icons: {
       icon: [{ url: "/assets/logo.png", type: "image/png" }],
       apple: [{ url: "/assets/logo.png", type: "image/png" }],
@@ -108,6 +117,7 @@ export default async function RootLayout({
       <body>
         {children}
         <JsonLd data={structuredData} />
+        <Analytics measurementId={settings?.google_analytics_id ?? ""} />
       </body>
     </html>
   );
