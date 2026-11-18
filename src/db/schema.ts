@@ -10,8 +10,9 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // ---- Enums ----
 export const roleEnum = pgEnum("role", ["admin", "moderator", "editor", "member"]);
@@ -233,6 +234,22 @@ export const siteSettings = pgTable("site_settings", {
   value: text("value"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ---- Carrousel « Entreprises à découvrir » de l'accueil ----
+// Une ligne par emplacement (1 à 4) : la clé primaire borne le nombre
+// d'entreprises, l'enregistrement est un upsert sur `slot`.
+export const homeSpotlights = pgTable(
+  "home_spotlights",
+  {
+    slot: integer("slot").primaryKey(),
+    published: boolean("published").notNull().default(false),
+    name: varchar("name", { length: 160 }).notNull().default(""),
+    text: text("text").notNull().default(""),
+    imageUrl: text("image_url"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("home_spotlights_slot_check", sql`${t.slot} BETWEEN 1 AND 4`)],
+);
 
 // ---- Rencontres à venir ----
 export const meetings = pgTable("meetings", {

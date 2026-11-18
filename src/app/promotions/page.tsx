@@ -13,7 +13,7 @@ import { publicBaseUrl } from "@/lib/seo-server";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Bons plans et promotions du Bassin de Pompey",
+  title: "Actus et promotions des commerçants du Bassin de Pompey",
   description:
     "Toutes les offres en cours chez les commerçants, artisans et entreprises adhérents Plein R : " +
     "réductions, nouveautés et bons plans à Pompey, Frouard, Liverdun, Champigneulles…",
@@ -37,9 +37,9 @@ export default async function PromotionsPage() {
         data={[
           breadcrumbJsonLd(baseUrl, [
             { name: "Accueil", path: "/" },
-            { name: "Promotions", path: "/promotions" },
+            { name: "Actus", path: "/promotions" },
           ]),
-          memberListJsonLd(baseUrl, "Promotions en cours chez les adhérents Plein R", listed),
+          memberListJsonLd(baseUrl, "Actus des adhérents Plein R", listed),
         ]}
       />
 
@@ -66,14 +66,14 @@ export default async function PromotionsPage() {
             }}
           >
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E0A63C" }} />
-            {promos.length} offre{promos.length > 1 ? "s" : ""} en cours
+            {promos.length} actu{promos.length > 1 ? "s" : ""} en cours
           </div>
           <h1 className="font-display" style={{ fontWeight: 800, fontSize: "clamp(26px, 6vw, 40px)", letterSpacing: "-0.02em", margin: "0 0 8px", color: "#26201a" }}>
-            Les bons plans de nos adhérents
+            Les actus de nos adhérents
           </h1>
           <p style={{ margin: 0, fontSize: 16.5, color: "#6c6150", maxWidth: 560 }}>
-            Toutes les offres en cours chez les commerçants, artisans et entreprises du réseau.
-            Chaque promotion renvoie vers la fiche de son commerce.
+            Offres, nouveautés et nouvelles des commerçants, artisans et entreprises du réseau.
+            Chaque actu renvoie vers la fiche de son entreprise.
           </p>
         </section>
 
@@ -90,7 +90,7 @@ export default async function PromotionsPage() {
               lineHeight: 1.7,
             }}
           >
-            Aucune promotion en cours pour le moment.
+            Aucune actu en cours pour le moment.
             <br />
             <Link href="/annuaire" style={{ color: "#9a6638", fontWeight: 700 }}>
               Parcourir l&apos;annuaire des adhérents →
@@ -126,7 +126,7 @@ export default async function PromotionsPage() {
               Vous êtes commerçant du Bassin de Pompey ?
             </div>
             <h2 className="font-display" style={{ fontWeight: 800, fontSize: 26, margin: 0, color: "#fff" }}>
-              Publiez vos offres sur Plein R
+              Publiez vos actus sur Plein R
             </h2>
           </div>
           <MembershipModalButton

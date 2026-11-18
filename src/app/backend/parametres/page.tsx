@@ -4,7 +4,9 @@ import { getSession } from "@/lib/session";
 import { ImageField } from "@/components/ImageField";
 import { can } from "@/lib/rbac";
 import { getSiteSettings } from "@/lib/site-settings";
+import { getSpotlightSlots } from "@/lib/queries";
 import { saveSiteSettings } from "../actions";
+import { HomeSpotlightForm } from "./HomeSpotlightForm";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +14,11 @@ export default async function ParametresPage() {
   const session = await getSession();
   if (!can(session?.user.role, "manageSettings")) redirect("/backend");
 
-  const settings = await getSiteSettings();
+  const [settings, spotlights] = await Promise.all([getSiteSettings(), getSpotlightSlots()]);
 
   return (
-    <form action={saveSiteSettings} style={{ display: "grid", gap: 22, maxWidth: 1080 }}>
+    <div style={{ display: "grid", gap: 22, maxWidth: 1080 }}>
+    <form action={saveSiteSettings} style={{ display: "grid", gap: 22 }}>
       <section style={panel}>
         <h2 className="font-display" style={title}>Identité du site</h2>
         <div className="grid grid-2" style={{ gap: 16 }}>
@@ -126,6 +129,23 @@ export default async function ParametresPage() {
 
       <button type="submit" style={submitButton}>Enregistrer les paramètres</button>
     </form>
+
+    {/* Hors du formulaire principal : chaque emplacement s'enregistre seul
+        (quatre photos dans un seul envoi dépasseraient la limite de 4 Mo). */}
+    <section style={panel}>
+      <h2 className="font-display" style={title}>Entreprises à découvrir (carrousel de l&apos;accueil)</h2>
+      <div style={{ margin: "-6px 0 16px", color: "#9a6638", fontSize: 13, lineHeight: 1.6 }}>
+        4 entreprises maximum, présentées une à une sous le haut de la page d&apos;accueil. Seules les
+        entreprises publiées avec un nom et un texte apparaissent ; sans aucune, le carrousel est masqué.
+        Chaque entreprise s&apos;enregistre avec son propre bouton.
+      </div>
+      <div className="grid grid-2" style={{ gap: 16 }}>
+        {spotlights.map((s) => (
+          <HomeSpotlightForm key={s.slot} spotlight={s} />
+        ))}
+      </div>
+    </section>
+    </div>
   );
 }
 

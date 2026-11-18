@@ -8,8 +8,10 @@ import { MembershipModalButton } from "@/components/MembershipModalButton";
 import { MembersCarousel } from "@/components/MembersCarousel";
 import { StarField } from "@/components/StarField";
 import { PromoCard } from "@/components/PromoCard";
+import { SpotlightCarousel } from "@/components/SpotlightCarousel";
 import { SOCIAL_BRAND, SocialIcon } from "@/components/SocialIcons";
-import { getActiveMemberCount, getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
+import { getActiveMemberCount, getHomeSpotlights, getLivePromotions, getRotatingActiveMembers } from "@/lib/queries";
+import { isDisplayable } from "@/lib/spotlights";
 import { getSiteSettings, socialLinks } from "@/lib/site-settings";
 import { SITE_DESCRIPTION, SITE_TITLE, pageMetadata } from "@/lib/seo";
 
@@ -27,13 +29,20 @@ export const metadata: Metadata = {
 };
 
 export default async function AccueilPage() {
-  const [promos, rotatingMembers, settings, memberCount] = await Promise.all([
+  const [promos, rotatingMembers, settings, memberCount, spotlightRows] = await Promise.all([
     getLivePromotions(6),
     getRotatingActiveMembers(),
     getSiteSettings(),
     getActiveMemberCount(),
+    getHomeSpotlights(),
   ]);
   const socials = socialLinks(settings);
+  const spotlights = spotlightRows.filter(isDisplayable).map((s) => ({
+    slot: s.slot,
+    name: s.name,
+    text: s.text,
+    imageSrc: s.hasImage ? `/api/spotlights/${s.slot}/image?v=${s.updatedAt.getTime()}` : null,
+  }));
 
   return (
     <div
@@ -111,7 +120,7 @@ export default async function AccueilPage() {
             </div>
             <p style={{ fontSize: 17, lineHeight: 1.6, color: "#6c6150", margin: "0 0 24px", maxWidth: 520 }}>
               Boulangers, artisans, restaurateurs, entreprises de service… retrouvez tous nos adhérents, profitez de
-              leurs bons plans et faites vivre le commerce de proximité.
+              suivez leurs actus et faites vivre le commerce de proximité.
             </p>
             <form
               action="/annuaire"
@@ -161,7 +170,10 @@ export default async function AccueilPage() {
           </Reveal>
         </section>
 
-        {/* promotions */}
+        {/* entreprises à découvrir : absent tant qu'aucune n'est publiée */}
+        {spotlights.length > 0 && <SpotlightCarousel items={spotlights} />}
+
+        {/* actus des adhérents (promotions) */}
         <section
           id="promotions"
           style={{
@@ -206,20 +218,20 @@ export default async function AccueilPage() {
                 }}
               >
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#E0A63C" }} />
-                Bons plans
+                Actus
               </div>
               <h2
                 className="font-display"
                 style={{ fontWeight: 800, fontSize: "clamp(22px, 5vw, 32px)", letterSpacing: "-0.02em", margin: 0, color: "#26201a" }}
               >
-                Les promotions de nos adhérents
+                L&apos;actu de nos adhérents
               </h2>
               <p style={{ margin: "7px 0 0", color: "#8c8068", fontSize: 15 }}>
-                Offres, réductions et nouveautés publiées par les commerçants du réseau.
+                Offres, nouveautés et nouvelles publiées par les commerçants et entreprises du réseau.
               </p>
             </div>
             <Link href="/promotions" className="link-arrow" style={{ textDecoration: "none", color: "#9a6638", fontWeight: 700, fontSize: 14.5, whiteSpace: "nowrap" }}>
-              Toutes les promos →
+              Toutes les actus →
             </Link>
           </div>
 
@@ -285,7 +297,7 @@ export default async function AccueilPage() {
               Plein R sur les réseaux
             </h2>
             <p style={{ margin: "7px 0 0", color: "#8c8068", fontSize: 15, maxWidth: 560 }}>
-              Bons plans, rencontres et actualités des commerçants du Bassin de Pompey : retrouvez-nous
+              Actus, rencontres et nouvelles des commerçants du Bassin de Pompey : retrouvez-nous
               sur Facebook et LinkedIn.
             </p>
 

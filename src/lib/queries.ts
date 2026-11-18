@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, members, promotions } from "@/db/schema";
+import { categories, homeSpotlights, members, promotions } from "@/db/schema";
+import { SPOTLIGHT_SLOTS } from "@/lib/spotlights";
 import { memberContact, type MemberContact } from "@/lib/member-contact";
 
 /**
@@ -292,4 +293,67 @@ export async function getCategoriesInUse() {
 export async function countVisiblePromotions(): Promise<number> {
   const [row] = await db.select({ n: count() }).from(promotions).where(VISIBLE_PROMO);
   return row?.n ?? 0;
+}
+
+// ---- Carrousel « Entreprises à découvrir » ----
+
+export type PublicSpotlight = {
+  slot: number;
+  published: boolean;
+  name: string;
+  text: string;
+  hasImage: boolean;
+  updatedAt: Date;
+};
+
+/**
+ * Emplacements publiés, sans la colonne image : l'accueil charge les photos
+ * par `/api/spotlights/[slot]/image`. La page applique `isDisplayable`.
+ */
+export async function getHomeSpotlights(): Promise<PublicSpotlight[]> {
+  return db
+    .select({
+      slot: homeSpotlights.slot,
+      published: homeSpotlights.published,
+      name: homeSpotlights.name,
+      text: homeSpotlights.text,
+      hasImage: sql<boolean>`${homeSpotlights.imageUrl} is not null`,
+      updatedAt: homeSpotlights.updatedAt,
+    })
+    .from(homeSpotlights)
+    .where(eq(homeSpotlights.published, true))
+    .orderBy(asc(homeSpotlights.slot));
+}
+
+export type SpotlightSlot = {
+  slot: number;
+  published: boolean;
+  name: string;
+  text: string;
+  imageUrl: string | null;
+};
+
+/** Les 4 emplacements pour l'écran Paramètres, vides compris. */
+export async function getSpotlightSlots(): Promise<SpotlightSlot[]> {
+  const rows = await db.select().from(homeSpotlights).orderBy(asc(homeSpotlights.slot));
+  return SPOTLIGHT_SLOTS.map((slot) => {
+    const row = rows.find((r) => r.slot === slot);
+    return row
+      ? { slot, published: row.published, name: row.name, text: row.text, imageUrl: row.imageUrl }
+      : { slot, published: false, name: "", text: "", imageUrl: null };
+  });
+}
+
+export async function getSpotlightImage(slot: number) {
+  const [row] = await db
+    .select({
+      published: homeSpotlights.published,
+      name: homeSpotlights.name,
+      text: homeSpotlights.text,
+      imageUrl: homeSpotlights.imageUrl,
+    })
+    .from(homeSpotlights)
+    .where(eq(homeSpotlights.slot, slot))
+    .limit(1);
+  return row ?? null;
 }
