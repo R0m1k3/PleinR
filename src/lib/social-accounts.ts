@@ -72,6 +72,15 @@ export async function publicBaseUrl(): Promise<string> {
 }
 
 /**
+ * URL absolue d'une page du site pour une redirection. Derrière le reverse
+ * proxy, `request.url` porte l'adresse interne du conteneur (0.0.0.0:3000) :
+ * on part de l'URL publique, et de `request.url` seulement à défaut.
+ */
+export async function publicUrl(path: string, request: Request): Promise<URL> {
+  return new URL(path, (await publicBaseUrl()) || request.url);
+}
+
+/**
  * Adresse de retour OAuth. Elle doit être identique au clic sur « Connecter »
  * et au retour du réseau : les deux passent par le même hôte, la déduction
  * depuis la requête est donc stable.

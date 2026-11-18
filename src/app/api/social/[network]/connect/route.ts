@@ -7,6 +7,7 @@ import {
   getDecryptedAppSecret,
   getSocialAccount,
   publicBaseUrl,
+  publicUrl,
   SOCIAL_NETWORKS,
   type SocialNetwork,
 } from "@/lib/social-accounts";
@@ -15,8 +16,8 @@ export const dynamic = "force-dynamic";
 
 const SETTINGS = "/backend/reseaux";
 
-function back(request: Request, error: string) {
-  return NextResponse.redirect(new URL(`${SETTINGS}?error=${encodeURIComponent(error)}`, request.url));
+async function back(request: Request, error: string) {
+  return NextResponse.redirect(await publicUrl(`${SETTINGS}?error=${encodeURIComponent(error)}`, request));
 }
 
 export async function GET(
@@ -25,7 +26,7 @@ export async function GET(
 ) {
   const session = await getSession();
   if (!can(session?.user.role, "manageSettings")) {
-    return NextResponse.redirect(new URL("/backend", request.url));
+    return NextResponse.redirect(await publicUrl("/backend", request));
   }
 
   const { network: raw } = await params;
