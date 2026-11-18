@@ -20,6 +20,7 @@ const TITLES: Record<string, [string, string]> = {
   "/backend/inscriptions": ["Inscriptions", "Gérer les participants aux rencontres"],
   "/backend/rencontres-passees": ["Rencontres passées", "Publier les archives et leurs photos"],
   "/backend/informations": ["Informations", "Ce que l'association publie dans l'espace adhérent"],
+  "/backend/carrousel": ["Carrousel de l'accueil", "Les entreprises à découvrir sur la page d'accueil"],
   "/backend/emails": ["Création d'e-mails", "Composer des messages aux couleurs de Plein R"],
   "/backend/reseaux": ["Réseaux sociaux", "Connecter les pages Facebook et LinkedIn"],
   "/backend/boite-mail": ["Boîte mail", "Brancher la boîte de l'association pour les envois du site"],
@@ -76,6 +77,7 @@ const SECTIONS: NavSection[] = [
     label: "Communication",
     items: [
       { href: "/backend/informations", label: "Informations", icon: "news", capability: "manageInformations" },
+      { href: "/backend/carrousel", label: "Carrousel de l'accueil", icon: "carousel", capability: "manageSettings" },
       { href: "/backend/emails", label: "E-mails", icon: "emails", capability: "manageEmails" },
       { href: "/backend/reseaux", label: "Réseaux sociaux", icon: "social", capability: "manageSettings" },
     ],
