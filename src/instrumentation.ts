@@ -16,9 +16,8 @@ export async function register() {
   // ni `setInterval` durable : le module Node est chargé à la demande pour ne
   // pas entrer dans ce bundle.
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  // Chaque boucle a son propre interrupteur, appliqué à l'intérieur du module :
-  // couper le libérateur de promotions ici couperait aussi l'envoi des
-  // e-mails, qui n'a rien à voir avec lui.
-  if (process.env.PROMO_SCHEDULER === "off" && process.env.MAIL_WORKER === "off") return;
+  // Chaque boucle a son propre interrupteur (PROMO_SCHEDULER, MAIL_WORKER,
+  // SOCIAL_TOKEN_WORKER), appliqué à l'intérieur du module : le module est donc
+  // toujours chargé, une boucle coupée n'en empêche pas une autre.
   await import("./instrumentation-node");
 }

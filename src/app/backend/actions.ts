@@ -15,6 +15,7 @@ import { autoTags } from "@/lib/tags";
 import {
   categories,
   contactMessages,
+  homeSpotlights,
   imageConsents,
   informations,
   meetingRegistrations,
@@ -28,15 +29,19 @@ import {
   users,
 } from "@/db/schema";
 import { can, LABEL_TO_ROLE } from "@/lib/rbac";
+import { normalizeText, parseSlot, validateSpotlight } from "@/lib/spotlights";
 import {
   SOCIAL_LABELS,
   SOCIAL_NETWORKS,
   type SocialNetwork,
 } from "@/lib/social";
 import {
+  connectWithFacebookSystemToken,
   disconnectAccount,
   saveAppCredentials,
+  saveConnection,
   selectTarget,
+  SocialAuthError,
 } from "@/lib/social-accounts";
 import { normalizeWebsite } from "@/lib/member-profile";
 import { isRangeInvalid } from "@/lib/promo-validity";
@@ -1188,6 +1193,47 @@ export async function saveSiteSettings(formData: FormData) {
   revalidatePath("/");
 }
 
+// ---- Carrousel « Entreprises à découvrir » de l'accueil ----
+// Un formulaire par emplacement : quatre photos dans un seul envoi
+// dépasseraient la limite de 4 Mo des server actions.
+export type SpotlightFormState = { error?: string; ok?: boolean; at?: number } | undefined;
+
+export async function saveHomeSpotlight(
+  _previousState: SpotlightFormState,
+  formData: FormData
+): Promise<SpotlightFormState> {
+  const { role } = await requireRole();
+  if (!can(role, "manageSettings")) throw new Error("Accès refusé");
+  const slot = parseSlot(asString(formData, "slot"));
+  if (slot === null) throw new Error("Emplacement invalide");
+
+  const published = formData.get("published") === "on";
+  const name = asString(formData, "name");
+  const text = normalizeText(String(formData.get("text") ?? ""));
+  const invalid = validateSpotlight({ published, name, text });
+  if (invalid) return { error: invalid };
+
+  let imageUrl: string | null;
+  try {
+    imageUrl = asImageDataUri(formData, "imageUrl");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Image refusée." };
+  }
+
+  const updatedAt = new Date();
+  await db
+    .insert(homeSpotlights)
+    .values({ slot, published, name, text, imageUrl, updatedAt })
+    .onConflictDoUpdate({
+      target: homeSpotlights.slot,
+      set: { published, name, text, imageUrl, updatedAt },
+    });
+
+  revalidatePath("/");
+  revalidatePath("/backend/parametres");
+  return { ok: true, at: Date.now() };
+}
+
 // ---- RGPD / droit à l'image ----
 export async function saveImageConsent(formData: FormData) {
   const session = await getSession();
@@ -1479,6 +1525,49 @@ export async function selectSocialTarget(formData: FormData) {
   await logActivity(`Page ${SOCIAL_LABELS[network]} sélectionnée pour la publication`, "#2C6FB3");
   revalidatePath("/backend/reseaux");
   revalidatePath("/backend/promotions");
+}
+
+/**
+ * Connexion Facebook par jeton d'utilisateur système (Meta Business) : même
+ * issue que le retour OAuth, sans passer par la fenêtre de connexion Facebook.
+ */
+export async function connectFacebookSystemToken(formData: FormData) {
+  const { role, name, userId } = await requireRole();
+  if (!can(role, "manageSettings")) throw new Error("Accès refusé");
+
+  const back = (params: Record<string, string>) =>
+    `/backend/reseaux?${new URLSearchParams(params)}`;
+
+  const token = asString(formData, "systemToken");
+  if (!token) redirect(back({ error: "Collez le jeton d'utilisateur système." }));
+
+  let destination: string;
+  try {
+    const { result, warning } = await connectWithFacebookSystemToken(token);
+    const single = result.targets.length === 1;
+    await saveConnection("facebook", result, single ? result.targets[0] : null, userId);
+    const params: Record<string, string> = single ? { connected: "facebook" } : { choose: "facebook" };
+    if (warning) params.warning = warning;
+    destination = back(params);
+  } catch (error) {
+    if (error instanceof SocialAuthError) {
+      destination = back({ error: error.message });
+    } else {
+      console.error("[social] connexion par jeton système :", error);
+      destination = back({
+        error: `Connexion impossible : ${error instanceof Error ? error.message : "erreur inconnue"}`,
+      });
+    }
+    redirect(destination);
+  }
+
+  await logActivity(
+    `Page Facebook connectée par jeton d'utilisateur système par <strong>${name}</strong>`,
+    "#2C6FB3"
+  );
+  revalidatePath("/backend/reseaux");
+  revalidatePath("/backend/promotions");
+  redirect(destination);
 }
 
 export async function disconnectSocial(formData: FormData) {

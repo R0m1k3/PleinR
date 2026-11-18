@@ -10,8 +10,9 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // ---- Enums ----
 export const roleEnum = pgEnum("role", ["admin", "moderator", "editor", "member"]);
@@ -186,6 +187,12 @@ export const socialAccounts = pgTable("social_accounts", {
   refreshToken: text("refresh_token"),
   // Nul = n'expire pas (jeton de page Facebook).
   expiresAt: timestamp("expires_at", { withTimezone: true }),
+  // Fin de validité du refresh token LinkedIn (non prolongée par LinkedIn) :
+  // une reconnexion par an reste nécessaire.
+  refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
+  // Dernier échec du renouvellement automatique. Séparé de `last_check_*` :
+  // le contrôle de santé, fait avec l'ancien jeton encore valide, l'effacerait.
+  refreshError: text("refresh_error"),
   targetId: varchar("target_id", { length: 200 }),
   targetName: varchar("target_name", { length: 200 }),
   connectedById: integer("connected_by_id").references(() => users.id, { onDelete: "set null" }),
@@ -233,6 +240,22 @@ export const siteSettings = pgTable("site_settings", {
   value: text("value"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ---- Carrousel « Entreprises à découvrir » de l'accueil ----
+// Une ligne par emplacement (1 à 4) : la clé primaire borne le nombre
+// d'entreprises, l'enregistrement est un upsert sur `slot`.
+export const homeSpotlights = pgTable(
+  "home_spotlights",
+  {
+    slot: integer("slot").primaryKey(),
+    published: boolean("published").notNull().default(false),
+    name: varchar("name", { length: 160 }).notNull().default(""),
+    text: text("text").notNull().default(""),
+    imageUrl: text("image_url"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("home_spotlights_slot_check", sql`${t.slot} BETWEEN 1 AND 4`)],
+);
 
 // ---- Rencontres à venir ----
 export const meetings = pgTable("meetings", {

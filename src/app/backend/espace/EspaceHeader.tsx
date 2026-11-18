@@ -7,7 +7,7 @@ function initialsOf(name: string) {
 const TABS = [
   { key: "informations", href: "/backend/espace/informations", label: "Informations" },
   { key: "profil", href: "/backend/espace", label: "Mon profil" },
-  { key: "promotions", href: "/backend/espace/promotions", label: "Mes promotions" },
+  { key: "promotions", href: "/backend/espace/promotions", label: "Mes actus" },
 ] as const;
 
 export type EspaceTab = (typeof TABS)[number]["key"];

@@ -67,7 +67,7 @@ export function PromoCard({ promo: p }: { promo: PublicPromo }) {
         {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title ?? ""} />}
         {!p.imageUrl && (
           <span style={{ fontSize: 10.5, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>
-            photo de l&apos;offre
+            photo de l&apos;actu
           </span>
         )}
         {p.badge && (

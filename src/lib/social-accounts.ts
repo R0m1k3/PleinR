@@ -1,9 +1,19 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import { siteSettings, socialAccounts, type SocialAccount, type SocialNetwork } from "@/db/schema";
 import { decryptSecret, encryptSecret } from "./crypto";
 import { originFromHeaders } from "./site-url";
+import {
+  assessFacebookDebugToken,
+  ERR_NO_APP,
+  ERR_NO_PAGE_SYSTEM,
+  linkedinNeedsRefresh,
+  linkedinRefreshUpdate,
+  type DebugTokenData,
+  type FacebookWarning,
+  type LinkedInRefreshJson,
+} from "./social-tokens";
 
 /**
  * Configuration des comptes Facebook / LinkedIn.
@@ -274,6 +284,8 @@ export type ExchangeResult = {
   accessToken: string;
   refreshToken: string | null;
   expiresAt: Date | null;
+  /** Fin de validité du refresh token LinkedIn ; null ailleurs. */
+  refreshExpiresAt: Date | null;
   targets: SocialTarget[];
 };
 
@@ -321,25 +333,72 @@ async function exchangeFacebook(
   const long = (await longRes.json()) as { access_token?: string };
   const userToken = long.access_token ?? short.access_token;
 
-  const pagesRes = await fetch(
-    `${base}/me/accounts?${new URLSearchParams({
+  const targets = await facebookPagesFromUserToken(
+    userToken,
+    "Aucune page Facebook administrée par ce compte. Connectez-vous avec un compte administrateur de la page Plein R."
+  );
+
+  // Le jeton de page ne dépend pas de l'expiration du jeton utilisateur.
+  return { accessToken: userToken, refreshToken: null, expiresAt: null, refreshExpiresAt: null, targets };
+}
+
+/** Pages administrées par un jeton utilisateur (personnel ou système), avec leur jeton. */
+async function facebookPagesFromUserToken(
+  userToken: string,
+  emptyMessage: string
+): Promise<SocialTarget[]> {
+  const res = await fetch(
+    `https://graph.facebook.com/${FACEBOOK_GRAPH_VERSION}/me/accounts?${new URLSearchParams({
       fields: "id,name,access_token",
       access_token: userToken,
     })}`
   );
-  if (!pagesRes.ok) throw new SocialAuthError(`Facebook (pages) : ${await readError(pagesRes)}`);
-  const pages = (await pagesRes.json()) as {
+  if (!res.ok) throw new SocialAuthError(`Facebook (pages) : ${await readError(res)}`);
+  const pages = (await res.json()) as {
     data?: { id: string; name: string; access_token: string }[];
   };
   const targets = (pages.data ?? []).map((p) => ({ id: p.id, name: p.name, token: p.access_token }));
-  if (targets.length === 0) {
-    throw new SocialAuthError(
-      "Aucune page Facebook administrée par ce compte. Connectez-vous avec un compte administrateur de la page Plein R."
+  if (targets.length === 0) throw new SocialAuthError(emptyMessage);
+  return targets;
+}
+
+/**
+ * Connexion par jeton d'utilisateur système Meta Business. Ce jeton n'est lié
+ * à aucun compte personnel : un changement de mot de passe ne casse plus les
+ * jetons de page qui en découlent. `debug_token` ne sert qu'à avertir ; ce qui
+ * prouve que le jeton sert, c'est la liste des pages puis le contrôle de santé.
+ */
+export async function connectWithFacebookSystemToken(
+  token: string
+): Promise<{ result: ExchangeResult; warning: FacebookWarning | null }> {
+  const account = await getSocialAccount("facebook");
+  const appSecret = account ? await getDecryptedAppSecret("facebook") : null;
+  if (!account?.appId || !appSecret) throw new SocialAuthError(ERR_NO_APP);
+
+  let warning: FacebookWarning | null = "unverified";
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${FACEBOOK_GRAPH_VERSION}/debug_token?${new URLSearchParams({
+        input_token: token,
+        access_token: `${account.appId}|${appSecret}`,
+      })}`
     );
+    if (res.ok) {
+      const json = (await res.json()) as { data?: DebugTokenData };
+      const assessment = assessFacebookDebugToken(json.data);
+      if (!assessment.ok) throw new SocialAuthError(assessment.error);
+      warning = assessment.warning;
+    }
+  } catch (error) {
+    if (error instanceof SocialAuthError) throw error;
+    // debug_token injoignable : on continue, avertissement « non vérifié ».
   }
 
-  // Le jeton de page ne dépend pas de l'expiration du jeton utilisateur.
-  return { accessToken: userToken, refreshToken: null, expiresAt: null, targets };
+  const targets = await facebookPagesFromUserToken(token, ERR_NO_PAGE_SYSTEM);
+  return {
+    result: { accessToken: token, refreshToken: null, expiresAt: null, refreshExpiresAt: null, targets },
+    warning,
+  };
 }
 
 async function exchangeLinkedIn(
@@ -363,6 +422,7 @@ async function exchangeLinkedIn(
     access_token?: string;
     expires_in?: number;
     refresh_token?: string;
+    refresh_token_expires_in?: number;
   };
   if (!token.access_token) throw new SocialAuthError("LinkedIn : jeton absent de la réponse.");
 
@@ -377,6 +437,9 @@ async function exchangeLinkedIn(
     accessToken: token.access_token,
     refreshToken: token.refresh_token ?? null,
     expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000) : null,
+    refreshExpiresAt: token.refresh_token_expires_in
+      ? new Date(Date.now() + token.refresh_token_expires_in * 1000)
+      : null,
     targets,
   };
 }
@@ -490,6 +553,8 @@ export async function saveConnection(
       accessToken: encryptSecret(target?.token ?? result.accessToken),
       refreshToken: result.refreshToken ? encryptSecret(result.refreshToken) : null,
       expiresAt: target?.token ? null : result.expiresAt,
+      refreshExpiresAt: result.refreshExpiresAt,
+      refreshError: null,
       targetId: target?.id ?? null,
       targetName: target?.name ?? null,
       connectedById: userId,
@@ -529,6 +594,8 @@ export async function disconnectAccount(network: SocialNetwork) {
       accessToken: null,
       refreshToken: null,
       expiresAt: null,
+      refreshExpiresAt: null,
+      refreshError: null,
       targetId: null,
       targetName: null,
       connectedById: null,
@@ -549,44 +616,91 @@ export async function getDecryptedAppSecret(network: SocialNetwork): Promise<str
 }
 
 /**
- * Rafraîchit un jeton LinkedIn proche de l'expiration. N'est possible que si
- * LinkedIn a accordé les « programmatic refresh tokens » à l'application ;
- * sinon on s'appuie sur le bandeau de reconnexion du backoffice.
+ * Rafraîchit le jeton LinkedIn quand il reste moins de 30 jours. Possible
+ * seulement si LinkedIn a accordé les « programmatic refresh tokens » à
+ * l'application (Community Management API) ; sans refresh token, rien à faire.
+ * Appelé par la boucle de fond et avant chaque publication.
+ *
+ * Les écritures sont conditionnées à l'échéance lue avant l'appel : si la
+ * boucle et une publication rafraîchissent en même temps, le premier jeton
+ * écrit est gardé et l'autre résultat est ignoré.
  */
-export async function refreshLinkedInIfNeeded(): Promise<void> {
+export async function refreshLinkedInIfNeeded(now = new Date()): Promise<void> {
   const account = await getSocialAccount("linkedin");
   if (!account?.refreshToken || !account.accessToken) return;
-  if (expiryStatus(account.expiresAt) === "ok") return;
+  if (!linkedinNeedsRefresh(account.expiresAt, now)) return;
 
+  const sameRow = and(
+    eq(socialAccounts.network, "linkedin"),
+    account.expiresAt ? eq(socialAccounts.expiresAt, account.expiresAt) : isNull(socialAccounts.expiresAt)
+  );
+
+  let failure: string;
   try {
-    const res = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: decryptSecret(account.refreshToken),
-        client_id: account.appId,
-        client_secret: decryptSecret(account.appSecret),
-      }),
-    });
-    if (!res.ok) return;
-    const json = (await res.json()) as {
-      access_token?: string;
-      expires_in?: number;
-      refresh_token?: string;
-    };
-    if (!json.access_token) return;
+    let refreshToken: string;
+    let clientSecret: string;
+    try {
+      refreshToken = decryptSecret(account.refreshToken);
+      clientSecret = decryptSecret(account.appSecret);
+    } catch {
+      throw new Error("Déchiffrement du refresh token impossible");
+    }
+    let res: Response;
+    try {
+      res = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: refreshToken,
+          client_id: account.appId,
+          client_secret: clientSecret,
+        }),
+      });
+    } catch (error) {
+      throw new Error(`Réseau : ${error instanceof Error ? error.message : String(error)}`);
+    }
+    if (!res.ok) throw new Error(await readError(res));
+    const update = linkedinRefreshUpdate((await res.json()) as LinkedInRefreshJson, now);
 
     await db
       .update(socialAccounts)
       .set({
-        accessToken: encryptSecret(json.access_token),
-        refreshToken: json.refresh_token ? encryptSecret(json.refresh_token) : account.refreshToken,
-        expiresAt: json.expires_in ? new Date(Date.now() + json.expires_in * 1000) : null,
+        accessToken: encryptSecret(update.accessToken),
+        ...(update.refreshToken ? { refreshToken: encryptSecret(update.refreshToken) } : {}),
+        expiresAt: update.expiresAt,
+        ...(update.refreshExpiresAt ? { refreshExpiresAt: update.refreshExpiresAt } : {}),
+        refreshError: null,
         updatedAt: new Date(),
       })
-      .where(eq(socialAccounts.network, "linkedin"));
-  } catch {
-    // Échec silencieux : la publication signalera l'erreur si le jeton est mort.
+      .where(sameRow);
+    console.log(`[social] jeton LinkedIn renouvelé jusqu'au ${update.expiresAt.toISOString()}`);
+    return;
+  } catch (error) {
+    failure = (error instanceof Error ? error.message : String(error)).slice(0, 2000);
+  }
+
+  console.error(`[social] renouvellement LinkedIn en échec : ${failure}`);
+  await db.update(socialAccounts).set({ refreshError: failure }).where(sameRow);
+}
+
+/**
+ * Passage de fond : renouvelle LinkedIn si besoin, puis contrôle chaque jeton
+ * connecté. Le tableau de bord lit ensuite ces résultats sans appeler les
+ * plateformes.
+ */
+export async function runTokenMaintenance(now = new Date()): Promise<void> {
+  try {
+    await refreshLinkedInIfNeeded(now);
+  } catch (error) {
+    console.error("[social] renouvellement LinkedIn :", error);
+  }
+  for (const account of await getSocialAccounts()) {
+    if (!account.accessToken || !account.targetId) continue;
+    try {
+      await checkTokenHealth(account.network);
+    } catch (error) {
+      console.error(`[social] contrôle ${account.network} :`, error);
+    }
   }
 }

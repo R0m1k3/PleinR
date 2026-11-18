@@ -17,7 +17,14 @@ import {
   type SocialTarget,
   type TokenHealth,
 } from "@/lib/social-accounts";
-import { disconnectSocial, saveSitePublicUrl, saveSocialApp, selectSocialTarget } from "../actions";
+import { facebookWarningText, withinRefreshWindow } from "@/lib/social-tokens";
+import {
+  connectFacebookSystemToken,
+  disconnectSocial,
+  saveSitePublicUrl,
+  saveSocialApp,
+  selectSocialTarget,
+} from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -71,11 +78,11 @@ const HELP: Record<
       "Onglet Produits : demandez « Community Management API », indispensable pour publier au nom de la page.",
     ],
     caution:
-      "LinkedIn soumet cette demande à une revue (page vérifiée, nom légal, adresse, politique de confidentialité) et ses jetons expirent au bout de 60 jours : il faudra recliquer sur « Renouveler le jeton » environ tous les deux mois.",
+      "LinkedIn soumet cette demande à une revue (page vérifiée, nom légal, adresse, politique de confidentialité). Ses jetons durent 60 jours ; le site les renouvelle seul si LinkedIn accorde le renouvellement automatique (une reconnexion par an), sinon il faut recliquer tous les deux mois.",
     renew: {
       note:
-        "Les jetons LinkedIn expirent au bout de 60 jours : le bouton relance l'autorisation et " +
-        "repart pour deux mois. Les deux liens ci-dessous permettent de contrôler l'échéance.",
+        "Le bouton relance l'autorisation complète. Inutile tant que le renouvellement " +
+        "automatique est actif. Les deux liens ci-dessous permettent de contrôler l'échéance.",
       links: [
         {
           label: "Jetons de votre application",
@@ -103,12 +110,15 @@ function fmtDate(d: Date) {
 export default async function ReseauxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; connected?: string; choose?: string }>;
+  searchParams: Promise<{ error?: string; connected?: string; choose?: string; warning?: string }>;
 }) {
   const session = await getSession();
   if (!can(session?.user.role, "manageSettings")) redirect("/backend");
 
-  const { error, connected, choose } = await searchParams;
+  const { error, connected, choose, warning } = await searchParams;
+  // Code fixe traduit ici : un lien forgé ne peut pas afficher un texte libre.
+  const warningText = facebookWarningText(warning);
+  const now = new Date();
   const accounts = await getSocialAccounts();
   const byNetwork = new Map(accounts.map((a) => [a.network, a]));
   const base = await siteUrl();
@@ -151,6 +161,7 @@ export default async function ReseauxPage({
     <div style={{ display: "grid", gap: 22, maxWidth: 1080 }}>
       {error && <Banner tone="error">{error}</Banner>}
       {targetError && <Banner tone="error">{targetError}</Banner>}
+      {warningText && <Banner tone="warn">{warningText}</Banner>}
       {connected && (
         <Banner tone="ok">
           Compte {SOCIAL_LABELS[connected as "facebook"] ?? connected} connecté.
@@ -252,7 +263,9 @@ export default async function ReseauxPage({
             {broken && (
               <Banner tone="error">
                 Le jeton {SOCIAL_LABELS[network]} ne fonctionne plus : les publications échoueront
-                tant que vous n&apos;aurez pas cliqué sur « Renouveler le jeton ».
+                {network === "facebook"
+                  ? " tant que vous n'aurez pas reconnecté la page : collez un jeton d'utilisateur système (permanent) ci-dessous, ou cliquez sur « Renouveler le jeton »."
+                  : " tant que vous n'aurez pas cliqué sur « Renouveler le jeton »."}
                 <div style={{ marginTop: 6, fontSize: 12, opacity: 0.85 }}>
                   Réponse de la plateforme : {tokenHealth.reason.slice(0, 220)}
                 </div>
@@ -264,6 +277,30 @@ export default async function ReseauxPage({
                 {status === "expired"
                   ? `Le jeton ${SOCIAL_LABELS[network]} a expiré : les publications échoueront tant que vous ne l'aurez pas renouvelé.`
                   : `Le jeton ${SOCIAL_LABELS[network]} expire bientôt. Un clic sur « Renouveler le jeton » suffit.`}
+              </Banner>
+            )}
+
+            {network === "linkedin" && isConnected && !account?.refreshError && (
+              <div style={{ fontSize: 13, color: "#6c6150", marginBottom: 12, lineHeight: 1.6 }}>
+                {account?.refreshToken
+                  ? account.refreshExpiresAt
+                    ? `Renouvellement automatique actif jusqu'au ${fmtDate(account.refreshExpiresAt)}.`
+                    : "Renouvellement automatique actif."
+                  : "LinkedIn n'a pas accordé de renouvellement automatique à cette application : reconnexion tous les 60 jours."}
+              </div>
+            )}
+
+            {network === "linkedin" && isConnected && account?.refreshToken && account.refreshExpiresAt &&
+              withinRefreshWindow(account.refreshExpiresAt, now) && (
+                <Banner tone="warn">
+                  Reconnexion annuelle LinkedIn à faire avant le {fmtDate(account.refreshExpiresAt)} :
+                  cliquez sur « Renouveler le jeton ».
+                </Banner>
+              )}
+
+            {isConnected && account?.refreshError && (
+              <Banner tone="error">
+                Le renouvellement automatique échoue : {account.refreshError.slice(0, 220)}
               </Banner>
             )}
 
@@ -315,6 +352,53 @@ export default async function ReseauxPage({
                 Enregistrer les identifiants
               </button>
             </form>
+
+            {network === "facebook" && account && (
+              <div
+                style={{
+                  background: broken ? "#fbeede" : "#faf7ef",
+                  border: `1px solid ${broken ? "#ecd8b8" : "#f0e8d6"}`,
+                  borderRadius: 12,
+                  padding: 15,
+                  marginBottom: 16,
+                }}
+              >
+                <div className="field-label" style={{ marginBottom: 4 }}>
+                  Connexion permanente (utilisateur système)
+                </div>
+                <div style={{ fontSize: 12.5, color: "#8c8068", lineHeight: 1.6, marginBottom: 10 }}>
+                  Un jeton d&apos;utilisateur système n&apos;est lié à aucun compte personnel : un
+                  changement de mot de passe ne le casse pas. À faire une fois dans{" "}
+                  <a href="https://business.facebook.com/settings/system-users" target="_blank" rel="noreferrer" style={{ color: "#2C6FB3" }}>
+                    Meta Business Suite › Utilisateurs système
+                  </a>{" "}:
+                  <ol style={{ margin: "6px 0 0", paddingLeft: 20 }}>
+                    <li>Ajoutez un utilisateur système avec le rôle Administrateur.</li>
+                    <li>« Assigner des éléments » : la page Plein R, avec le contrôle total.</li>
+                    <li>« Assigner des éléments » : cette application (identifiant ci-dessus).</li>
+                    <li>
+                      « Générer un jeton » : cette application, expiration « Jamais », permissions{" "}
+                      <code>pages_show_list</code>, <code>pages_manage_posts</code>,{" "}
+                      <code>pages_read_engagement</code>. Collez-le ici.
+                    </li>
+                  </ol>
+                </div>
+                <form action={connectFacebookSystemToken} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+                  <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+                    <label className="field-label">Jeton d&apos;utilisateur système</label>
+                    <input
+                      name="systemToken"
+                      type="password"
+                      className="field"
+                      autoComplete="off"
+                      placeholder="Collez le jeton généré dans Business Suite"
+                      required
+                    />
+                  </div>
+                  <button type="submit" style={submitButton}>Connecter avec ce jeton</button>
+                </form>
+              </div>
+            )}
 
             {/* Renouvellement : l'action et ses deux liens de contrôle, visibles
                 sans avoir à déplier l'aide de configuration. */}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getInformation } from "@/lib/informations";
+import { decodeImageDataUri } from "@/lib/data-uri";
 
 export const dynamic = "force-dynamic";
 
@@ -14,8 +15,6 @@ export const dynamic = "force-dynamic";
  * Seules les informations publiées répondent : un brouillon ne doit pas fuiter
  * par une URL devinable.
  */
-const DATA_URI = /^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=\s]+)$/;
-
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: raw } = await params;
   const id = Number(raw);
@@ -26,13 +25,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse("Introuvable", { status: 404 });
   }
 
-  const match = DATA_URI.exec(information.imageUrl);
-  if (!match) return new NextResponse("Introuvable", { status: 404 });
+  const decoded = decodeImageDataUri(information.imageUrl);
+  if (!decoded) return new NextResponse("Introuvable", { status: 404 });
 
-  const bytes = Buffer.from(match[2].replace(/\s+/g, ""), "base64");
+  const { bytes, mime } = decoded;
   return new NextResponse(bytes, {
     headers: {
-      "Content-Type": match[1],
+      "Content-Type": mime,
       "Content-Length": String(bytes.length),
       // L'image d'une information ne change pas : les clients mail peuvent la
       // garder, et un message relu six mois plus tard l'affiche encore.
