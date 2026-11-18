@@ -1230,7 +1230,7 @@ export async function saveHomeSpotlight(
     });
 
   revalidatePath("/");
-  revalidatePath("/backend/parametres");
+  revalidatePath("/backend/carrousel");
   return { ok: true, at: Date.now() };
 }
 
