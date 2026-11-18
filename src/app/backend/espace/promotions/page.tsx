@@ -58,7 +58,7 @@ export default async function EspacePromotionsPage() {
   const infoBadge = Number.isFinite(userId) ? await unreadInformationCount(userId) : 0;
   let memberName = session?.user.name ?? "Adhérent";
   let memberLogoUrl: string | null = null;
-  let subtitle = "Espace adhérent · Promotions";
+  let subtitle = "Espace adhérent · Actus";
   let publicPath: string | null = null;
   let categorySlug: string | null = null;
   let myPromos: MyPromo[] = [];
@@ -139,7 +139,7 @@ export default async function EspacePromotionsPage() {
     <div>
       {!memberId && (
         <div style={{ background: "#fbeede", border: "1px solid #ecd8b8", color: "#9a6638", borderRadius: 12, padding: "12px 16px", marginBottom: 18, fontSize: 13.5 }}>
-          Votre compte n&apos;est pas encore relié à une fiche adhérent. Les promotions publiées ne
+          Votre compte n&apos;est pas encore relié à une fiche adhérent. Les actus publiées ne
           seront pas rattachées à un commerce.
         </div>
       )}
@@ -154,11 +154,11 @@ export default async function EspacePromotionsPage() {
       </div>
 
       <PromoSection
-        title="Mes promotions en cours"
+        title="Mes actus en ligne"
         intro={
           live.length > 0
-            ? "Ces offres sont visibles sur le site et sur votre fiche. Vous pouvez en suspendre une à tout moment : elle disparaît aussitôt, et vous la remettez en ligne quand vous voulez."
-            : "Aucune promotion en ligne pour le moment. Proposez une offre ci-dessous : elle apparaîtra ici dès sa validation par l'association."
+            ? "Ces actus sont visibles sur le site et sur votre fiche. Vous pouvez en suspendre une à tout moment : elle disparaît aussitôt, et vous la remettez en ligne quand vous voulez."
+            : "Aucune actu en ligne pour le moment. Proposez-en une ci-dessous : elle apparaîtra ici dès sa validation par l'association."
         }
         promos={live}
         networks={networks}
@@ -187,7 +187,7 @@ export default async function EspacePromotionsPage() {
       {pending.length > 0 && (
         <PromoSection
           title="En attente de validation"
-          intro="L'association relit chaque offre avant sa mise en ligne. Vous pouvez encore ajuster la diffusion sur les réseaux sociaux."
+          intro="L'association relit chaque actu avant sa mise en ligne. Vous pouvez encore ajuster la diffusion sur les réseaux sociaux."
           promos={pending}
           networks={networks}
           lastShare={lastShare}
@@ -197,7 +197,7 @@ export default async function EspacePromotionsPage() {
       {others.length > 0 && (
         <PromoSection
           title="Suspendues, refusées ou expirées"
-          intro="Historique de vos offres. Une promotion suspendue par vous peut être remise en ligne."
+          intro="Historique de vos actus. Une actu suspendue par vous peut être remise en ligne."
           promos={others}
           networks={networks}
           lastShare={lastShare}
@@ -206,7 +206,7 @@ export default async function EspacePromotionsPage() {
 
       {myPromos.length > 0 && (
         <p style={{ fontSize: 13, color: "#8c8068", marginTop: 18 }}>
-          Les offres en ligne apparaissent sur <Link href="/promotions" style={{ color: "#9a6638", fontWeight: 700 }}>la page des promotions</Link>
+          Les actus en ligne apparaissent sur <Link href="/promotions" style={{ color: "#9a6638", fontWeight: 700 }}>la page des actus</Link>
           {publicPath ? (
             <>
               {" "}et sur <Link href={publicPath} style={{ color: "#9a6638", fontWeight: 700 }}>votre fiche</Link>
@@ -326,7 +326,7 @@ function PromoRow({ promo: mp, networks, lastShare }: { promo: MyPromo; networks
       )}
       {suspendedByStaff && (
         <div style={{ marginTop: 10, background: "#fbe9e6", border: "1px solid #f2d5cf", color: "#a8503c", borderRadius: 9, padding: "9px 11px", fontSize: 12.5, lineHeight: 1.5 }}>
-          Cette promotion a été suspendue par l&apos;association. Contactez-la pour la remettre en ligne.
+          Cette actu a été suspendue par l&apos;association. Contactez-la pour la remettre en ligne.
         </div>
       )}
       {networks.length > 0 && <PromoShareState promo={mp} networks={networks} lastShare={lastShare} editable={mp.status === "pending"} />}
@@ -357,7 +357,7 @@ function PromoShareState({
       <form action={setOwnPromoShareTargets} style={{ marginTop: 11, borderTop: "1px solid #f0e8d6", paddingTop: 11 }}>
         <input type="hidden" name="id" value={promo.id} />
         <div style={{ fontSize: 11.5, color: "#8c8068", marginBottom: 8, lineHeight: 1.5 }}>
-          Diffusion prévue après validation — modifiable tant que la promotion est en attente.
+          Diffusion prévue après validation — modifiable tant que l&apos;actu est en attente.
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           {networks.map((network) => (

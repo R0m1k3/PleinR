@@ -204,14 +204,14 @@ export function MemberSpaceForm({
       {/* FORM */}
       <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 16, padding: 24 }}>
         <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: "0 0 4px", color: "#26201a" }}>
-          Publier une promotion
+          Publier une actu
         </h3>
         <p style={{ margin: "0 0 20px", fontSize: 13.5, color: "#9a8d72" }}>
-          Ajoutez une image et un texte. Votre promotion sera visible après validation par
-          l&apos;association.
+          Une promotion, une nouveauté ou simplement des nouvelles de votre entreprise : ajoutez une
+          image et un texte. Votre actu sera visible après validation par l&apos;association.
         </p>
 
-        <label className="field-label">Image de l&apos;offre</label>
+        <label className="field-label">Image</label>
         <label style={{ display: "block", cursor: "pointer", marginBottom: 18 }}>
           <div
             style={{
@@ -247,7 +247,7 @@ export function MemberSpaceForm({
 
         {imgInfo && <ImageReport info={imgInfo} />}
 
-        <label className="field-label">Titre de la promotion</label>
+        <label className="field-label">Titre</label>
         <input
           value={title}
           onChange={(e) => {
@@ -289,7 +289,7 @@ export function MemberSpaceForm({
                 value={startsOn}
                 onChange={(e) => { setStartsOn(e.target.value); setSubmitted(false); }}
                 className="field"
-                aria-label="Début de la promotion"
+                aria-label="Début de validité"
               />
               <div style={{ fontSize: 11.5, color: "#a99c82", marginTop: 4 }}>Début</div>
             </div>
@@ -300,7 +300,7 @@ export function MemberSpaceForm({
                 min={startsOn || undefined}
                 onChange={(e) => { setEndsOn(e.target.value); setSubmitted(false); }}
                 className="field"
-                aria-label="Fin de la promotion"
+                aria-label="Fin de validité"
               />
               <div style={{ fontSize: 11.5, color: "#a99c82", marginTop: 4 }}>Fin</div>
             </div>
@@ -309,8 +309,8 @@ export function MemberSpaceForm({
             {badRange
               ? "La date de fin est antérieure à la date de début."
               : validity
-                ? `Affiché sur le site et dans la publication : « ${validity} ». L'offre n'apparaît que pendant cette période.`
-                : "Laissez vide si votre offre n'a pas de date limite : elle restera affichée sans échéance."}
+                ? `Affiché sur le site et dans la publication : « ${validity} ». L'actu n'apparaît que pendant cette période.`
+                : "Laissez vide si votre actu n'a pas de date limite : elle restera affichée sans échéance."}
           </div>
         </div>
 
@@ -330,14 +330,14 @@ export function MemberSpaceForm({
           </div>
         </div>
 
-        <label className="field-label">Texte de la promotion</label>
+        <label className="field-label">Texte</label>
         <textarea
           value={text}
           onChange={(e) => {
             setText(e.target.value.slice(0, 240));
             setSubmitted(false);
           }}
-          placeholder="Décrivez votre offre, les conditions, la durée…"
+          placeholder="Décrivez votre offre ou votre actualité…"
           rows={4}
           className="field"
           style={{ resize: "vertical", marginBottom: 6 }}
@@ -350,8 +350,8 @@ export function MemberSpaceForm({
               Diffusion sur les réseaux Plein R
             </div>
             <div style={{ fontSize: 12.5, color: "#8c8068", lineHeight: 1.5, marginBottom: 11 }}>
-              Choisissez où l&apos;association relaiera votre offre. La publication n&apos;a lieu
-              qu&apos;une fois la promotion validée — et le choix n&apos;est plus modifiable ensuite.
+              Choisissez où l&apos;association relaiera votre actu. La publication n&apos;a lieu
+              qu&apos;une fois l&apos;actu validée — et le choix n&apos;est plus modifiable ensuite.
             </div>
             <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
               {networks.map((network) => {
@@ -409,7 +409,7 @@ export function MemberSpaceForm({
 
         {submitted && (
           <div style={{ marginTop: 14, background: "#e6f4ec", border: "1px solid #b6e0c8", color: "#1f8a5b", borderRadius: 10, padding: "12px 14px", fontSize: 13.5, fontWeight: 600 }}>
-            ✓ Promotion envoyée ! Elle apparaîtra sur le site une fois validée par l&apos;association.
+            ✓ Actu envoyée ! Elle apparaîtra sur le site une fois validée par l&apos;association.
           </div>
         )}
       </div>
@@ -419,7 +419,7 @@ export function MemberSpaceForm({
         {/* Récapitulatif des dates : quand l'offre paraît, combien de temps
             elle reste. Deux informations que la carte ne montre pas. */}
         <div style={{ fontSize: 12.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9a8d72", fontWeight: 700, marginBottom: 12 }}>
-          Dates de votre offre
+          Dates de votre actu
         </div>
         <div style={{ background: "#fff", border: "1px solid #e6dcc6", borderRadius: 14, padding: "4px 16px", marginBottom: 26 }}>
           <SummaryRow
@@ -455,7 +455,7 @@ export function MemberSpaceForm({
             {hasImg && <PromoImage src={imgData} alt={title} />}
             {!hasImg && (
               <span style={{ fontSize: 10.5, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>
-                photo de l&apos;offre
+                photo de l&apos;actu
               </span>
             )}
             {hasBadge && (
@@ -469,11 +469,11 @@ export function MemberSpaceForm({
           </div>
           <div style={{ padding: "17px 18px 18px" }}>
             <h3 className="font-display" style={{ fontWeight: 700, fontSize: 18, margin: "0 0 5px", color: "#26201a" }}>
-              {title.trim() || "Titre de votre promotion"}
+              {title.trim() || "Titre de votre actu"}
             </h3>
             <p style={{ margin: "0 0 14px", fontSize: 13.5, color: "#8c8068", lineHeight: 1.5 }}>
               {text.trim() ||
-                "Le texte de votre offre apparaîtra ici au fur et à mesure que vous le rédigez."}
+                "Le texte de votre actu apparaîtra ici au fur et à mesure que vous le rédigez."}
             </p>
             {validity && (
               <div style={{ fontSize: 12, color: "#a99c82", marginBottom: 12 }}>{validity}</div>
@@ -483,7 +483,7 @@ export function MemberSpaceForm({
                 <MemberAvatar name={memberName} logoUrl={memberLogoUrl} size={28} />
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#3c3322" }}>{memberName}</span>
               </div>
-              <span style={{ color: "#2C6FB3", fontWeight: 700, fontSize: 13 }}>Voir l&apos;offre →</span>
+              <span style={{ color: "#2C6FB3", fontWeight: 700, fontSize: 13 }}>Voir l&apos;actu →</span>
             </div>
           </div>
         </article>

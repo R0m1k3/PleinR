@@ -1805,3 +1805,20 @@ img {
   }
 }
 
+
+/* Carrousel « Entreprises à découvrir » de l'accueil : photo | texte, empilés sur mobile. */
+.spotlight-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: center;
+}
+.spotlight-grid[hidden] {
+  display: none;
+}
+@media (max-width: 760px) {
+  .spotlight-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}

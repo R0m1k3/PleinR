@@ -80,7 +80,7 @@ export default async function EspacePage() {
     <div>
       {!memberId && (
         <div style={{ background: "#fbeede", border: "1px solid #ecd8b8", color: "#9a6638", borderRadius: 12, padding: "12px 16px", marginBottom: 18, fontSize: 13.5 }}>
-          Votre compte n&apos;est pas encore relié à une fiche adhérent. Les promotions publiées ne
+          Votre compte n&apos;est pas encore relié à une fiche adhérent. Les actus publiées ne
           seront pas rattachées à un commerce.
         </div>
       )}

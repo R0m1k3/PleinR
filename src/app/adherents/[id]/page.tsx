@@ -448,21 +448,21 @@ export default async function FicheAdherentPage({
             <section style={{ position: "relative", background: "#fff", border: "1px solid #e6dcc6", borderRadius: 18, padding: "22px 22px 24px", overflow: "hidden" }}>
               <Sparkle color="#E0A63C" size={16} style={{ top: 18, right: 20 }} duration={3} />
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fdeccd", color: "#9a6638", fontSize: 11.5, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 800, padding: "5px 12px", borderRadius: 999, marginBottom: 14 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E0A63C" }} />Ses bons plans
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#E0A63C" }} />Ses actus
               </div>
-              <h2 className="font-display" style={{ fontWeight: 800, fontSize: 21, margin: "0 0 4px", color: "#26201a" }}>Promotions en cours</h2>
+              <h2 className="font-display" style={{ fontWeight: 800, fontSize: 21, margin: "0 0 4px", color: "#26201a" }}>Actus en cours</h2>
               <p style={{ margin: "0 0 18px", fontSize: 13.5, color: "#8c8068" }}>Réservées aux clients &amp; adhérents Plein R.</p>
 
               {promos.length === 0 ? (
                 <div style={{ border: "1px dashed #d8cdb4", borderRadius: 14, padding: "20px 16px", fontSize: 13.5, color: "#8c8068", textAlign: "center" }}>
-                  Pas de promotion en cours.
+                  Pas d&apos;actu en cours.
                 </div>
               ) : (
                 promos.map((p, idx) => (
                   <article key={p.id} className="lift" style={{ border: "1px solid #ece3d0", borderRadius: 16, overflow: "hidden", marginBottom: idx === promos.length - 1 ? 0 : 14 }}>
                     <div style={{ position: "relative", aspectRatio: "1 / 1", background: STRIPE_WARM, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {p.imageUrl && <PromoImage src={p.imageUrl} alt={p.title} />}
-                      {!p.imageUrl && (<span style={{ fontSize: 10, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>photo de l&apos;offre</span>)}
+                      {!p.imageUrl && (<span style={{ fontSize: 10, letterSpacing: "0.12em", color: "#a99c82", textTransform: "uppercase" }}>photo de l&apos;actu</span>)}
                       {p.badge && (
                         <span className="font-display" style={{ position: "absolute", top: 0, right: 0, background: badgeColor(p.badge), color: "#fff", fontWeight: 800, fontSize: 16, padding: "6px 13px", borderRadius: "0 0 0 14px" }}>{p.badge}</span>
                       )}

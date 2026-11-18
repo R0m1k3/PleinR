@@ -50,6 +50,12 @@ docker compose up --build   # full stack
 
 ## Promotions
 
+**Nom public : « Actus ».** Une publication d'adhérent peut être une offre
+comme une simple nouvelle de l'entreprise : le site public et l'espace adhérent
+disent « Actus » / « Mes actus ». Le code, les tables, les statuts et l'URL
+`/promotions` gardent `promotion` ; le staff (modération), les e-mails
+automatiques et les mots-clés SEO aussi.
+
 Statuts : `pending` → (`scheduled` →) `live` → `suspended` ⇄ `live`
 (+ `rejected` / `expired`).
 `promotions.suspended_by` retient qui a suspendu (`member` ou `staff`) : une
@@ -112,6 +118,25 @@ l'écarte de ce bundle (`IgnorePlugin`), sans quoi webpack tente d'y embarquer
 boucle de libération, qui n'a pas de requête et ne peut donc pas appeler
 `revalidatePath()`. `src/lib/activity-log.ts` porte `logActivity()` pour la
 même raison.
+
+## Carrousel de l'accueil (« Entreprises à découvrir »)
+
+- Table `home_spotlights`, une ligne par emplacement : `slot` (clé primaire,
+  `CHECK 1–4`) borne le nombre d'entreprises ; l'enregistrement est un upsert.
+  Pas dans `site_settings`, que `getSiteSettings()` relit à chaque page : les
+  photos y pèseraient sur tout le site.
+- Saisie dans Paramètres, **un formulaire par emplacement** hors du formulaire
+  principal (`HomeSpotlightForm`, `saveHomeSpotlight` via `useActionState`) :
+  quatre photos dans un seul envoi dépasseraient les 4 Mo des server actions.
+- `src/lib/spotlights.ts` est pur (`tests/spotlights.test.ts`). `isDisplayable`
+  (publié + nom + texte) est la **seule** règle d'affichage : la requête ne
+  filtre que `published`, l'accueil et la route d'image l'appliquent. Aucun
+  emplacement affichable = aucune section sur l'accueil.
+- Les photos ne passent jamais en data-URI dans la page (le composant est client :
+  HTML + payload RSC) : `/api/spotlights/[slot]/image?v=<updated_at>` les sert en
+  octets, et répond 404 pour un emplacement non affichable.
+  `src/lib/data-uri.ts` (`decodeImageDataUri`) est partagé avec la route des
+  informations.
 
 ## Réseaux sociaux
 

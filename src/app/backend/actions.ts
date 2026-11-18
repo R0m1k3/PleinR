@@ -15,6 +15,7 @@ import { autoTags } from "@/lib/tags";
 import {
   categories,
   contactMessages,
+  homeSpotlights,
   imageConsents,
   informations,
   meetingRegistrations,
@@ -28,6 +29,7 @@ import {
   users,
 } from "@/db/schema";
 import { can, LABEL_TO_ROLE } from "@/lib/rbac";
+import { normalizeText, parseSlot, validateSpotlight } from "@/lib/spotlights";
 import {
   SOCIAL_LABELS,
   SOCIAL_NETWORKS,
@@ -1094,6 +1096,47 @@ export async function saveSiteSettings(formData: FormData) {
   revalidatePath("/mentions-legales");
   revalidatePath("/confidentialite");
   revalidatePath("/");
+}
+
+// ---- Carrousel « Entreprises à découvrir » de l'accueil ----
+// Un formulaire par emplacement : quatre photos dans un seul envoi
+// dépasseraient la limite de 4 Mo des server actions.
+export type SpotlightFormState = { error?: string; ok?: boolean; at?: number } | undefined;
+
+export async function saveHomeSpotlight(
+  _previousState: SpotlightFormState,
+  formData: FormData
+): Promise<SpotlightFormState> {
+  const { role } = await requireRole();
+  if (!can(role, "manageSettings")) throw new Error("Accès refusé");
+  const slot = parseSlot(asString(formData, "slot"));
+  if (slot === null) throw new Error("Emplacement invalide");
+
+  const published = formData.get("published") === "on";
+  const name = asString(formData, "name");
+  const text = normalizeText(String(formData.get("text") ?? ""));
+  const invalid = validateSpotlight({ published, name, text });
+  if (invalid) return { error: invalid };
+
+  let imageUrl: string | null;
+  try {
+    imageUrl = asImageDataUri(formData, "imageUrl");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Image refusée." };
+  }
+
+  const updatedAt = new Date();
+  await db
+    .insert(homeSpotlights)
+    .values({ slot, published, name, text, imageUrl, updatedAt })
+    .onConflictDoUpdate({
+      target: homeSpotlights.slot,
+      set: { published, name, text, imageUrl, updatedAt },
+    });
+
+  revalidatePath("/");
+  revalidatePath("/backend/parametres");
+  return { ok: true, at: Date.now() };
 }
 
 // ---- RGPD / droit à l'image ----

@@ -105,7 +105,7 @@ export default async function AnnuairePage({
             L&apos;annuaire des commerçants &amp; entreprises
           </h1>
           <p style={{ margin: 0, fontSize: 16.5, color: "#6c6150", maxWidth: 560 }}>
-            Trouvez un professionnel du Bassin de Pompey, découvrez sa fiche et ses bons plans.
+            Trouvez un professionnel du Bassin de Pompey, découvrez sa fiche et ses actus.
           </p>
           {signedIn && (
             <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "#9a8d72", maxWidth: 560 }}>
