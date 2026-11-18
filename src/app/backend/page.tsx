@@ -7,6 +7,7 @@ import { activityLog, contactMessages, members, membershipRequests, promotions, 
 import { activityNodes } from "@/lib/activity";
 import { can, isStaff } from "@/lib/rbac";
 import { countVisiblePromotions } from "@/lib/queries";
+import { isAuthFailureSinceConnection } from "@/lib/social-tokens";
 import {
   expiryStatus,
   getSocialAccounts,
@@ -61,7 +62,8 @@ export default async function DashboardPage() {
   // Jetons réseaux à renouveler. Deux signaux, car une date d'expiration ne
   // suffit pas : un jeton de page Facebook n'expire jamais mais peut être
   // révoqué, et cela ne se voit qu'à la première publication en échec.
-  const expiringNetworks: { network: SocialNetwork; status: string }[] = [];
+  // Une seule entrée par réseau, la plus grave : broken > refresh > expired > soon.
+  const expiringNetworks: { network: SocialNetwork; status: string; detail?: string }[] = [];
   if (can(session?.user.role, "manageSettings")) {
     const connected = (await getSocialAccounts()).filter((a) => a.accessToken && a.targetId);
 
@@ -73,6 +75,7 @@ export default async function DashboardPage() {
             network: socialPosts.network,
             status: socialPosts.status,
             error: socialPosts.error,
+            createdAt: socialPosts.createdAt,
           })
           .from(socialPosts)
           .orderBy(desc(socialPosts.createdAt))
@@ -83,9 +86,9 @@ export default async function DashboardPage() {
 
     for (const account of connected) {
       const last = lastAttempt.get(account.network);
-      const authFailure =
-        last?.status === "failed" &&
-        /oauth|token|401|expired|invalid|permission/i.test(last.error ?? "");
+      // Un échec antérieur à la dernière connexion ne compte plus : le jeton a
+      // été remplacé depuis, le contrôle de santé décide.
+      const authFailure = isAuthFailureSinceConnection(last, account.connectedAt);
       // Contrôle direct, mis en cache 6 h : c'est ce qui permet de prévenir
       // avant la première publication en échec, sans appeler la plateforme à
       // chaque affichage du tableau de bord.
@@ -94,6 +97,12 @@ export default async function DashboardPage() {
 
       if (authFailure || probe?.ok === false) {
         expiringNetworks.push({ network: account.network, status: "broken" });
+      } else if (account.refreshError) {
+        expiringNetworks.push({
+          network: account.network,
+          status: "refresh",
+          detail: account.refreshError.slice(0, 160),
+        });
       } else if (expiry === "soon" || expiry === "expired") {
         expiringNetworks.push({ network: account.network, status: expiry });
       }
@@ -131,10 +140,12 @@ export default async function DashboardPage() {
             <div key={n.network}>
               <strong>{SOCIAL_LABELS[n.network]}</strong>{" "}
               {n.status === "broken"
-                ? "— la dernière publication a été refusée : le jeton ne fonctionne plus."
-                : n.status === "expired"
-                  ? "— le jeton a expiré, les publications échoueront."
-                  : "— le jeton expire dans moins de 7 jours."}{" "}
+                ? "— le jeton ne fonctionne plus, les publications échoueront."
+                : n.status === "refresh"
+                  ? `— le renouvellement automatique échoue, reconnexion bientôt nécessaire (${n.detail}).`
+                  : n.status === "expired"
+                    ? "— le jeton a expiré, les publications échoueront."
+                    : "— le jeton expire dans moins de 7 jours."}{" "}
               Reconnecter le compte →
             </div>
           ))}

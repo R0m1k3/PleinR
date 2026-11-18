@@ -94,7 +94,8 @@ posé, vérifier la délivrance avec
 > HTTPS sur un nom de domaine : la connexion des réseaux sociaux ne peut être
 > validée qu'une fois le DNS posé.
 
-Mise à jour : `git pull && docker compose up -d --build`.
+Mise à jour : `git pull && docker compose up -d` (récupère la dernière image publiée sur GHCR). Pour construire
+l'image soi-même : `docker compose up -d --build`. Avec Portainer (stack Git) : « Pull and redeploy ».
 
 ## Comptes de démonstration (seed)
 
@@ -177,7 +178,16 @@ développeur — c'est l'erreur de configuration la plus fréquente.
 produit Connexion Facebook, déclarez l'URL de redirection. Gardez l'application
 en **mode développement** avec le compte de l'association comme administrateur :
 publier sur votre propre page ne demande alors aucune revue Meta. Le jeton de
-page obtenu **n'expire pas** — une connexion suffit, définitivement.
+page obtenu par ce bouton n'expire pas avec le temps, mais Meta l'annule si
+l'administrateur change de mot de passe ou si ses sessions sont réinitialisées.
+
+Pour une connexion qui ne dépend d'aucun compte personnel, utilisez un **jeton
+d'utilisateur système** (Meta Business Suite › Paramètres › Utilisateurs
+système) : créez un utilisateur système administrateur, assignez-lui la page
+(contrôle total) et l'application, générez un jeton avec l'expiration
+« Jamais » et les permissions `pages_show_list`, `pages_manage_posts`,
+`pages_read_engagement`, puis collez-le dans le bloc **Connexion permanente** de
+la carte Facebook.
 
 **LinkedIn.** Créez une application sur
 [linkedin.com/developers](https://www.linkedin.com/developers/apps) rattachée à
@@ -186,10 +196,12 @@ Deux limites à connaître avant de vous lancer :
 
 - l'accès est soumis à une revue (page vérifiée, nom légal, adresse, politique
   de confidentialité) ; ce n'est pas garanti ni immédiat ;
-- les jetons LinkedIn durent **60 jours** et le rafraîchissement programmatique
-  est réservé à certains partenaires. En pratique il faut donc recliquer sur
-  **Reconnecter** environ tous les deux mois. Le backoffice affiche la date
-  d'expiration et un bandeau d'alerte 7 jours avant.
+- les jetons LinkedIn durent **60 jours**. Quand LinkedIn accorde le
+  renouvellement automatique (refresh token, valable un an), le site renouvelle
+  seul le jeton dès qu'il reste moins de 30 jours : il ne reste qu'une
+  reconnexion par an, annoncée 30 jours avant. Sinon, il faut recliquer sur
+  **Renouveler le jeton** tous les deux mois ; la carte LinkedIn indique dans
+  quel cas vous êtes.
 
 Les variables d'environnement (`FACEBOOK_PAGE_ACCESS_TOKEN`, etc.) restent lues
 en **repli** si aucun compte n'est connecté, pour ne pas casser une installation
@@ -235,7 +247,9 @@ Voir [`.env.example`](./.env.example). Les principales :
 - `SOCIAL_TOKEN_KEY` — clé de chiffrement des jetons réseaux **et de la boîte
   mail** (défaut : `AUTH_SECRET`)
 - `MAIL_WORKER=off` — arrête la file d'envoi ; `PROMO_SCHEDULER=off` arrête le
-  libérateur de publications programmées. Les deux sont indépendants.
+  libérateur de publications programmées ; `SOCIAL_TOKEN_WORKER=off` arrête
+  l'entretien des jetons (renouvellement LinkedIn et contrôle toutes les 5 h).
+  Les trois sont indépendants.
 - `MAIL_RATE_PER_MINUTE` — débit de la file d'envoi (défaut : 20)
 - `SMTP_HOST` / `SMTP_USER` / `SMTP_PASSWORD` … — repli avant toute
   configuration depuis **Backend › Boîte mail**

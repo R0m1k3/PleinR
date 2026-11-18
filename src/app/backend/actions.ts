@@ -36,9 +36,12 @@ import {
   type SocialNetwork,
 } from "@/lib/social";
 import {
+  connectWithFacebookSystemToken,
   disconnectAccount,
   saveAppCredentials,
+  saveConnection,
   selectTarget,
+  SocialAuthError,
 } from "@/lib/social-accounts";
 import { normalizeWebsite } from "@/lib/member-profile";
 import { isRangeInvalid } from "@/lib/promo-validity";
@@ -1430,6 +1433,49 @@ export async function selectSocialTarget(formData: FormData) {
   await logActivity(`Page ${SOCIAL_LABELS[network]} sélectionnée pour la publication`, "#2C6FB3");
   revalidatePath("/backend/reseaux");
   revalidatePath("/backend/promotions");
+}
+
+/**
+ * Connexion Facebook par jeton d'utilisateur système (Meta Business) : même
+ * issue que le retour OAuth, sans passer par la fenêtre de connexion Facebook.
+ */
+export async function connectFacebookSystemToken(formData: FormData) {
+  const { role, name, userId } = await requireRole();
+  if (!can(role, "manageSettings")) throw new Error("Accès refusé");
+
+  const back = (params: Record<string, string>) =>
+    `/backend/reseaux?${new URLSearchParams(params)}`;
+
+  const token = asString(formData, "systemToken");
+  if (!token) redirect(back({ error: "Collez le jeton d'utilisateur système." }));
+
+  let destination: string;
+  try {
+    const { result, warning } = await connectWithFacebookSystemToken(token);
+    const single = result.targets.length === 1;
+    await saveConnection("facebook", result, single ? result.targets[0] : null, userId);
+    const params: Record<string, string> = single ? { connected: "facebook" } : { choose: "facebook" };
+    if (warning) params.warning = warning;
+    destination = back(params);
+  } catch (error) {
+    if (error instanceof SocialAuthError) {
+      destination = back({ error: error.message });
+    } else {
+      console.error("[social] connexion par jeton système :", error);
+      destination = back({
+        error: `Connexion impossible : ${error instanceof Error ? error.message : "erreur inconnue"}`,
+      });
+    }
+    redirect(destination);
+  }
+
+  await logActivity(
+    `Page Facebook connectée par jeton d'utilisateur système par <strong>${name}</strong>`,
+    "#2C6FB3"
+  );
+  revalidatePath("/backend/reseaux");
+  revalidatePath("/backend/promotions");
+  redirect(destination);
 }
 
 export async function disconnectSocial(formData: FormData) {

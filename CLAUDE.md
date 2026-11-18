@@ -463,6 +463,9 @@ pas de cascade automatique, la bascule est un choix visible.
 
 ## Docker notes
 
+- Image publiée sur `ghcr.io/r0m1k3/pleinr` (`latest` + sha) par
+  `.github/workflows/docker-publish.yml` après `npm test` ; le compose la tire
+  (`pull_policy: always`), `build: .` reste pour construire en local.
 - Migrations + optional seed run on container start via `docker-entrypoint.sh`.
 - `npm run build:scripts` bundles `migrate`/`seed` into `dist/*.cjs` so the runtime
   image needs no dev dependencies.
