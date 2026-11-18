@@ -8,21 +8,21 @@ import {
   mailAuthorizeUrl,
   MAIL_PROVIDERS,
 } from "@/lib/mail-accounts";
-import { publicBaseUrl } from "@/lib/social-accounts";
+import { publicBaseUrl, publicUrl } from "@/lib/social-accounts";
 import type { MailProvider } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
 const SETTINGS = "/backend/boite-mail";
 
-function back(request: Request, error: string) {
-  return NextResponse.redirect(new URL(`${SETTINGS}?error=${encodeURIComponent(error)}`, request.url));
+async function back(request: Request, error: string) {
+  return NextResponse.redirect(await publicUrl(`${SETTINGS}?error=${encodeURIComponent(error)}`, request));
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }) {
   const session = await getSession();
   if (!can(session?.user.role, "manageSettings")) {
-    return NextResponse.redirect(new URL("/backend", request.url));
+    return NextResponse.redirect(await publicUrl("/backend", request));
   }
 
   const { provider: raw } = await params;

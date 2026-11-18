@@ -8,14 +8,15 @@ import {
   saveConnection,
   SOCIAL_NETWORKS,
   type SocialNetwork,
+  publicUrl,
 } from "@/lib/social-accounts";
 
 export const dynamic = "force-dynamic";
 
 const SETTINGS = "/backend/reseaux";
 
-function back(request: Request, params: Record<string, string>) {
-  const url = new URL(SETTINGS, request.url);
+async function back(request: Request, params: Record<string, string>) {
+  const url = await publicUrl(SETTINGS, request);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   const response = NextResponse.redirect(url);
   // Le state a fait son office, quel que soit le résultat.
@@ -29,7 +30,7 @@ export async function GET(
 ) {
   const session = await getSession();
   if (!can(session?.user.role, "manageSettings")) {
-    return NextResponse.redirect(new URL("/backend", request.url));
+    return NextResponse.redirect(await publicUrl("/backend", request));
   }
 
   const { network: raw } = await params;
