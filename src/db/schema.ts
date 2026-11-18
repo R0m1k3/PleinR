@@ -187,6 +187,12 @@ export const socialAccounts = pgTable("social_accounts", {
   refreshToken: text("refresh_token"),
   // Nul = n'expire pas (jeton de page Facebook).
   expiresAt: timestamp("expires_at", { withTimezone: true }),
+  // Fin de validité du refresh token LinkedIn (non prolongée par LinkedIn) :
+  // une reconnexion par an reste nécessaire.
+  refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
+  // Dernier échec du renouvellement automatique. Séparé de `last_check_*` :
+  // le contrôle de santé, fait avec l'ancien jeton encore valide, l'effacerait.
+  refreshError: text("refresh_error"),
   targetId: varchar("target_id", { length: 200 }),
   targetName: varchar("target_name", { length: 200 }),
   connectedById: integer("connected_by_id").references(() => users.id, { onDelete: "set null" }),

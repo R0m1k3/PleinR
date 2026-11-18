@@ -28,6 +28,12 @@ services:
       - internal
 
   app:
+    # Image publiée par GitHub Actions à chaque mise à jour de main.
+    # `pull_policy: always` : chaque `docker compose up -d` récupère la
+    # dernière version avant de (re)démarrer le conteneur.
+    image: ghcr.io/r0m1k3/pleinr:latest
+    pull_policy: always
+    # Construction locale possible : `docker compose up -d --build` (utilise le Dockerfile).
     build: .
     container_name: pleinr-app
     restart: unless-stopped
