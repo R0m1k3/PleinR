@@ -280,7 +280,7 @@ export default async function ReseauxPage({
               </Banner>
             )}
 
-            {network === "linkedin" && isConnected && (
+            {network === "linkedin" && isConnected && !account?.refreshError && (
               <div style={{ fontSize: 13, color: "#6c6150", marginBottom: 12, lineHeight: 1.6 }}>
                 {account?.refreshToken
                   ? account.refreshExpiresAt
